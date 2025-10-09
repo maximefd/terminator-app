@@ -1,0 +1,34 @@
+# Définition de nos services (nos "boîtes" virtuelles)
+services:
+  # 1. Le service de la base de données
+  db:
+    image: postgres:15-alpine  # Utilise l'image officielle de PostgreSQL 15, version légère
+    container_name: terminator_db
+    environment:
+      POSTGRES_USER: user      # Nom d'utilisateur pour la BDD
+      POSTGRES_PASSWORD: password  # Mot de passe
+      POSTGRES_DB: terminator_db # Nom de la base de données
+    ports:
+      - "5432:5432"  # Rend la BDD accessible depuis ton Mac sur le port 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # Stocke les données de la BDD pour qu'elles persistent
+
+  # 2. Le service de notre API Backend
+  api:
+    container_name: terminator_api
+    build: ./backend  # Demande à Docker de construire l'image à partir du dossier ./backend
+    ports:
+      - "5001:5000"  # Rend l'API accessible depuis ton Mac sur le port 5000
+    volumes:
+      - ./backend:/app # Synchronise le dossier ./backend de ton Mac avec le dossier /app dans le conteneur
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://user:password@db:5432/terminator_db
+      - TRIE_MODE=lite
+      - SECRET_KEY=une_super_cle_secrete_pour_le_dev
+    depends_on:
+      - db  # Indique à Docker d'attendre que la BDD soit démarrée avant de lancer l'API
+
+# Définition du volume pour la persistance des données de la BDD
+volumes:
+  pgdata:
