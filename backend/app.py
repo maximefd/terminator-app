@@ -216,7 +216,7 @@ def initialize_demo_user_and_words():
             
             db.session.commit()
             logger.info(f"Dictionnaire par défaut et 2 mots de démo ajoutés pour l'utilisateur {user.id}.")
-            
+
 # =======================================================
 # BLOC D'INITIALISATION CRITIQUE (Exécuté par Gunicorn)
 # =======================================================
@@ -248,14 +248,13 @@ def login():
     email = data.get('email', 'demo@terminator.com')
     
     with app.app_context():
-        user = Utilisateur.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first() # <-- CORRIGÉ ICI
         
         if user:
             login_user(user)
             return jsonify({"success": True, "message": f"Connecté en tant que {user.email}", "user_id": user.id})
             
         return jsonify({"success": False, "message": "Email non trouvé (utilisez demo@terminator.com)"}), 401
-
 
 @app.route('/api/logout', methods=['POST'])
 @login_required
@@ -355,6 +354,100 @@ def delete_personal_word(word_id):
         db.session.rollback()
         return jsonify({"error": "Erreur interne lors de la suppression du mot personnel."}), 500
 
+# =======================================================
+# ROUTES DE GESTION DES DICTIONNAIRES (CRUD)
+# =======================================================
+
+@app.route('/api/dictionaries', methods=['GET'])
+@login_required
+def get_dictionaries():
+    """Récupère tous les dictionnaires de l'utilisateur connecté."""
+    
+    # current_user est fourni par Flask-Login et est l'objet User actuellement connecté.
+    # Grâce à notre relation `lazy='selectin'`, ceci est très performant.
+    user_dictionaries = current_user.dictionaries
+    
+    # On utilise la méthode to_json() qu'on a définie sur le modèle Dictionary.
+    return jsonify([d.to_json() for d in user_dictionaries]), 200
+
+@app.route('/api/dictionaries', methods=['POST'])
+@login_required
+def create_dictionary():
+    """Crée un nouveau dictionnaire pour l'utilisateur connecté."""
+    data = request.get_json()
+    if not data or 'name' not in data or not data['name'].strip():
+        return jsonify({'error': 'Le nom du dictionnaire est manquant.'}), 400
+
+    name = data['name'].strip()
+
+    # On vérifie que le nom n'existe pas déjà (grâce à notre contrainte d'unicité)
+    existing_dict = Dictionary.query.filter_by(user_id=current_user.id, name=name).first()
+    if existing_dict:
+        return jsonify({'error': f"Un dictionnaire nommé '{name}' existe déjà."}), 409 # 409 Conflict
+
+    # Création du nouveau dictionnaire
+    new_dict = Dictionary(
+        name=name,
+        user=current_user
+    )
+    db.session.add(new_dict)
+    db.session.commit()
+
+    logger.info(f"Dictionnaire '{name}' créé pour l'utilisateur {current_user.id}.")
+
+    # On retourne le nouvel objet créé avec un statut 201 Created
+    return jsonify(new_dict.to_json()), 201
+
+@app.route('/api/dictionaries/<int:dict_id>', methods=['PATCH'])
+@login_required
+def update_dictionary(dict_id):
+    """Met à jour le nom ou le statut actif d'un dictionnaire."""
+    
+    # 1. On cherche le dictionnaire en s'assurant qu'il appartient bien à l'utilisateur connecté
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Données manquantes.'}), 400
+
+    # 2. On met à jour le nom s'il est fourni
+    if 'name' in data:
+        new_name = data['name'].strip()
+        if not new_name:
+            return jsonify({'error': 'Le nom ne peut pas être vide.'}), 400
+        dictionary.name = new_name
+
+    # 3. Logique spéciale pour 'is_active'
+    if data.get('is_active') is True:
+        # Si on active ce dictionnaire, on désactive tous les autres du même utilisateur
+        Dictionary.query.filter(
+            Dictionary.user_id == current_user.id,
+            Dictionary.id != dict_id
+        ).update({'is_active': False})
+        dictionary.is_active = True
+    
+    db.session.commit()
+    logger.info(f"Dictionnaire ID {dict_id} mis à jour pour l'utilisateur {current_user.id}.")
+    
+    return jsonify(dictionary.to_json()), 200
+
+@app.route('/api/dictionaries/<int:dict_id>', methods=['DELETE'])
+@login_required
+def delete_dictionary(dict_id):
+    """Supprime un dictionnaire."""
+    
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
+
+    db.session.delete(dictionary)
+    db.session.commit()
+    
+    logger.info(f"Dictionnaire ID {dict_id} supprimé pour l'utilisateur {current_user.id}.")
+
+    return jsonify({'message': 'Dictionnaire supprimé avec succès.'}), 200
 
 # =======================================================
 # ROUTES DE RECHERCHE FINALE (DELA + Personnels)

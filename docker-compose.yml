@@ -12,6 +12,11 @@ services:
       - "5432:5432"  # Rend la BDD accessible depuis ton Mac sur le port 5432
     volumes:
       - pgdata:/var/lib/postgresql/data  # Stocke les données de la BDD pour qu'elles persistent
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d terminator_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # 2. Le service de notre API Backend
   api:
