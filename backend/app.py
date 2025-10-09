@@ -281,78 +281,100 @@ def status_check():
         "message": "Terminator est opérationnel."
     }
     return jsonify(status), 200
-
 # =======================================================
-# ROUTES DE GESTION DES MOTS PERSONNELS (CRUD)
+# ROUTES DE GESTION DES MOTS (CRUD)
 # =======================================================
 
-@app.route('/api/personal_words', methods=['GET'])
+@app.route('/api/dictionaries/<int:dict_id>/words', methods=['GET'])
 @login_required
-def get_personal_words():
-    """Récupère tous les mots personnels de l'utilisateur connecté."""
-    try:
-        words = [word.to_json() for word in current_user.mots_personnels]
-        return jsonify({"results": words}), 200
-    except Exception as e:
-        logger.error(f"Erreur lors de la récupération des mots personnels: {e}")
-        return jsonify({"error": "Erreur interne lors de la récupération des mots personnels."}), 500
+def get_words_in_dictionary(dict_id):
+    """Récupère tous les mots d'un dictionnaire spécifique."""
+    
+    # On vérifie que le dictionnaire demandé existe et appartient bien à l'utilisateur
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
+        
+    # Grâce à lazy='selectin', les mots sont chargés efficacement
+    return jsonify([word.to_json() for word in dictionary.words]), 200
 
-@app.route('/api/personal_words', methods=['POST'])
+@app.route('/api/dictionaries/<int:dict_id>/words', methods=['POST'])
 @login_required
-def add_personal_word():
-    """Ajoute un mot personnel à l'utilisateur connecté."""
+def add_word_to_dictionary(dict_id):
+    """Ajoute un nouveau mot à un dictionnaire spécifique."""
+    
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
+        
     data = request.get_json()
     mot_affiche = data.get('mot')
-    definition = data.get('definition', '')
-    
-    if not mot_affiche:
-        return jsonify({"error": "Le mot est obligatoire."}), 400
+    if not mot_affiche or not mot_affiche.strip():
+        return jsonify({'error': 'Le mot est obligatoire.'}), 400
 
-    # Normalisation pour le stockage dans la BDD et la recherche
     mot_upper = normalize_pattern(mot_affiche)
+    definition = data.get('definition', '')
 
-    try:
-        # Vérification si le mot existe déjà
-        existing_word = MotPersonnel.query.filter_by(mot=mot_upper, user_id=current_user.id).first()
-        if existing_word:
-            return jsonify({"error": f"Le mot '{mot_affiche}' existe déjà dans votre liste personnelle."}), 409
+    # Création du nouveau mot, lié directement au dictionnaire
+    new_word = PersonalWord(
+        mot=mot_upper,
+        mot_affiche=mot_affiche,
+        definition=definition,
+        dictionary_id=dictionary.id
+    )
+    db.session.add(new_word)
+    db.session.commit()
+    
+    logger.info(f"Mot '{mot_upper}' ajouté au dictionnaire {dict_id} pour l'utilisateur {current_user.id}.")
 
-        new_word = MotPersonnel(
-            mot=mot_upper,
-            mot_affiche=mot_affiche,
-            definition=definition,
-            user_id=current_user.id
-        )
-        db.session.add(new_word)
-        db.session.commit()
-        
-        logger.info(f"Mot personnel ajouté: {mot_upper} par utilisateur {current_user.id}")
-        return jsonify(new_word.to_json()), 201
+    return jsonify(new_word.to_json()), 201
 
-    except Exception as e:
-        logger.error(f"Erreur lors de l'ajout d'un mot personnel: {e}")
-        db.session.rollback()
-        return jsonify({"error": "Erreur interne lors de l'ajout du mot personnel."}), 500
-
-@app.route('/api/personal_words/<int:word_id>', methods=['DELETE'])
+@app.route('/api/dictionaries/<int:dict_id>/words/<int:word_id>', methods=['PATCH'])
 @login_required
-def delete_personal_word(word_id):
-    """Supprime un mot personnel de l'utilisateur connecté."""
-    try:
-        word = MotPersonnel.query.filter_by(id=word_id, user_id=current_user.id).first()
+def update_word_in_dictionary(dict_id, word_id):
+    """Met à jour un mot dans un dictionnaire spécifique."""
+    
+    # On vérifie que le dictionnaire appartient bien à l'utilisateur
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
         
-        if not word:
-            return jsonify({"error": "Mot personnel non trouvé."}), 404
+    # On cherche le mot DANS ce dictionnaire spécifique
+    word = PersonalWord.query.filter_by(id=word_id, dictionary_id=dict_id).first()
+    if not word:
+        return jsonify({'error': 'Mot non trouvé dans ce dictionnaire.'}), 404
 
-        db.session.delete(word)
-        db.session.commit()
-        logger.info(f"Mot personnel supprimé: ID {word_id} par utilisateur {current_user.id}")
-        return jsonify({"success": True, "message": "Mot supprimé avec succès."}), 200
+    data = request.get_json()
+    if 'mot' in data:
+        mot_affiche = data['mot'].strip()
+        if not mot_affiche:
+            return jsonify({'error': 'Le mot ne peut pas être vide.'}), 400
+        word.mot_affiche = mot_affiche
+        word.mot = normalize_pattern(mot_affiche)
 
-    except Exception as e:
-        logger.error(f"Erreur lors de la suppression du mot personnel: {e}")
-        db.session.rollback()
-        return jsonify({"error": "Erreur interne lors de la suppression du mot personnel."}), 500
+    if 'definition' in data:
+        word.definition = data['definition']
+    
+    db.session.commit()
+    return jsonify(word.to_json()), 200
+
+@app.route('/api/dictionaries/<int:dict_id>/words/<int:word_id>', methods=['DELETE'])
+@login_required
+def delete_word_from_dictionary(dict_id, word_id):
+    """Supprime un mot d'un dictionnaire spécifique."""
+    
+    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
+    if not dictionary:
+        return jsonify({'error': 'Dictionnaire non trouvé.'}), 404
+        
+    word = PersonalWord.query.filter_by(id=word_id, dictionary_id=dict_id).first()
+    if not word:
+        return jsonify({'error': 'Mot non trouvé.'}), 404
+
+    db.session.delete(word)
+    db.session.commit()
+    
+    return jsonify({'message': 'Mot supprimé avec succès.'}), 200
 
 # =======================================================
 # ROUTES DE GESTION DES DICTIONNAIRES (CRUD)
