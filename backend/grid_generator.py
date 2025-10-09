@@ -58,55 +58,52 @@ class GridGenerator:
         return True
 
     def _try_to_place_one_word(self):
-        """Version V5: Utilise le calcul de position corrigé et un nettoyage d'index robuste."""
+        """Version V6: Ajout d'un garde-fou pour éviter les erreurs de suppression."""
         random.shuffle(self.placed_words)
 
         for anchor_word_info in self.placed_words:
             anchor_direction = anchor_word_info["direction"]
             new_word_direction = "down" if anchor_direction == "across" else "across"
 
-            # i = index de la lettre dans le mot d'ancrage
             for i, char in enumerate(anchor_word_info["text"]):
                 
-                # On cherche des mots candidats via l'index
-                # On ne peut croiser qu'un mot de longueur >= 3
-                for length in range(3, max(self.width, self.height) + 1):
-                    # k = index de la même lettre dans le mot candidat
-                    key = (char, 0, length) # On recherche le caractère au début du mot, puis on vérifie les autres positions
+                # On parcourt les longueurs de mots possibles
+                possible_lengths = list(self.words_by_len.keys())
+                random.shuffle(possible_lengths)
+                for length in possible_lengths:
                     
-                    candidates = self.index.get(key, [])
-                    random.shuffle(candidates)
+                    # On cherche des mots candidats dans l'index
+                    for k in range(length):
+                        key = (char, k, length)
+                        candidates = self.index.get(key, [])
+                        random.shuffle(candidates)
 
-                    for word_to_place in candidates:
-                        # Correction 1: On trouve la position de la lettre correspondante (k)
-                        try:
-                            k = word_to_place.index(char)
-                        except ValueError:
-                            continue
+                        for word_to_place in candidates:
+                            
+                            # LA CORRECTION EST ICI : on vérifie si le mot est toujours disponible
+                            if word_to_place not in self.words_by_len.get(length, []):
+                                continue # Si non, on passe au candidat suivant
 
-                        # Correction 1: Calcul géométrique correct du point de départ
-                        if anchor_direction == "across":
-                            new_x = anchor_word_info["x"] + i
-                            new_y = anchor_word_info["y"] - k
-                        else: # anchor_direction == "down"
-                            new_x = anchor_word_info["x"] - k
-                            new_y = anchor_word_info["y"] + i
+                            if anchor_direction == "across":
+                                new_x = anchor_word_info["x"] + i
+                                new_y = anchor_word_info["y"] - k
+                            else: # anchor_direction == "down"
+                                new_x = anchor_word_info["x"] - k
+                                new_y = anchor_word_info["y"] + i
 
-                        if self._can_place_word(word_to_place, new_x, new_y, new_word_direction):
-                            self._place_word(word_to_place, new_x, new_y, new_word_direction)
-                            
-                            # On retire le mot de nos listes pour ne pas le réutiliser
-                            self.words_by_len[length].remove(word_to_place)
-                            
-                            # Correction 2: Nettoyage robuste de l'index
-                            for idx, c in enumerate(word_to_place):
-                                index_key = (c, idx, length)
-                                if index_key in self.index:
-                                    self.index[index_key] = [w for w in self.index[index_key] if w != word_to_place]
-                            
-                            return True # Mot placé, on arrête et on recommence la boucle principale
+                            if self._can_place_word(word_to_place, new_x, new_y, new_word_direction):
+                                self._place_word(word_to_place, new_x, new_y, new_word_direction)
+                                
+                                self.words_by_len[length].remove(word_to_place)
+                                
+                                for idx, c in enumerate(word_to_place):
+                                    index_key = (c, idx, length)
+                                    if index_key in self.index and word_to_place in self.index[index_key]:
+                                        self.index[index_key].remove(word_to_place)
+                                
+                                return True
         
-        return False # Aucun mot n'a pu être placé dans cette passe
+        return False
 
     def _can_place_word(self, word, x, y, direction):
         # ... (cette fonction ne change pas par rapport à la V3) ...
