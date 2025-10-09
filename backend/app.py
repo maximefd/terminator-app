@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from sqlalchemy import or_ # Nécessaire pour les requêtes combinées
 
+
 # Importation de votre module
 from trie_engine import DictionnaireTrie
 
@@ -23,6 +24,8 @@ DELA_FILE_LITE = 'dela_clean_lite.csv'
 # --- Configuration de l'application Flask ---
 app = Flask(__name__)
 CORS(app)
+
+FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
 
 # Charger la configuration depuis les variables d'environnement
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_for_local_dev')
