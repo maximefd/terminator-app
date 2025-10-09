@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
-from sqlalchemy import or_ # Nécessaire pour les requêtes combinées
+from sqlalchemy import or_, func # Nécessaire pour les requêtes combinées
 
 
 # Importation de votre module
@@ -63,6 +63,18 @@ def normalize_pattern(text):
         if unicodedata.category(c) != 'Mn'
     )
     return normalized.strip()
+
+def is_match(pattern, word):
+    """Vérifie si un mot correspond à un motif (normalisé, sans casse/accent)."""
+    # Suggestion 1: Normalisation systématique
+    normalized_pattern = normalize_pattern(pattern)
+    normalized_word = normalize_pattern(word)
+
+    if len(normalized_pattern) != len(normalized_word):
+        return False
+
+    # Utilise une expression génératrice plus concise
+    return all(p == '?' or p == w for p, w in zip(normalized_pattern, normalized_word))
 
 # =======================================================
 # DÉFINITION DES MODÈLES (TABLES DE LA BDD)
@@ -477,76 +489,54 @@ def delete_dictionary(dict_id):
 
 @app.route('/api/search', methods=['POST'])
 def search_words():
-    """Recherche de mots combinée (DELA + Mots Personnels)."""
-    if dela_trie is None:
-        return jsonify({"error": "Dictionnaire en cours de chargement ou a échoué.", "detail": "Réessayez plus tard."}), 503
-
-    data = request.json
-    letters = data.get('letters', '').upper()
-    mask = data.get('mask', '').upper()
-
-    cleaned_mask = normalize_pattern(mask)
-    cleaned_letters = normalize_pattern(letters)
-
-    if not cleaned_letters and not cleaned_mask:
-        return jsonify({"error": "Veuillez fournir des lettres et/ou un masque."}), 400
-
-    # 1. Recherche dans le DELA (via le Trie)
+    """Recherche de mots combinée, optimisée et sécurisée."""
+    # Suggestion 5: Gestion globale des erreurs
     try:
-        dela_results_set = dela_trie.search_by_mask(cleaned_mask, cleaned_letters)
+        if dela_trie is None:
+            return jsonify({"error": "Dictionnaire en cours de chargement."}), 503
+
+        data = request.json
+        mask = data.get('mask', '')
+        limit = min(int(data.get("limit", 200)), 500) # Suggestion 4: Limite de résultats
+
+        if not mask:
+            return jsonify({"error": "Le paramètre 'mask' est obligatoire."}), 400
+
+        cleaned_mask = normalize_pattern(mask)
+
+        personal_results_json = []
+        if current_user.is_authenticated:
+            active_dict = Dictionary.query.filter_by(user_id=current_user.id, is_active=True).first()
+
+            if active_dict:
+                # Suggestion 2: Filtrage performant côté SQL
+                sql_mask = cleaned_mask.replace('?', '_')
+                personal_words = PersonalWord.query.filter(
+                    PersonalWord.dictionary_id == active_dict.id,
+                    PersonalWord.mot.like(sql_mask)
+                ).all()
+                personal_results_json = [w.to_json() for w in personal_words]
+
+        # Recherche DELA
+        dela_results_raw = dela_trie.search_pattern(cleaned_mask)
+
+        # Combinaison et dédoublonnage
+        final_results = []
+        final_results.extend(personal_results_json)
+
+        personal_mots_set = {p['mot'] for p in personal_results_json}
+
+        for mot_obj in dela_results_raw:
+            if mot_obj.texte_normalise not in personal_mots_set:
+                final_results.append(mot_obj.to_json())
+
+        # Suggestion 4: Application de la limite
+        return jsonify({"results": final_results[:limit]}), 200
+
     except Exception as e:
-        # Si la recherche Trie plante (ex: le chargement a échoué), on log et on continue
-        logger.error(f"Erreur lors de la recherche dans le Trie: {e}")
-        dela_results_set = set()
+        logger.error(f"Erreur critique dans /api/search: {e}", exc_info=True)
+        return jsonify({"error": "Une erreur interne est survenue lors de la recherche."}), 500
 
-
-    # 2. Recherche dans les Mots Personnels (via la BDD)
-    personal_results = []
-    if current_user.is_authenticated:
-        # Filtrer les mots personnels de l'utilisateur actuel
-        # Le masque est un string de regex (e.g. R.O.) que nous ne pouvons pas directement utiliser en SQL.
-        # Nous allons d'abord filtrer par longueur, puis laisser Python gérer le masque.
-        
-        word_length = len(cleaned_mask)
-        
-        # Récupère tous les mots personnels de la bonne longueur pour l'utilisateur
-        personal_words_db = MotPersonnel.query.filter(
-            MotPersonnel.user_id == current_user.id,
-            db.func.length(MotPersonnel.mot) == word_length
-        ).all()
-        
-        # Le filtrage fin par lettres disponibles est effectué dans la boucle
-        
-        # NOTE: Le front-end doit être responsable de filtrer le masque/lettres pour les mots personnels
-        # Pour une implémentation complète ici, nous devrions répliquer la logique de validation du Trie.
-        # Pour le moment, nous les récupérons par longueur et laissons le front-end gérer la validation.
-        # Nous n'avons pas la logique pour vérifier les lettres disponibles sans la méthode du Trie.
-        
-        # Pour la démo, on utilise la méthode to_json pour le formatage
-        for word in personal_words_db:
-             # L'implémentation complète nécessiterait une méthode de validation complexe ici.
-             # On inclut tous les mots de la bonne longueur en attendant la logique complète.
-             personal_results.append(word.to_json())
-
-    # 3. Combinaison et formatage des résultats DELA
-    final_results = [
-        {'mot': mot, 'longueur': len(mot), 'definition': "Définition DELA", 'source': 'DELA'}
-        for mot in dela_results_set
-    ]
-
-    # 4. Ajout des résultats personnels
-    final_results.extend(personal_results)
-    
-    # Éliminer les doublons si un mot personnel existe dans DELA (par mot et longueur)
-    unique_mots = set()
-    deduped_results = []
-    for item in final_results:
-        key = (item['mot'], item['longueur'])
-        if key not in unique_mots:
-            unique_mots.add(key)
-            deduped_results.append(item)
-
-    return jsonify({"results": deduped_results}), 200
 
 if __name__ == '__main__':
     logger.info("Démarrage en mode développement local.")
