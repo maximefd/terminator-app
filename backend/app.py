@@ -8,6 +8,8 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user, login_required
 from sqlalchemy import or_, func # Nécessaire pour les requêtes combinées
+from grid_generator import GridGenerator
+import random
 
 
 # Importation de votre module
@@ -538,6 +540,55 @@ def search_words():
         return jsonify({"error": "Une erreur interne est survenue lors de la recherche."}), 500
 
 
+
+# =======================================================
+# ROUTE DE GÉNÉRATION DE GRILLE
+# =======================================================
+
+@app.route('/api/grids/generate', methods=['POST'])
+@login_required
+def generate_grid():
+    """Génère une grille de mots fléchés remplie, de manière sécurisée et optimisée."""
+    try:
+        data = request.get_json()
+        size = data.get('size', {})
+        
+        # Suggestion 5: Limiter la taille de la grille pour la sécurité
+        width = min(int(size.get('width', 10)), 20)
+        height = min(int(size.get('height', 10)), 20)
+        
+        word_list = []
+        
+        if data.get('use_global', True):
+            all_dela_words = list(dela_trie.words)
+            # Suggestion 1: Échantillonnage pour la performance
+            dela_sample = random.sample(all_dela_words, min(10000, len(all_dela_words)))
+            word_list.extend(w for w in dela_sample if 2 < len(w) <= max(width, height))
+        
+        active_dict = Dictionary.query.filter_by(user_id=current_user.id, is_active=True).first()
+        if active_dict:
+            word_list.extend([word.mot for word in active_dict.words if 2 < len(word.mot) <= max(width, height)])
+
+        if not word_list:
+            return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
+
+        # On s'assure qu'il n'y a pas de doublons
+        unique_words = list(set(word_list))
+        
+        generator = GridGenerator(width, height, unique_words)
+        success = generator.generate()
+
+        if not success:
+            return jsonify({"error": "Impossible de générer une grille avec les mots fournis."}), 500
+            
+        return jsonify({"grid": generator.get_grid_data()}), 200
+
+    except Exception as e:
+        # Suggestion 2: Gestion globale des erreurs
+        logger.error(f"Erreur lors de la génération de la grille: {e}", exc_info=True)
+        return jsonify({"error": "Une erreur interne est survenue lors de la génération."}), 500
+    
+    
 if __name__ == '__main__':
     logger.info("Démarrage en mode développement local.")
     app.run(host='0.0.0.0', port=5000)
