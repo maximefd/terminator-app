@@ -1,4 +1,8 @@
 import os
+import pprint # <-- AJOUTER
+print("--- VARIABLES D'ENVIRONNEMENT VUES PAR LE CONTENEUR ---") # <-- AJOUTER
+pprint.pprint(dict(os.environ)) # <-- AJOUTER
+print("----------------------------------------------------")
 import logging
 import sys
 import unicodedata
@@ -21,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration des fichiers DELA ---
 DELA_FILE_FULL = 'dela_clean.csv'
-DELA_FILE_LITE = 'dela_clean_lite.csv'
 
 # --- CONFIGURATION DU LOGGING ---
 # On ajoute un format pour avoir des logs plus clairs (date, niveau, message)
@@ -159,20 +162,11 @@ class PersonalWord(db.Model):
 # =======================================================
 
 def get_dela_file_path():
-    """Détermine quel fichier DELA charger en fonction de l'environnement."""
-    trie_mode = os.environ.get('TRIE_MODE', 'full').lower()
-
-    if trie_mode == 'lite':
-        file_path = DELA_FILE_LITE
-    else:
-        file_path = DELA_FILE_FULL
-    
-    logger.info(f"--- DÉBOGAGE TRIE ---")
-    logger.info(f"TRIE_MODE détecté : '{trie_mode}'")
-    logger.info(f"Chemin du fichier sélectionné : '{file_path}'")
-    logger.info(f"--- DÉBOGAGE TRIE ---")
-    
-    return file_path
+    """Retourne directement le chemin du dictionnaire de production."""
+    logger.info("--- DÉBOGAGE TRIE ---")
+    logger.info(f"Chargement du dictionnaire complet : '{DELA_FILE_FULL}'")
+    logger.info("--- DÉBOGAGE TRIE ---")
+    return DELA_FILE_FULL
 
 def initialize_trie():
     """Charge le dictionnaire Trie au démarrage de l'application."""
@@ -570,7 +564,7 @@ def generate_grid():
             all_dela_words = list(dela_trie.words)
             # Suggestion 1: Échantillonnage pour la performance
             dela_sample = random.sample(all_dela_words, min(30000, len(all_dela_words)))
-            word_list.extend(w for w in dela_sample if 2 < len(w) <= max(width, height))
+            word_list.extend(w for w in dela_sample if len(w) >= 2 and len(w) <= max(width, height))
         
         active_dict = Dictionary.query.filter_by(user_id=current_user.id, is_active=True).first()
         if active_dict:

@@ -29,7 +29,6 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://user:password@db:5432/terminator_db
-      - TRIE_MODE=lite
       - SECRET_KEY=une_super_cle_secrete_pour_le_dev
       
     # PARTIE 2 : LA CONDITION D'ATTENTE, QUI UTILISE LE HEALTHCHECK
