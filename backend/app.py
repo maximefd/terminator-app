@@ -33,7 +33,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 
 # --- Configuration de l'application Flask ---
 app = Flask(__name__)
-CORS(app)
+CORS(app, 
+     origins=["http://localhost:3000", "http://192.168.1.75:3000"], # Les adresses autorisées
+     supports_credentials=True) # Indispensable pour autoriser les cookies
 
 FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
 
@@ -156,6 +158,12 @@ class PersonalWord(db.Model):
             'source': 'PERSONNEL',
             'date_ajout': self.date_ajout.isoformat() if self.date_ajout else None
         }
+
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    """Gère les accès non autorisés pour renvoyer du JSON."""
+    return jsonify({"error": "Accès non autorisé. Veuillez vous connecter."}), 401
+
 
 # =======================================================
 # FONCTIONS D'INITIALISATION
@@ -557,6 +565,9 @@ def generate_grid():
         height = min(int(size.get('height', 10)), 20)
         
         seed = data.get('seed') # On récupère le seed optionnel
+
+        # On récupère la nouvelle cible, avec une valeur par défaut raisonnable
+        target_fill_ratio = data.get('fill_ratio', 0.55)
 
         word_list = []
         

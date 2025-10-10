@@ -1,5 +1,3 @@
-# DANS backend/grid_generator.py
-
 import random
 import logging
 
@@ -11,10 +9,10 @@ class GridGenerator:
         self.height = height
         self.grid = [['' for _ in range(width)] for _ in range(height)]
         self.placed_words = []
-
+        
         if seed is not None:
             random.seed(seed)
-
+        
         self.words_by_len = {}
         valid_words = [w for w in words if len(w) > 1 and len(w) <= max(width, height)]
         self._build_index(valid_words)
@@ -25,85 +23,126 @@ class GridGenerator:
             if length not in self.words_by_len: self.words_by_len[length] = []
             self.words_by_len[length].append(word)
 
-    def generate(self):
-        """Génère la grille en plaçant un premier mot puis en remplissant par passes."""
-        if not self._place_first_word():
-            logging.warning("Could not place the first word.")
-            return False
+    def generate(self, target_fill_ratio=0.55):
+        """Stratégie V16 : Génération multi-phases pour une grille de qualité professionnelle."""
+        
+        # --- PHASE 1 : LA CHARPENTE (1-2 mots longs) ---
+        long_word_lengths = [l for l in self.words_by_len if l > (max(self.width, self.height) * 0.7)]
+        for _ in range(random.randint(1, 2)):
+            if not self._place_word_of_lengths(sorted(long_word_lengths, reverse=True)):
+                break
+        
+        # --- PHASE 2 : LE CŒUR (3-5 mots moyens) ---
+        medium_word_lengths = [l for l in self.words_by_len if (max(self.width, self.height) * 0.4) <= l <= (max(self.width, self.height) * 0.7)]
+        for _ in range(random.randint(3, 5)):
+            if not self._place_word_of_lengths(sorted(medium_word_lengths, reverse=True), prioritize_intersections=True):
+                break
 
-        while self._fill_pass() > 0:
-            pass
-
+        # --- PHASE 3 : LES FINITIONS (remplissage par meilleur score) ---
+        while True:
+            if self.get_grid_data()['fill_ratio'] >= target_fill_ratio:
+                logging.info(f"Target fill ratio reached. Stopping.")
+                break
+            if not self._place_best_move():
+                logging.info("No more valid moves found. Stopping.")
+                break
+        
+        self._cleanup_grid()
         return True
 
-    def _place_first_word(self):
-        """Place le premier mot au centre de la grille, en testant les deux directions."""
-        for length in sorted(self.words_by_len.keys(), reverse=True):
-            candidates = self.words_by_len.get(length, [])
-            if not candidates: continue
-
-            random.shuffle(candidates)
-            word = candidates[0]
-
-            # Tenter horizontalement
-            if length <= self.width:
-                x, y = (self.width - length) // 2, self.height // 2
-                if self._can_place_word(word, x, y, "across"):
-                    self._place_word(word, x, y, "across")
-                    self.words_by_len[length].remove(word)
-                    return True
-
-            # Tenter verticalement
-            if length <= self.height:
-                x, y = self.width // 2, (self.height - length) // 2
-                if self._can_place_word(word, x, y, "down"):
-                    self._place_word(word, x, y, "down")
-                    self.words_by_len[length].remove(word)
-                    return True
-        return False
-
-    def _fill_pass(self):
-        """V13.1 : Correction finale qui autorise les croisements."""
-        slots = self._get_slots()
-        if not slots:
-            return 0
-
-        slots.sort(key=lambda s: s['length'], reverse=True)
-        
-        words_placed_this_pass = 0
-        for slot in slots:
-            # ON A SUPPRIMÉ LA LIGNE "if self.grid[...] != ''" QUI ÉTAIT ICI
-            
-            length = slot['length']
+    def _place_word_of_lengths(self, lengths_to_try, prioritize_intersections=False):
+        """Tente de placer un mot parmi une liste de longueurs données."""
+        for length in lengths_to_try:
             candidates = self.words_by_len.get(length, [])[:]
             random.shuffle(candidates)
             
+            # Pour la phase de remplissage, on cherche le meilleur emplacement possible
+            if prioritize_intersections:
+                best_move = None
+                max_score = -1
+                for word in candidates:
+                    slots = self._get_slots_for_word(word)
+                    for slot in slots:
+                        score = self._calculate_score(word, slot['x'], slot['y'], slot['direction'])
+                        if score > max_score:
+                            max_score = score
+                            best_move = {'word': word, 'x': slot['x'], 'y': slot['y'], 'direction': slot['direction']}
+                
+                if best_move:
+                    self._execute_move(best_move)
+                    return True
+            else: # Pour la charpente, on place le premier qui rentre
+                for word in candidates:
+                    slots = self._get_slots_for_word(word)
+                    if slots:
+                        slot = random.choice(slots)
+                        self._execute_move({'word': word, 'x': slot['x'], 'y': slot['y'], 'direction': slot['direction']})
+                        return True
+        return False
+        
+    def _place_best_move(self):
+        """Analyse tous les coups possibles et exécute le meilleur."""
+        best_move = None
+        max_score = -1
+        
+        all_lengths = list(self.words_by_len.keys())
+        random.shuffle(all_lengths)
+
+        for length in all_lengths:
+            candidates = self.words_by_len.get(length, [])[:]
+            random.shuffle(candidates)
             for word in candidates:
-                if self._can_place_word(word, slot['x'], slot['y'], slot['direction']):
-                    self._place_word(word, slot['x'], slot['y'], slot['direction'])
-                    if length in self.words_by_len and word in self.words_by_len[length]:
-                        self.words_by_len[length].remove(word)
-                    words_placed_this_pass += 1
-                    # On sort de la boucle des candidats et on passe au slot suivant
-                    break 
-                    
-        return words_placed_this_pass
+                slots = self._get_slots_for_word(word)
+                for slot in slots:
+                    score = self._calculate_score(word, slot['x'], slot['y'], slot['direction'])
+                    if score > max_score:
+                        max_score = score
+                        best_move = {'word': word, 'x': slot['x'], 'y': slot['y'], 'direction': slot['direction'], 'score': score}
+        
+        if best_move:
+            logging.info(f"-> FINISHING MOVE: '{best_move['word']}' with score {best_move['score']}")
+            self._execute_move(best_move)
+            return True
+        return False
 
-    def _get_slots(self):
-        """Détecte tous les emplacements possibles."""
-        slots = []
+    def _execute_move(self, move):
+        """Factorise l'action de placer un mot et de le retirer des listes."""
+        word, x, y, direction = move['word'], move['x'], move['y'], move['direction']
+        self._place_word(word, x, y, direction)
+        length = len(word)
+        if length in self.words_by_len and word in self.words_by_len[length]:
+            self.words_by_len[length].remove(word)
+
+    def _get_slots_for_word(self, word):
+        """Trouve tous les slots valides pour un mot donné."""
+        valid_slots = []
+        length = len(word)
+        # Horizontal
         for y in range(self.height):
-            for x in range(self.width):
-                if x == 0 or self.grid[y][x-1] == self.BLACK_SQUARE:
-                    length = 0
-                    while x + length < self.width and self.grid[y][x + length] != self.BLACK_SQUARE: length += 1
-                    if length > 1: slots.append({'x': x, 'y': y, 'direction': 'across', 'length': length})
+            for x in range(self.width - length + 1):
+                if self._can_place_word(word, x, y, "across"):
+                    valid_slots.append({'x': x, 'y': y, 'direction': 'across'})
+        # Vertical
+        for x in range(self.width):
+            for y in range(self.height - length + 1):
+                 if self._can_place_word(word, x, y, "down"):
+                    valid_slots.append({'x': x, 'y': y, 'direction': 'down'})
+        return valid_slots
 
-                if y == 0 or self.grid[y-1][x] == self.BLACK_SQUARE:
-                    length = 0
-                    while y + length < self.height and self.grid[y + length][x] != self.BLACK_SQUARE: length += 1
-                    if length > 1: slots.append({'x': x, 'y': y, 'direction': 'down', 'length': length})
-        return slots
+    def _calculate_score(self, word, x, y, direction):
+        intersections = 0
+        if direction == "across":
+            for i, char in enumerate(word):
+                if self.grid[y][x + i] == char: intersections += 1
+        else:
+            for i, char in enumerate(word):
+                if self.grid[y + i][x] == char: intersections += 1
+        return (intersections * 10) + (len(word) * 0.5)
+
+    def _cleanup_grid(self):
+        for y, row in enumerate(self.grid):
+            for x, char in enumerate(row):
+                if not char: self.grid[y][x] = self.BLACK_SQUARE
 
     def _can_place_word(self, word, x, y, direction):
         """Vérification complète (collisions et adjacence)."""
