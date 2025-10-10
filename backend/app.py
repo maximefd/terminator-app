@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 DELA_FILE_FULL = 'dela_clean.csv'
 DELA_FILE_LITE = 'dela_clean_lite.csv'
 
+# --- CONFIGURATION DU LOGGING ---
+# On ajoute un format pour avoir des logs plus clairs (date, niveau, message)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# --------------------------------
+
 # --- Configuration de l'application Flask ---
 app = Flask(__name__)
 CORS(app)
@@ -557,12 +562,14 @@ def generate_grid():
         width = min(int(size.get('width', 10)), 20)
         height = min(int(size.get('height', 10)), 20)
         
+        seed = data.get('seed') # On récupère le seed optionnel
+
         word_list = []
         
         if data.get('use_global', True):
             all_dela_words = list(dela_trie.words)
             # Suggestion 1: Échantillonnage pour la performance
-            dela_sample = random.sample(all_dela_words, min(10000, len(all_dela_words)))
+            dela_sample = random.sample(all_dela_words, min(30000, len(all_dela_words)))
             word_list.extend(w for w in dela_sample if 2 < len(w) <= max(width, height))
         
         active_dict = Dictionary.query.filter_by(user_id=current_user.id, is_active=True).first()
@@ -575,7 +582,7 @@ def generate_grid():
         # On s'assure qu'il n'y a pas de doublons
         unique_words = list(set(word_list))
         
-        generator = GridGenerator(width, height, unique_words)
+        generator = GridGenerator(width, height, unique_words, seed=seed)
         success = generator.generate()
 
         if not success:
@@ -588,7 +595,7 @@ def generate_grid():
         logger.error(f"Erreur lors de la génération de la grille: {e}", exc_info=True)
         return jsonify({"error": "Une erreur interne est survenue lors de la génération."}), 500
     
-    
+
 if __name__ == '__main__':
     logger.info("Démarrage en mode développement local.")
     app.run(host='0.0.0.0', port=5000)
