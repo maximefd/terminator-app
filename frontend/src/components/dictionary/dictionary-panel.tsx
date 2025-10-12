@@ -12,6 +12,7 @@ import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react"; // 
 import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner"; // <-- On importe depuis 'sonner'
 
 // --- TYPES ---
 type Dictionary = {
@@ -100,13 +101,28 @@ export function DictionaryPanel() {
 
   const addWordMutation = useMutation({
     mutationFn: addWord,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // ON UTILISE LE TOAST DE 'sonner'
+      toast.success(`Le mot "${data.mot}" a été ajouté.`);
       queryClient.invalidateQueries({ queryKey: ['words', activeDictionary?.id] });
       setNewWord("");
       setNewDefinition("");
-      // On retire le focus d'ici pour le mettre dans le useEffect
+    },
+    onError: (error) => {
+      // ON UTILISE LE TOAST DE 'sonner'
+      toast.error(error.message);
     },
   });
+  
+  // NOUVEAU : On utilise useEffect pour le focus, c'est plus fiable
+  useEffect(() => {
+    if (addWordMutation.isSuccess) {
+      wordInputRef.current?.focus();
+      addWordMutation.reset();
+    }
+  }, [addWordMutation.isSuccess, addWordMutation]);
+
+
 
   // NOUVEAU : Ce hook s'exécute quand la mutation a réussi
   useEffect(() => {
