@@ -180,13 +180,26 @@ class GridGenerator:
             else: self.grid[y + i][x] = char
 
     def get_grid_data(self):
-        """Formate la grille et ses métriques pour la réponse JSON."""
         filled_cells = 0
         cells = []
         for y, row in enumerate(self.grid):
             for x, char in enumerate(row):
-                is_black = (char == self.BLACK_SQUARE or not bool(char))
-                if not is_black: filled_cells += 1
-                cells.append({"x": x, "y": y, "char": char, "is_black": is_black})
-        fill_ratio = filled_cells / (self.width * self.height) if (self.width * self.height) > 0 else 0
-        return {"width": self.width, "height": self.height, "fill_ratio": round(fill_ratio, 3), "cells": cells, "words": self.placed_words}
+                is_black = (char == self.BLACK_SQUARE)
+                
+                if char and not is_black:
+                    filled_cells += 1
+                
+                display_char = char if char != self.BLACK_SQUARE else ''
+
+                cells.append({"x": x, "y": y, "char": display_char, "is_black": is_black})
+        
+        total_possible_cells = self.width * self.height
+        fill_ratio = filled_cells / total_possible_cells if total_possible_cells > 0 else 0
+        
+        return {
+            "width": self.width, 
+            "height": self.height, 
+            "fill_ratio": round(fill_ratio, 3), 
+            "cells": cells, 
+            "words": self.placed_words
+        }

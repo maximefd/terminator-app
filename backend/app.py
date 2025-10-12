@@ -171,9 +171,7 @@ def unauthorized_callback():
 
 def get_dela_file_path():
     """Retourne directement le chemin du dictionnaire de production."""
-    logger.info("--- DÉBOGAGE TRIE ---")
     logger.info(f"Chargement du dictionnaire complet : '{DELA_FILE_FULL}'")
-    logger.info("--- DÉBOGAGE TRIE ---")
     return DELA_FILE_FULL
 
 def initialize_trie():
