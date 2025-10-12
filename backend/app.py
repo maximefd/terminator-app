@@ -322,7 +322,7 @@ def get_words_in_dictionary(dict_id):
 @app.route('/api/dictionaries/<int:dict_id>/words', methods=['POST'])
 @login_required
 def add_word_to_dictionary(dict_id):
-    """Ajoute un nouveau mot à un dictionnaire spécifique."""
+    """Ajoute un nouveau mot à un dictionnaire spécifique, en évitant les doublons."""
     
     dictionary = Dictionary.query.filter_by(id=dict_id, user_id=current_user.id).first()
     if not dictionary:
@@ -336,7 +336,13 @@ def add_word_to_dictionary(dict_id):
     mot_upper = normalize_pattern(mot_affiche)
     definition = data.get('definition', '')
 
-    # Création du nouveau mot, lié directement au dictionnaire
+    # --- NOUVELLE VÉRIFICATION ANTI-DOUBLON ---
+    existing_word = PersonalWord.query.filter_by(dictionary_id=dict_id, mot=mot_upper).first()
+    if existing_word:
+        # On utilise le code HTTP 409 Conflict, parfait pour ce cas
+        return jsonify({'error': f"Le mot '{mot_affiche}' existe déjà dans ce dictionnaire."}), 409
+    # --- FIN DE LA VÉRIFICATION ---
+
     new_word = PersonalWord(
         mot=mot_upper,
         mot_affiche=mot_affiche,
@@ -346,7 +352,7 @@ def add_word_to_dictionary(dict_id):
     db.session.add(new_word)
     db.session.commit()
     
-    logger.info(f"Mot '{mot_upper}' ajouté au dictionnaire {dict_id} pour l'utilisateur {current_user.id}.")
+    logging.info(f"Mot '{mot_upper}' ajouté au dictionnaire {dict_id} pour l'utilisateur {current_user.id}.")
 
     return jsonify(new_word.to_json()), 201
 

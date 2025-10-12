@@ -1,19 +1,19 @@
 // DANS src/components/dictionary/dictionary-panel.tsx
+
 "use client";
 
-// Importez useAuth si ce composant est utilisé dans le Header ou Dashboard,
-// mais les données d'authentification sont désormais mieux gérées via les credentials
-// et la gestion des erreurs (401) dans le fetcher.
-// Pour rester simple, nous retirons useAuth pour le moment si le hook n'est pas utilisé directement ici.
-// Si useAuth est toujours nécessaire (p. ex. pour l'UI), il faut le réintégrer.
-// Pour l'instant, on se concentre sur la migration du fetching.
-
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiBaseUrl } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// NOTE : Vous n'avez plus besoin de useState et useEffect de React
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react"; // Ajout de useEffect
+import { Trash2, PlusCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 
-// --- TYPES (inchangés) ---
+// --- TYPES ---
 type Dictionary = {
   id: number;
   name: string;
@@ -25,111 +25,241 @@ type Word = {
   mot: string;
   definition: string | null;
 };
-// --- FIN TYPES ---
 
-
-// --- FONCTIONS DE FETCH (isolées et réutilisables) ---
-
+// --- FONCTIONS DE FETCH ---
 const fetchDictionaries = async (): Promise<Dictionary[]> => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries`, { 
-    credentials: "include" 
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries`, { credentials: "include" });
+  if (!response.ok) throw new Error("Authentification requise.");
+  return response.json();
+};
+const fetchWords = async (dictionaryId: number): Promise<Word[]> => {
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}/words`, { credentials: "include" });
+  if (!response.ok) throw new Error(`Impossible de charger les mots.`);
+  return response.json();
+};
+const addWord = async (vars: { dictionaryId: number; mot: string; definition: string }) => {
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ mot: vars.mot, definition: vars.definition }),
   });
-  
-  if (response.status === 401) {
-    // Gérer spécifiquement la non-authentification ici si nécessaire,
-    // mais le useQuery gère l'objet Error en cas de !response.ok
-    throw new Error("Authentification requise pour charger les dictionnaires.");
-  }
   if (!response.ok) {
-    throw new Error("Erreur réseau: Impossible de charger les dictionnaires.");
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Échec de l\'ajout.');
   }
   return response.json();
 };
-
-const fetchWords = async (dictionaryId: number): Promise<Word[]> => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}/words`, { 
-    credentials: "include" 
+const deleteWord = async (vars: { dictionaryId: number; wordId: number }) => {
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words/${vars.wordId}`, {
+    method: 'DELETE',
+    credentials: 'include',
   });
-  
+  if (!response.ok) throw new Error('Échec de la suppression.');
+  return response.json();
+};
+const setActiveDictionary = async (dictionaryId: number) => {
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ is_active: true }),
+  });
+  if (!response.ok) throw new Error('Échec du changement de dictionnaire.');
+  return response.json();
+};
+const createDictionary = async (name: string) => {
+  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name }),
+  });
   if (!response.ok) {
-    throw new Error(`Erreur réseau: Impossible de charger les mots du dictionnaire ${dictionaryId}.`);
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Échec de la création du dictionnaire.');
   }
   return response.json();
 };
 
 // --- COMPOSANT PRINCIPAL ---
-
 export function DictionaryPanel() {
-  // 1. Hook pour les dictionnaires
-  const { 
-    data: dictionaries, 
-    error: dictError, 
-    isLoading: isDictLoading 
-  } = useQuery<Dictionary[], Error>({
-    queryKey: ['dictionaries'],
-    queryFn: fetchDictionaries,
-    // Note: Ajouter 'enabled: isAuthenticated' si vous utilisez useAuth
-  });
+  const [newWord, setNewWord] = useState("");
+  const [newDefinition, setNewDefinition] = useState("");
+  const [newDictionaryName, setNewDictionaryName] = useState("");
+  const [isCreateDictOpen, setCreateDictOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const wordInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [sortOrder, setSortOrder] = useState<'date' | 'alpha'>('date');
+  const [filterLength, setFilterLength] = useState<string>('all');
 
-  // Détermination du dictionnaire actif ou du premier
+  const { data: dictionaries, error: dictError, isLoading: isDictLoading } = useQuery<Dictionary[], Error>({ queryKey: ['dictionaries'], queryFn: fetchDictionaries });
   const activeDictionary = dictionaries?.find(d => d.is_active) || dictionaries?.[0];
+  const { data: words, error: wordsError } = useQuery<Word[], Error>({ queryKey: ['words', activeDictionary?.id], queryFn: () => fetchWords(activeDictionary!.id), enabled: !!activeDictionary });
 
-  // 2. Hook pour les mots (dépend de activeDictionary)
-  const { 
-    data: words,
-    error: wordsError,
-    isLoading: isWordsLoading
-  } = useQuery<Word[], Error>({
-    queryKey: ['words', activeDictionary?.id],
-    // Assurez-vous que activeDictionary.id existe avant d'appeler fetchWords
-    queryFn: () => fetchWords(activeDictionary!.id),
-    // La requête est activée UNIQUEMENT si activeDictionary a été trouvé
-    enabled: !!activeDictionary,
+  const addWordMutation = useMutation({
+    mutationFn: addWord,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['words', activeDictionary?.id] });
+      setNewWord("");
+      setNewDefinition("");
+      // On retire le focus d'ici pour le mettre dans le useEffect
+    },
   });
 
-  // --- RENDU CONDITIONNEL (Basé sur useQuery) ---
+  // NOUVEAU : Ce hook s'exécute quand la mutation a réussi
+  useEffect(() => {
+    if (addWordMutation.isSuccess) {
+      wordInputRef.current?.focus();
+      // On réinitialise l'état de la mutation pour la prochaine fois
+      addWordMutation.reset();
+    }
+  }, [addWordMutation.isSuccess, addWordMutation]);
 
-  // Affichage du chargement principal
-  if (isDictLoading) {
-    return <div className="p-4">Chargement des dictionnaires...</div>;
-  }
+
+  const deleteWordMutation = useMutation({
+    mutationFn: deleteWord,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['words', activeDictionary?.id] });
+    },
+  });
+
+  const setActiveDictionaryMutation = useMutation({
+    mutationFn: setActiveDictionary,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+  });
+
+  const createDictionaryMutation = useMutation({
+    mutationFn: createDictionary,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+      setNewDictionaryName("");
+      setCreateDictOpen(false);
+    },
+  });
+
+  const sortedAndFilteredWords = useMemo(() => {
+    if (!words) return [];
+    let processedWords = [...words];
+    if (filterLength !== 'all') {
+      const length = parseInt(filterLength, 10);
+      if (!isNaN(length) && length > 0) {
+        processedWords = processedWords.filter(word => word.mot.length === length);
+      }
+    }
+    if (sortOrder === 'alpha') {
+      processedWords.sort((a, b) => a.mot.localeCompare(b.mot));
+    } else {
+      processedWords.sort((a, b) => b.id - a.id);
+    }
+    return processedWords;
+  }, [words, sortOrder, filterLength]);
   
-  // Affichage des erreurs (dictionnaires ou mots)
+  const handleAddWordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newWord && activeDictionary) {
+      addWordMutation.mutate({ dictionaryId: activeDictionary.id, mot: newWord, definition: newDefinition });
+    }
+  };
+  
+  const handleActiveDictionaryChange = (dictionaryId: string) => {
+    const id = parseInt(dictionaryId, 10);
+    if (!isNaN(id)) {
+      setActiveDictionaryMutation.mutate(id);
+    }
+  };
+  
+  const handleCreateDictionarySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newDictionaryName) {
+      createDictionaryMutation.mutate(newDictionaryName);
+    }
+  };
+
+  const handleDefinitionKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  };
+
+  if (isDictLoading) return <div className="p-4 text-sm text-muted-foreground">Chargement...</div>;
   const currentError = dictError || wordsError;
-  if (currentError) {
-    return (
-      <aside className="w-full max-w-sm rounded-lg border bg-destructive/10 p-4 text-destructive">
-        <h2 className="text-lg font-semibold">Erreur</h2>
-        <p className="text-sm">{currentError.message}</p>
-      </aside>
-    );
-  }
+  if (currentError) return <aside className="w-full max-w-sm rounded-lg border bg-destructive/10 p-4 text-destructive"><h2 className="text-lg font-semibold">Erreur</h2><p className="text-sm">{currentError.message}</p></aside>;
 
-  // Si on a les dictionnaires mais pas encore les mots (chargement secondaire)
-  if (isWordsLoading && activeDictionary) {
-     return <div className="p-4">Chargement des mots de {activeDictionary.name}...</div>;
-  }
-  
-  // --- RENDU FINAL ---
   return (
-    <aside className="w-full max-w-sm rounded-lg border bg-card p-4">
-      <h2 className="text-lg font-semibold">Mes Dictionnaires</h2>
-      <p className="text-sm text-muted-foreground mt-2">
-        Actif : <strong>{activeDictionary?.name || "Aucun"}</strong>
-      </p>
+    <aside className="w-full max-w-sm rounded-lg border bg-card p-4 flex flex-col">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Mes Dictionnaires</h2>
+        <Dialog open={isCreateDictOpen} onOpenChange={setCreateDictOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8"><PlusCircle className="h-5 w-5" /></Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Créer un nouveau dictionnaire</DialogTitle>
+             <DialogDescription>
+                Entrez le nom de votre nouvelle liste de mots. Vous pourrez y ajouter des mots par la suite.
+              </DialogDescription></DialogHeader>
+            <form onSubmit={handleCreateDictionarySubmit} className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="dict-name" className="text-right">Nom</Label>
+                <Input id="dict-name" value={newDictionaryName} onChange={(e) => setNewDictionaryName(e.target.value)} className="col-span-3" required />
+              </div>
+              <Button type="submit" disabled={createDictionaryMutation.isPending}>{createDictionaryMutation.isPending ? "Création..." : "Créer le dictionnaire"}</Button>
+              {createDictionaryMutation.isError && <p className="text-sm text-destructive text-center">{createDictionaryMutation.error.message}</p>}
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+      <Select value={activeDictionary?.id.toString()} onValueChange={handleActiveDictionaryChange} disabled={setActiveDictionaryMutation.isPending}>
+        <SelectTrigger className="mt-2"><SelectValue placeholder="Sélectionner un dictionnaire..." /></SelectTrigger>
+        <SelectContent>
+          {dictionaries?.map(dict => (<SelectItem key={dict.id} value={dict.id.toString()}>{dict.name}</SelectItem>))}
+        </SelectContent>
+      </Select>
 
-      <div className="mt-4">
-        <h3 className="font-semibold">Mots</h3>
-        <ScrollArea className="h-72 rounded-md border mt-2">
+      <div className="mt-4 flex flex-col flex-1">
+        <h3 className="font-semibold mb-2">Mots ({sortedAndFilteredWords?.length || 0})</h3>
+        
+        <form ref={formRef} onSubmit={handleAddWordSubmit} className="mb-4 border-b pb-4">
+          <div className="grid gap-2">
+             <Label htmlFor="mot" className="text-xs font-semibold">Nouveau mot</Label>
+             <Input id="mot" ref={wordInputRef} value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="Appuyer sur Entrée pour ajouter" disabled={!activeDictionary || addWordMutation.isPending} required />
+             <Label htmlFor="definition" className="text-xs font-semibold">Définition (optionnel)</Label>
+             <Input id="definition" value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder="Définition du mot..." disabled={!activeDictionary || addWordMutation.isPending} onKeyDown={handleDefinitionKeyDown} />
+             <Button type="submit" size="sm" className="mt-2" disabled={!activeDictionary || addWordMutation.isPending}>{addWordMutation.isPending ? "Ajout en cours..." : "Ajouter le mot"}</Button>
+             {addWordMutation.isError && <p className="text-xs text-destructive mt-2">{addWordMutation.error.message}</p>}
+          </div>
+        </form>
+
+        <div className="flex items-center justify-between gap-2 mb-2">
+            <Select value={sortOrder} onValueChange={(value: 'date' | 'alpha') => setSortOrder(value)}>
+                <SelectTrigger className="flex-1"><SelectValue placeholder="Trier par..." /></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="date">Plus récents d'abord</SelectItem>
+                    <SelectItem value="alpha">Ordre alphabétique</SelectItem>
+                </SelectContent>
+            </Select>
+            <Input type="number" min="1" placeholder="Lg." className="w-20" onChange={(e) => setFilterLength(e.target.value || 'all')} />
+        </div>
+
+        <ScrollArea className="flex-1 rounded-md border mt-2">
           <div className="p-4">
-            {words && words.length > 0 ? (
-              words.map((word) => (
-                <div key={word.id} className="text-sm font-mono mb-2">
-                  {word.mot}
+            {sortedAndFilteredWords.length > 0 ? (
+              sortedAndFilteredWords.map((word) => (
+                <div key={word.id} className="text-sm font-mono mb-2 flex justify-between items-center group">
+                  <span>{word.mot}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => {if (activeDictionary) {deleteWordMutation.mutate({ dictionaryId: activeDictionary.id, wordId: word.id });}}} disabled={deleteWordMutation.isPending}>
+                    <Trash2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground italic">Aucun mot.</p>
+              <p className="text-sm text-muted-foreground italic">Aucun mot ne correspond à vos critères.</p>
             )}
           </div>
         </ScrollArea>
@@ -137,6 +267,3 @@ export function DictionaryPanel() {
     </aside>
   );
 }
-
-// NOTE: Si vous réintégrez useAuth pour la condition d'affichage, n'oubliez pas
-// d'ajouter 'enabled: isAuthenticated' au useQuery pour fetchDictionaries.

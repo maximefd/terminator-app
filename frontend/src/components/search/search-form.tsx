@@ -5,11 +5,13 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { getApiBaseUrl } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { getApiBaseUrl } from "@/lib/utils"; // Assurez-vous que cet import est présent
 
 type SearchResult = {
   mot: string;
   source: string;
+  definition?: string;
 };
 
 export function SearchForm() {
@@ -20,34 +22,37 @@ export function SearchForm() {
   const debouncedPattern = useDebounce(pattern, 300);
 
   useEffect(() => {
-    // On met en place un minuteur pour le loader
     let loadingTimer: NodeJS.Timeout;
 
     const search = async () => {
-      // On ne lance la recherche que si le motif a au moins 2 caractères
       if (debouncedPattern.length < 2) {
         setResults([]);
         return;
       }
 
-      // NOUVEAUTÉ : On retarde l'affichage du loader de 200ms
       loadingTimer = setTimeout(() => {
         setIsLoading(true);
       }, 200);
 
       try {
-        const response = await fetch(`${getApiBaseUrl()}/api/search`, { // Utiliser la fonction
-            method: "POST",
-            credentials: "include",
+        // VÉRIFIEZ BIEN CETTE LIGNE
+        const response = await fetch(`${getApiBaseUrl()}/api/search`, {
+          method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mask: debouncedPattern.toUpperCase() }),
         });
+        
+        // Si la réponse est 404, on lance une erreur
+        if (!response.ok) {
+            throw new Error(`Erreur ${response.status}: La route n'a pas été trouvée.`);
+        }
+
         const data = await response.json();
         setResults(data.results || []);
       } catch (error) {
         console.error("Search failed:", error);
       } finally {
-        // NOUVEAUTÉ : On nettoie le minuteur et on cache le loader
         clearTimeout(loadingTimer);
         setIsLoading(false);
       }
@@ -55,7 +60,6 @@ export function SearchForm() {
 
     search();
     
-    // Au cas où le composant est "démonté" pendant une recherche
     return () => {
       clearTimeout(loadingTimer);
     }
@@ -82,15 +86,41 @@ export function SearchForm() {
       </div>
 
       <div className="mt-8">
+        {isLoading && results.length === 0 && (
+          <p className="text-center text-muted-foreground italic">Recherche en cours...</p>
+        )}
+        {!isLoading && debouncedPattern.length >= 2 && results.length === 0 && (
+          <p className="text-center text-muted-foreground">Aucun résultat trouvé pour "{debouncedPattern}".</p>
+        )}
         {results.length > 0 && (
-          <ul className="space-y-2">
-            {results.map((word, index) => (
-              <li key={`${word.mot}-${index}`} className="rounded-md border bg-card p-3">
-                <p className="font-mono text-lg font-semibold">{word.mot}</p>
-                <p className="text-sm text-muted-foreground">Source: {word.source}</p>
-              </li>
-            ))}
-          </ul>
+          <div className="rounded-md border">
+            <ScrollArea className="h-[60vh]">
+              <div className="p-4">
+                <p className="mb-4 text-sm font-medium text-muted-foreground">
+                  {results.length} résultat{results.length > 1 ? 's' : ''}
+                </p>
+                <div className="space-y-4">
+                  {results.map((word, index) => (
+                    <div key={`${word.mot}-${index}`}>
+                      <div className="flex items-center justify-between">
+                        <p className="font-mono text-base font-semibold">{word.mot}</p>
+                        {word.source === 'PERSONNEL' && (
+                          <span className="text-xs font-semibold text-primary px-2 py-1 bg-primary/10 rounded-full">
+                            Personnel
+                          </span>
+                        )}
+                      </div>
+                      {word.definition && (
+                        <p className="text-sm text-muted-foreground mt-1 italic">
+                          {word.definition}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </ScrollArea>
+          </div>
         )}
       </div>
     </div>
