@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">1. Introduction</h2>
           <p>
-            Bienvenue sur Terminator. Nous respectons votre vie privée et nous nous engageons à la protéger. Cette politique de confidentialité vous expliquera comment nous traitons vos données personnelles lorsque vous visitez notre site web (quel que soit l'endroit d'où vous le visitez) et vous informera de vos droits en matière de protection de la vie privée.
+            Bienvenue sur Terminator. Nous respectons votre vie privée et nous nous engageons à la protéger. Cette politique de confidentialité vous expliquera comment nous traitons vos données personnelles lorsque vous visitez notre site web (quel que soit l&apos;endroit d&apos;où vous le visitez) et vous informera de vos droits en matière de protection de la vie privée.
           </p>
         </section>
 
@@ -26,9 +26,9 @@ export default function PrivacyPage() {
           <h2 className="text-xl font-semibold text-foreground">2. Les données que nous collectons</h2>
           <p>Nous pouvons collecter, utiliser, stocker et transférer différents types de données personnelles vous concernant :</p>
           <ul className="list-disc list-inside space-y-1 pl-4">
-            <li><strong>Données d'identité :</strong> Pour les utilisateurs authentifiés, nous stockons votre adresse e-mail.</li>
+            <li><strong>Données d&apos;identité :</strong> Pour les utilisateurs authentifiés, nous stockons votre adresse e-mail.</li>
             <li><strong>Données de contenu :</strong> Nous stockons les mots et les dictionnaires que vous créez et sauvegardez sur votre compte.</li>
-            <li><strong>Données techniques :</strong> Adresse IP, type et version du navigateur, fuseau horaire et localisation, types et versions de plug-in de navigateur, système d'exploitation et plate-forme.</li>
+            <li><strong>Données techniques :</strong> Adresse IP, type et version du navigateur, fuseau horaire et localisation, types et versions de plug-in de navigateur, système d&apos;exploitation et plate-forme.</li>
           </ul>
         </section>
 
@@ -39,14 +39,14 @@ export default function PrivacyPage() {
           </p>
           <ul className="list-disc list-inside space-y-1 pl-4">
             <li><strong>Interactions directes :</strong> Vous pouvez nous donner votre identité et vos données de contenu en créant un compte, en ajoutant des mots à vos dictionnaires ou en nous contactant.</li>
-            <li><strong>Technologies automatisées :</strong> Lorsque vous interagissez avec notre site web, nous pouvons collecter automatiquement des données techniques. Nous collectons ces données personnelles en utilisant des cookies et d'autres technologies similaires.</li>
+            <li><strong>Technologies automatisées :</strong> Lorsque vous interagissez avec notre site web, nous pouvons collecter automatiquement des données techniques. Nous collectons ces données personnelles en utilisant des cookies et d&apos;autres technologies similaires.</li>
           </ul>
         </section>
 
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">4. Utilisation de vos données personnelles</h2>
           <p>
-            Nous n'utiliserons vos données personnelles que lorsque la loi nous y autorise. Le plus souvent, nous utiliserons vos données personnelles dans les circonstances suivantes :
+            Nous n&apos;utiliserons vos données personnelles que lorsque la loi nous y autorise. Le plus souvent, nous utiliserons vos données personnelles dans les circonstances suivantes :
           </p>
           <ul className="list-disc list-inside space-y-1 pl-4">
             <li>Pour fournir et maintenir notre service, y compris pour vous permettre de créer et gérer vos dictionnaires personnels.</li>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-xl font-semibold text-foreground">6. Vos droits</h2>
           <p>
-            Conformément à la réglementation sur la protection des données, vous disposez de droits sur vos données personnelles, notamment le droit de demander l'accès, la correction, l'effacement, ou la portabilité de vos données.
+            Conformément à la réglementation sur la protection des données, vous disposez de droits sur vos données personnelles, notamment le droit de demander l&apos;accès, la correction, l&apos;effacement, ou la portabilité de vos données.
           </p>
         </section>
 

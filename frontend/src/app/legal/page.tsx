@@ -5,7 +5,8 @@ export default function LegalPage() {
     <main className="container mx-auto max-w-3xl p-8">
       <h1 className="text-3xl font-bold">Mentions Légales</h1>
       <div className="mt-8 space-y-4 text-muted-foreground">
-        <p>[À compléter : Nom de l'entreprise/éditeur, adresse, contact, etc.]</p>
+        {/* CORRECTION ICI */}
+        <p>[À compléter : Nom de l&apos;entreprise/éditeur, adresse, contact, etc.]</p>
       </div>
     </main>
   );

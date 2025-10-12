@@ -9,9 +9,27 @@ import { useState } from "react";
 import { getApiBaseUrl } from "@/lib/utils";
 import { GridDisplay } from "@/components/grid/grid-display";
 
-type GridData = any;
+// CORRECTION N°1 : On définit des types précis pour nos données
+type Cell = {
+  x: number;
+  y: number;
+  char: string;
+  is_black: boolean;
+};
 
-// MODIFICATION ICI : La fonction s'appelle maintenant GridClientLayout
+type GridData = {
+  width: number;
+  height: number;
+  cells: Cell[];
+  fill_ratio: number;
+  words: {
+    text: string;
+    x: number;
+    y: number;
+    direction: "across" | "down";
+  }[];
+};
+
 export function GridClientLayout() {
   const [gridData, setGridData] = useState<GridData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,8 +62,12 @@ export function GridClientLayout() {
 
       const data = await response.json();
       setGridData(data.grid);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) { // CORRECTION N°2 : On utilise 'unknown' pour une gestion d'erreur sécurisée
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Une erreur inattendue est survenue.");
+      }
     } finally {
       setIsLoading(false);
     }

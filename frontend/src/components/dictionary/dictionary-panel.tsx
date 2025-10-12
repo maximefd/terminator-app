@@ -8,11 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react"; // Ajout de useEffect
+import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { toast } from "sonner"; // <-- On importe depuis 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"; // CORRECTION ICI
+import { toast } from "sonner";
 
 // --- TYPES ---
 type Dictionary = {
@@ -47,7 +47,7 @@ const addWord = async (vars: { dictionaryId: number; mot: string; definition: st
   });
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || 'Échec de l\'ajout.');
+    throw new Error(errorData.error || 'Échec de l&apos;ajout.');
   }
   return response.json();
 };
@@ -102,37 +102,22 @@ export function DictionaryPanel() {
   const addWordMutation = useMutation({
     mutationFn: addWord,
     onSuccess: (data) => {
-      // ON UTILISE LE TOAST DE 'sonner'
       toast.success(`Le mot "${data.mot}" a été ajouté.`);
       queryClient.invalidateQueries({ queryKey: ['words', activeDictionary?.id] });
       setNewWord("");
       setNewDefinition("");
     },
     onError: (error) => {
-      // ON UTILISE LE TOAST DE 'sonner'
       toast.error(error.message);
     },
   });
   
-  // NOUVEAU : On utilise useEffect pour le focus, c'est plus fiable
   useEffect(() => {
     if (addWordMutation.isSuccess) {
       wordInputRef.current?.focus();
       addWordMutation.reset();
     }
   }, [addWordMutation.isSuccess, addWordMutation]);
-
-
-
-  // NOUVEAU : Ce hook s'exécute quand la mutation a réussi
-  useEffect(() => {
-    if (addWordMutation.isSuccess) {
-      wordInputRef.current?.focus();
-      // On réinitialise l'état de la mutation pour la prochaine fois
-      addWordMutation.reset();
-    }
-  }, [addWordMutation.isSuccess, addWordMutation]);
-
 
   const deleteWordMutation = useMutation({
     mutationFn: deleteWord,
@@ -256,7 +241,7 @@ export function DictionaryPanel() {
             <Select value={sortOrder} onValueChange={(value: 'date' | 'alpha') => setSortOrder(value)}>
                 <SelectTrigger className="flex-1"><SelectValue placeholder="Trier par..." /></SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="date">Plus récents d'abord</SelectItem>
+                    <SelectItem value="date">Plus récents d&apos;abord</SelectItem>
                     <SelectItem value="alpha">Ordre alphabétique</SelectItem>
                 </SelectContent>
             </Select>

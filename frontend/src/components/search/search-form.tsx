@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getApiBaseUrl } from "@/lib/utils"; // Assurez-vous que cet import est présent
+import { getApiBaseUrl } from "@/lib/utils";
 
 type SearchResult = {
   mot: string;
@@ -35,7 +35,6 @@ export function SearchForm() {
       }, 200);
 
       try {
-        // VÉRIFIEZ BIEN CETTE LIGNE
         const response = await fetch(`${getApiBaseUrl()}/api/search`, {
           method: "POST",
           credentials: "include",
@@ -43,7 +42,6 @@ export function SearchForm() {
           body: JSON.stringify({ mask: debouncedPattern.toUpperCase() }),
         });
         
-        // Si la réponse est 404, on lance une erreur
         if (!response.ok) {
             throw new Error(`Erreur ${response.status}: La route n'a pas été trouvée.`);
         }
@@ -90,7 +88,8 @@ export function SearchForm() {
           <p className="text-center text-muted-foreground italic">Recherche en cours...</p>
         )}
         {!isLoading && debouncedPattern.length >= 2 && results.length === 0 && (
-          <p className="text-center text-muted-foreground">Aucun résultat trouvé pour "{debouncedPattern}".</p>
+          // CORRECTION ICI
+          <p className="text-center text-muted-foreground">Aucun résultat trouvé pour &quot;{debouncedPattern}&quot;.</p>
         )}
         {results.length > 0 && (
           <div className="rounded-md border">
