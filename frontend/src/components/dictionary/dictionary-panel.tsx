@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiBaseUrl } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-client"; // On importe notre client API
+import { apiFetch } from "@/lib/api-client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"; // CORRECTION ICI
 import { toast } from "sonner";
 
 // --- TYPES ---
@@ -26,7 +26,7 @@ type Word = {
   definition: string | null;
 };
 
-// --- FONCTIONS DE FETCH (mises à jour pour utiliser apiFetch) ---
+// --- FONCTIONS DE FETCH ---
 const fetchDictionaries = async (): Promise<Dictionary[]> => {
   return apiFetch(`${getApiBaseUrl()}/api/dictionaries`);
 };

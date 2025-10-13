@@ -1,3 +1,5 @@
+# DANS backend/Dockerfile
+
 # Étape 1: Partir d'une image Python officielle et légère
 FROM python:3.11-slim
 
@@ -11,5 +13,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Étape 4: Copier tout le reste du code du backend dans le conteneur
 COPY . .
 
-# Étape 5: La commande à exécuter quand le conteneur démarre
-CMD ["python", "app.py"]
+# Étape 5: La commande à exécuter quand le conteneur démarre (MODIFIÉE)
+CMD ["python", "run.py"]

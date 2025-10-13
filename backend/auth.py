@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import create_access_token, create_refresh_token
-from models import db, User # CORRECTION ICI : on retire le "."
+# DANS backend/auth.py
 
-# On initialise le service de hachage et le Blueprint
-bcrypt = Bcrypt()
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import create_access_token, create_refresh_token
+from extensions import db, bcrypt # MODIFICATION ICI : On importe depuis notre fichier central
+from models import User # MODIFICATION ICI : Import direct, sans le "."
+
+# On crée le Blueprint "vide"
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
@@ -20,6 +21,7 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Cet email est déjà utilisé."}), 409
 
+    # On utilise l'objet 'bcrypt' importé pour hacher le mot de passe
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     
     new_user = User(email=email, password=hashed_password)
@@ -41,6 +43,7 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
+    # On utilise l'objet 'bcrypt' importé pour vérifier le mot de passe
     if user and bcrypt.check_password_hash(user.password, password):
         access_token = create_access_token(identity=user.id)
         refresh_token = create_refresh_token(identity=user.id)

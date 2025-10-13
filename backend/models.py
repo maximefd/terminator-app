@@ -1,16 +1,13 @@
 # DANS backend/models.py
 
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from extensions import db # MODIFICATION ICI : On importe 'db' depuis notre fichier central
 
-# On initialise l'objet db ici
-db = SQLAlchemy()
-
-class User(db.Model): # On a retiré UserMixin qui appartient à Flask-Login
+class User(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False) # Un vrai utilisateur doit avoir un mot de passe
+    password = db.Column(db.String(120), nullable=False)
     
     dictionaries = db.relationship('Dictionary', backref='user', lazy='selectin', cascade="all, delete-orphan")
 
