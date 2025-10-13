@@ -1,9 +1,8 @@
-// DANS src/components/dictionary/dictionary-panel.tsx
-
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiBaseUrl } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client"; // On importe notre client API
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"; // CORRECTION ICI
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // --- TYPES ---
@@ -27,60 +26,40 @@ type Word = {
   definition: string | null;
 };
 
-// --- FONCTIONS DE FETCH ---
+// --- FONCTIONS DE FETCH (mises à jour pour utiliser apiFetch) ---
 const fetchDictionaries = async (): Promise<Dictionary[]> => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries`, { credentials: "include" });
-  if (!response.ok) throw new Error("Authentification requise.");
-  return response.json();
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries`);
 };
+
 const fetchWords = async (dictionaryId: number): Promise<Word[]> => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}/words`, { credentials: "include" });
-  if (!response.ok) throw new Error(`Impossible de charger les mots.`);
-  return response.json();
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}/words`);
 };
+
 const addWord = async (vars: { dictionaryId: number; mot: string; definition: string }) => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words`, {
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ mot: vars.mot, definition: vars.definition }),
   });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Échec de l&apos;ajout.');
-  }
-  return response.json();
 };
+
 const deleteWord = async (vars: { dictionaryId: number; wordId: number }) => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words/${vars.wordId}`, {
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words/${vars.wordId}`, {
     method: 'DELETE',
-    credentials: 'include',
   });
-  if (!response.ok) throw new Error('Échec de la suppression.');
-  return response.json();
 };
+
 const setActiveDictionary = async (dictionaryId: number) => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}`, {
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ is_active: true }),
   });
-  if (!response.ok) throw new Error('Échec du changement de dictionnaire.');
-  return response.json();
 };
+
 const createDictionary = async (name: string) => {
-  const response = await fetch(`${getApiBaseUrl()}/api/dictionaries`, {
+  return apiFetch(`${getApiBaseUrl()}/api/dictionaries`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ name }),
   });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Échec de la création du dictionnaire.');
-  }
-  return response.json();
 };
 
 // --- COMPOSANT PRINCIPAL ---
@@ -122,7 +101,11 @@ export function DictionaryPanel() {
   const deleteWordMutation = useMutation({
     mutationFn: deleteWord,
     onSuccess: () => {
+      toast.success("Mot supprimé.");
       queryClient.invalidateQueries({ queryKey: ['words', activeDictionary?.id] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
@@ -131,14 +114,21 @@ export function DictionaryPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
     },
+     onError: (error) => {
+      toast.error(error.message);
+    },
   });
 
   const createDictionaryMutation = useMutation({
     mutationFn: createDictionary,
     onSuccess: () => {
+      toast.success("Dictionnaire créé !");
       queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
       setNewDictionaryName("");
       setCreateDictOpen(false);
+    },
+     onError: (error) => {
+      toast.error(error.message);
     },
   });
 

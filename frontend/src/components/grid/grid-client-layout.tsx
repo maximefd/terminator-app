@@ -1,5 +1,3 @@
-// DANS src/components/grid/grid-client-layout.tsx
-
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -7,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { getApiBaseUrl } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client"; // On importe notre client API
 import { GridDisplay } from "@/components/grid/grid-display";
 
-// CORRECTION N°1 : On définit des types précis pour nos données
+// On définit des types précis pour nos données
 type Cell = {
   x: number;
   y: number;
@@ -44,25 +43,17 @@ export function GridClientLayout() {
     setGridData(null);
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/api/grids/generate`, {
+      // On utilise maintenant apiFetch
+      const data = await apiFetch(`${getApiBaseUrl()}/api/grids/generate`, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           size: { width, height },
           use_global: true,
           seed: Math.random(),
         }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "La génération de la grille a échoué.");
-      }
-
-      const data = await response.json();
       setGridData(data.grid);
-    } catch (err: unknown) { // CORRECTION N°2 : On utilise 'unknown' pour une gestion d'erreur sécurisée
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {

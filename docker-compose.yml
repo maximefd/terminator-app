@@ -10,8 +10,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    
-    # PARTIE 1 : LE HEALTHCHECK, QUI VÉRIFIE QUE LA BDD EST PRÊTE
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d terminator_db"]
       interval: 5s
@@ -29,9 +27,9 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://user:password@db:5432/terminator_db
-      - SECRET_KEY=une_super_cle_secrete_pour_le_dev
-      
-    # PARTIE 2 : LA CONDITION D'ATTENTE, QUI UTILISE LE HEALTHCHECK
+      - JWT_SECRET_KEY=votre-super-cle-secrete-jwt-ici
+      # NOUVELLE VARIABLE : une liste d'origines autorisées
+      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.75:3000,http://192.0.0.2:3000
     depends_on:
       db:
         condition: service_healthy

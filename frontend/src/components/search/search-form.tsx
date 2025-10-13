@@ -1,5 +1,3 @@
-// DANS src/components/search/search-form.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -7,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getApiBaseUrl } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-client"; // On importe notre client API
 
 type SearchResult = {
   mot: string;
@@ -18,6 +17,7 @@ export function SearchForm() {
   const [pattern, setPattern] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const debouncedPattern = useDebounce(pattern, 300);
 
@@ -27,6 +27,7 @@ export function SearchForm() {
     const search = async () => {
       if (debouncedPattern.length < 2) {
         setResults([]);
+        setError(null);
         return;
       }
 
@@ -35,21 +36,16 @@ export function SearchForm() {
       }, 200);
 
       try {
-        const response = await fetch(`${getApiBaseUrl()}/api/search`, {
+        setError(null);
+        // On utilise maintenant apiFetch, qui gère le token et les erreurs
+        const data = await apiFetch(`${getApiBaseUrl()}/api/search`, {
           method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mask: debouncedPattern.toUpperCase() }),
         });
-        
-        if (!response.ok) {
-            throw new Error(`Erreur ${response.status}: La route n'a pas été trouvée.`);
-        }
-
-        const data = await response.json();
         setResults(data.results || []);
-      } catch (error) {
-        console.error("Search failed:", error);
+      } catch (err: any) {
+        setError(err.message || "La recherche a échoué.");
+        setResults([]);
       } finally {
         clearTimeout(loadingTimer);
         setIsLoading(false);
@@ -87,10 +83,15 @@ export function SearchForm() {
         {isLoading && results.length === 0 && (
           <p className="text-center text-muted-foreground italic">Recherche en cours...</p>
         )}
-        {!isLoading && debouncedPattern.length >= 2 && results.length === 0 && (
-          // CORRECTION ICI
+        
+        {error && (
+            <p className="text-center text-destructive">{error}</p>
+        )}
+
+        {!isLoading && !error && debouncedPattern.length >= 2 && results.length === 0 && (
           <p className="text-center text-muted-foreground">Aucun résultat trouvé pour &quot;{debouncedPattern}&quot;.</p>
         )}
+        
         {results.length > 0 && (
           <div className="rounded-md border">
             <ScrollArea className="h-[60vh]">

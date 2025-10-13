@@ -1,5 +1,3 @@
-// DANS src/components/layout/header.tsx
-
 "use client";
 
 import Link from "next/link";
@@ -12,7 +10,7 @@ import { Menu } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
-  const { isAuthenticated, login, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth(); // On ne prend plus 'login' ici
   const pathname = usePathname();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -30,7 +28,6 @@ export function Header() {
             <span role="img" aria-label="Pièce de puzzle">🧩</span>
             <span className="hidden sm:inline-block">Terminator</span>
           </Link>
-
           <nav className="hidden lg:flex items-center gap-2">
             {navItems.map((item) => (
               <Link
@@ -55,12 +52,14 @@ export function Header() {
             {isAuthenticated ? (
               <Button onClick={logout} size="sm">Déconnexion</Button>
             ) : (
-              <Button onClick={login} size="sm">Connexion</Button>
+              // Le bouton est maintenant un lien vers la page de connexion
+              <Button asChild size="sm">
+                <Link href="/login">Connexion</Link>
+              </Button>
             )}
           </div>
-
           <div className="lg:hidden">
-             <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon">
                   <Menu className="h-6 w-6" />
@@ -68,10 +67,9 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left">
-                {/* MODIFICATION ICI : Ajout de padding `px-6` */}
                 <nav className="grid gap-6 text-lg font-medium mt-8 px-6">
                   <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-lg font-semibold mb-4">
-                     <span role="img" aria-label="Pièce de puzzle">🧩</span> Terminator
+                    <span role="img" aria-label="Pièce de puzzle">🧩</span> Terminator
                   </Link>
                   {navItems.map((item) => (
                     <Link
