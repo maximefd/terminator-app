@@ -183,3 +183,33 @@ def generate_grid():
     if not success: return jsonify({"error": "Impossible de générer une grille avec les mots fournis."}), 500
         
     return jsonify({"grid": generator.get_grid_data()}), 200
+
+# NOUVELLE ROUTE POUR LE RGPD
+@main_bp.route('/users/me', methods=['DELETE'])
+@jwt_required()
+def delete_self():
+    """Permet à un utilisateur authentifié de supprimer son propre compte et ses données."""
+    user = get_current_user()
+    if not user:
+        return jsonify({"error": "Utilisateur non trouvé ou token invalide."}), 404
+
+    try:
+        # L'option cascade="all, delete-orphan" sur la relation User -> Dictionary
+        # va automatiquement supprimer tous les dictionnaires et mots associés.
+        # Nous allons simplement "anonymiser" l'utilisateur.
+        user_id = user.id
+        
+        # On supprime les dictionnaires explicitement pour être sûr que la cascade fonctionne
+        Dictionary.query.filter_by(user_id=user_id).delete()
+
+        # On anonymise l'utilisateur
+        user.email = f"deleted_user_{user_id}@terminator.app"
+        user.password = "deleted" # On remplace le hash par une valeur invalide
+        
+        db.session.commit()
+        
+        return jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erreur lors de la suppression du compte de l'utilisateur {user.id}: {e}")
+        return jsonify({"error": "Une erreur est survenue lors de la suppression du compte."}), 500
