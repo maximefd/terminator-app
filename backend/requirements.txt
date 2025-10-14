@@ -5,3 +5,4 @@ Flask-Cors
 Flask-Login
 Flask-Bcrypt
 Flask-JWT-Extended
+pytest
