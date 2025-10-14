@@ -2,10 +2,9 @@
 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token
-from extensions import db, bcrypt # MODIFICATION ICI : On importe depuis notre fichier central
-from models import User # MODIFICATION ICI : Import direct, sans le "."
+from extensions import db, bcrypt
+from models import User
 
-# On crée le Blueprint "vide"
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
@@ -21,7 +20,6 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Cet email est déjà utilisé."}), 409
 
-    # On utilise l'objet 'bcrypt' importé pour hacher le mot de passe
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     
     new_user = User(email=email, password=hashed_password)
@@ -43,10 +41,10 @@ def login():
 
     user = User.query.filter_by(email=email).first()
 
-    # On utilise l'objet 'bcrypt' importé pour vérifier le mot de passe
     if user and bcrypt.check_password_hash(user.password, password):
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # LA CORRECTION DÉFINITIVE EST ICI : On convertit l'ID en string
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify(access_token=access_token, refresh_token=refresh_token), 200
 

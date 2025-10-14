@@ -35,6 +35,15 @@ def status_check():
 def get_dictionaries():
     user = get_current_user()
     if not user: return jsonify({"error": "Utilisateur non trouvé"}), 404
+    
+    # AMÉLIORATION : Si l'utilisateur n'a pas de dictionnaire, on lui en crée un.
+    if not user.dictionaries:
+        default_dict = Dictionary(name="Dictionnaire par défaut", user_id=user.id, is_active=True)
+        db.session.add(default_dict)
+        db.session.commit()
+        # On rafraîchit l'objet 'user' pour qu'il contienne le nouveau dictionnaire
+        db.session.refresh(user)
+
     return jsonify([d.to_json() for d in user.dictionaries]), 200
 
 @main_bp.route('/dictionaries', methods=['POST'])
@@ -62,7 +71,6 @@ def update_dictionary(dict_id):
     data = request.get_json()
     if 'name' in data: dictionary.name = data['name'].strip()
     
-    # LA CORRECTION EST ICI
     if data.get('is_active') is True:
         Dictionary.query.filter(Dictionary.user_id == user.id).update({'is_active': False})
         dictionary.is_active = True
