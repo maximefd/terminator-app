@@ -1,36 +1,37 @@
-// DANS src/lib/api-client.ts
+import { getApiBaseUrl } from "@/lib/utils";
 
-export async function apiFetch(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("access_token");
+type ApiFetchOptions = RequestInit & {
+  // On peut ajouter des options spécifiques plus tard si besoin
+};
 
-  // On prépare les en-têtes par défaut
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  } as HeadersInit;
+export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) {
+  const token = typeof window !== 'undefined' ? localStorage.getItem("access_token") : null;
+  const url = `${getApiBaseUrl()}${endpoint}`;
 
-  // Si un token existe, on l'ajoute à l'en-tête Authorization
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  const headers = new Headers(options.headers || {});
+  
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  // On construit la requête finale
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   const response = await fetch(url, {
     ...options,
     headers,
   });
 
-  // Si la réponse n'est pas OK, on essaie de lire l'erreur JSON et on la lance
   if (!response.ok) {
     try {
       const errorData = await response.json();
       throw new Error(errorData.error || `Erreur ${response.status}`);
-    } catch (e) {
+    } catch { // CORRECTION ICI : On retire la variable 'e' qui n'est pas utilisée
       throw new Error(`Erreur ${response.status}: ${response.statusText}`);
     }
   }
 
-  // Si la réponse n'a pas de contenu (ex: DELETE), on renvoie un succès simple
   if (response.status === 204) {
     return { success: true };
   }

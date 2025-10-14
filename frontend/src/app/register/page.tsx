@@ -22,13 +22,16 @@ export default function RegisterPage() {
     try {
       await register(email, password);
       router.push("/");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) { // CORRECTION ICI : on utilise 'unknown' au lieu de 'any'
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Une erreur inattendue est survenue.");
+      }
     }
   };
 
   return (
-    // CORRECTION : On ajoute le même padding vertical ici
     <main className="flex items-center justify-center py-16 md:py-24">
       <Card className="w-full max-w-sm">
         <CardHeader>
@@ -76,3 +79,4 @@ export default function RegisterPage() {
     </main>
   );
 }
+
