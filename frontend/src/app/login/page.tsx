@@ -20,7 +20,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
-      // CORRECTION ICI : On appelle 'login' avec les bonnes variables
       await login(email, password);
       router.push("/");
     } catch (err: unknown) {
@@ -36,7 +35,8 @@ export default function LoginPage() {
     <main className="flex items-center justify-center py-16 md:py-24">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Connexion</CardTitle>
+          {/* On ajoute l'attribut de test ici */}
+          <CardTitle className="text-2xl" data-testid="login-title">Connexion</CardTitle>
           <CardDescription>
             Entrez vos identifiants pour accéder à votre compte.
           </CardDescription>

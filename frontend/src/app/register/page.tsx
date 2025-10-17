@@ -20,7 +20,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     try {
-      // CORRECTION ICI : On appelle 'register' avec les bonnes variables
       await register(email, password);
       router.push("/");
     } catch (err: unknown) {
@@ -36,7 +35,8 @@ export default function RegisterPage() {
     <main className="flex items-center justify-center py-16 md:py-24">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Inscription</CardTitle>
+          {/* On ajoute l'attribut de test ici */}
+          <CardTitle className="text-2xl" data-testid="register-title">Inscription</CardTitle>
           <CardDescription>
             Créez votre compte pour sauvegarder vos dictionnaires personnels.
           </CardDescription>
@@ -80,4 +80,3 @@ export default function RegisterPage() {
     </main>
   );
 }
-

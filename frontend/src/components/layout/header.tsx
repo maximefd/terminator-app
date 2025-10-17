@@ -10,7 +10,7 @@ import { Menu } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
-  const { isAuthenticated, logout } = useAuth(); // On ne prend plus 'login' ici
+  const { isAuthenticated, logout } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -22,12 +22,16 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        {/* SECTION GAUCHE : Logo + Navigation Bureau */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold">
+          <Link
+            href="/"
+            data-testid="logo-link"
+            className="flex items-center gap-2 text-xl font-bold"
+          >
             <span role="img" aria-label="Pièce de puzzle">🧩</span>
             <span className="hidden sm:inline-block">Terminator</span>
           </Link>
+
           <nav className="hidden lg:flex items-center gap-2">
             {navItems.map((item) => (
               <Link
@@ -46,18 +50,22 @@ export function Header() {
           </nav>
         </div>
 
-        {/* SECTION DROITE : Bouton de connexion + Menu Hamburger */}
         <div className="flex items-center gap-2">
-          <div>
-            {isAuthenticated ? (
-              <Button onClick={logout} size="sm">Déconnexion</Button>
-            ) : (
-              // Le bouton est maintenant un lien qui redirige vers la page de connexion
-              <Button asChild size="sm">
-                <Link href="/login">Connexion</Link>
-              </Button>
-            )}
-          </div>
+          {isAuthenticated ? (
+            <Button
+              onClick={logout}
+              variant="outline"
+              size="sm"
+              data-testid="logout-button"
+            >
+              Déconnexion
+            </Button>
+          ) : (
+            <Button asChild size="sm" data-testid="login-button-link">
+               <Link href="/login">Connexion</Link>
+            </Button>
+          )}
+
           <div className="lg:hidden">
             <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -68,7 +76,11 @@ export function Header() {
               </SheetTrigger>
               <SheetContent side="left">
                 <nav className="grid gap-6 text-lg font-medium mt-8 px-6">
-                  <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-lg font-semibold mb-4">
+                  <Link
+                    href="/"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 text-lg font-semibold mb-4"
+                  >
                     <span role="img" aria-label="Pièce de puzzle">🧩</span> Terminator
                   </Link>
                   {navItems.map((item) => (
@@ -76,7 +88,10 @@ export function Header() {
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={cn("text-muted-foreground hover:text-foreground", pathname === item.href && "text-foreground font-semibold")}
+                      className={cn(
+                        "text-muted-foreground hover:text-foreground",
+                        pathname === item.href && "text-foreground font-semibold"
+                      )}
                     >
                       {item.label}
                     </Link>
