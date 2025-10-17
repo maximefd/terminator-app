@@ -17,22 +17,24 @@ def create_app(test_config=None):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     app = Flask(__name__)
-
+    
     if test_config is None:
+        # Configuration normale (production/développement)
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-for-dev')
         app.config["JWT_SECRET_KEY"] = app.config['SECRET_KEY']
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///:memory:')
     else:
+        # On charge la configuration de test si elle est fournie
         app.config.from_mapping(test_config)
     
+    # Configurations communes
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
-    
-    # LA CORRECTION EST ICI : On dit à Flask de ne pas encoder les accents
     app.config['JSON_AS_ASCII'] = False
 
     # --- INITIALISATION DES SERVICES ---
+    # MODIFICATION ICI : On lit les origines depuis la variable d'environnement
     cors_origins_str = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
     cors_origins = cors_origins_str.split(',')
     CORS(app, origins=cors_origins, supports_credentials=True)

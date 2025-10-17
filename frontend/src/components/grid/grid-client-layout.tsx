@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { getApiBaseUrl } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client"; // On importe notre client API
 import { GridDisplay } from "@/components/grid/grid-display";
 
@@ -44,13 +43,13 @@ export function GridClientLayout() {
 
     try {
       // On utilise maintenant apiFetch
-      const data = await apiFetch(`${getApiBaseUrl()}/api/grids/generate`, {
+      const data = await apiFetch(`/api/grids/generate`, {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           size: { width, height },
           use_global: true,
           seed: Math.random(),
-        }),
+        },
       });
       setGridData(data.grid);
     } catch (err: unknown) {

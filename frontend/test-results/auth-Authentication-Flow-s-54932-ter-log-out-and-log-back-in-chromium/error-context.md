@@ -1,0 +1,52 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "Pièce de puzzle Terminator" [ref=e6] [cursor=pointer]:
+            - /url: /
+            - img "Pièce de puzzle" [ref=e7]: 🧩
+            - generic [ref=e8]: Terminator
+          - navigation [ref=e9]:
+            - link "Recherche" [ref=e10] [cursor=pointer]:
+              - /url: /
+            - link "Générer" [ref=e11] [cursor=pointer]:
+              - /url: /grid
+        - button "Connexion" [ref=e14]
+    - main [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: Inscription
+          - generic [ref=e20]: Créez votre compte pour sauvegarder vos dictionnaires personnels.
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - generic [ref=e24]: Email
+              - textbox "Email" [ref=e25]:
+                - /placeholder: nom@exemple.com
+                - text: user-1760479683126@example.com
+            - generic [ref=e26]:
+              - generic [ref=e27]: Mot de passe
+              - textbox "Mot de passe" [ref=e28]: password123
+            - paragraph [ref=e29]: "Failed to execute 'fetch' on 'Window': Failed to parse URL from http://192.0.0.2:5001http://192.0.0.2:5001/api/auth/register"
+            - button "Créer un compte" [active] [ref=e30]
+          - generic [ref=e31]:
+            - text: Vous avez déjà un compte ?
+            - link "Se connecter" [ref=e32] [cursor=pointer]:
+              - /url: /login
+    - contentinfo [ref=e33]:
+      - generic [ref=e34]:
+        - paragraph [ref=e35]: © 2025 Terminator. Tous droits réservés.
+        - navigation [ref=e36]:
+          - link "Mentions Légales" [ref=e37] [cursor=pointer]:
+            - /url: /legal
+          - link "Confidentialité" [ref=e38] [cursor=pointer]:
+            - /url: /privacy
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e44] [cursor=pointer]:
+    - img [ref=e45]
+  - alert [ref=e48]
+```

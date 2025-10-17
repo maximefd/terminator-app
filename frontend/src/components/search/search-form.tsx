@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getApiBaseUrl } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client";
 
 type SearchResult = {
@@ -37,16 +36,17 @@ export function SearchForm() {
 
       try {
         setError(null);
-        const data = await apiFetch(`${getApiBaseUrl()}/api/search`, {
+        // On utilise maintenant apiFetch, qui gère le token et les erreurs
+        const data = await apiFetch(`/api/search`, {
           method: "POST",
-          body: JSON.stringify({ mask: debouncedPattern.toUpperCase() }),
+          body: { mask: debouncedPattern.toUpperCase() },
         });
         setResults(data.results || []);
-      } catch (err: unknown) { // CORRECTION ICI : on utilise 'unknown' au lieu de 'any'
+      } catch (err: unknown) {
         if (err instanceof Error) {
-            setError(err.message);
+          setError(err.message);
         } else {
-            setError("La recherche a échoué.");
+          setError("La recherche a échoué.");
         }
         setResults([]);
       } finally {
@@ -129,3 +129,4 @@ export function SearchForm() {
     </div>
   );
 }
+

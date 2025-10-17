@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getApiBaseUrl } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef, useMemo, useEffect, KeyboardEvent } from "react";
 import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog"; // CORRECTION ICI
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 // --- TYPES ---
@@ -26,39 +25,39 @@ type Word = {
   definition: string | null;
 };
 
-// --- FONCTIONS DE FETCH ---
+// --- FONCTIONS DE FETCH (mises à jour pour utiliser apiFetch) ---
 const fetchDictionaries = async (): Promise<Dictionary[]> => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries`);
+  return apiFetch(`/api/dictionaries`);
 };
 
 const fetchWords = async (dictionaryId: number): Promise<Word[]> => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}/words`);
+  return apiFetch(`/api/dictionaries/${dictionaryId}/words`);
 };
 
 const addWord = async (vars: { dictionaryId: number; mot: string; definition: string }) => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words`, {
+  return apiFetch(`/api/dictionaries/${vars.dictionaryId}/words`, {
     method: 'POST',
-    body: JSON.stringify({ mot: vars.mot, definition: vars.definition }),
+    body: { mot: vars.mot, definition: vars.definition },
   });
 };
 
 const deleteWord = async (vars: { dictionaryId: number; wordId: number }) => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${vars.dictionaryId}/words/${vars.wordId}`, {
+  return apiFetch(`/api/dictionaries/${vars.dictionaryId}/words/${vars.wordId}`, {
     method: 'DELETE',
   });
 };
 
 const setActiveDictionary = async (dictionaryId: number) => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries/${dictionaryId}`, {
+  return apiFetch(`/api/dictionaries/${dictionaryId}`, {
     method: 'PATCH',
-    body: JSON.stringify({ is_active: true }),
+    body: { is_active: true },
   });
 };
 
 const createDictionary = async (name: string) => {
-  return apiFetch(`${getApiBaseUrl()}/api/dictionaries`, {
+  return apiFetch(`/api/dictionaries`, {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: { name },
   });
 };
 
@@ -96,7 +95,7 @@ export function DictionaryPanel() {
       wordInputRef.current?.focus();
       addWordMutation.reset();
     }
-  }, [addWordMutation.isSuccess, addWordMutation]);
+  }, [addWordMutation, addWordMutation.isSuccess]);
 
   const deleteWordMutation = useMutation({
     mutationFn: deleteWord,

@@ -1,5 +1,3 @@
-# DANS backend/auth.py
-
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, create_refresh_token
 from extensions import db, bcrypt
@@ -9,7 +7,6 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Crée un nouvel utilisateur."""
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -26,12 +23,14 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"message": f"Utilisateur {email} créé avec succès."}), 201
+    access_token = create_access_token(identity=str(new_user.id))
+    refresh_token = create_refresh_token(identity=str(new_user.id))
+
+    return jsonify(access_token=access_token, refresh_token=refresh_token), 201
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """Connecte un utilisateur et renvoie les tokens JWT."""
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -42,10 +41,10 @@ def login():
     user = User.query.filter_by(email=email).first()
 
     if user and bcrypt.check_password_hash(user.password, password):
-        # LA CORRECTION DÉFINITIVE EST ICI : On convertit l'ID en string
         access_token = create_access_token(identity=str(user.id))
         refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify(access_token=access_token, refresh_token=refresh_token), 200
 
     return jsonify({"error": "Identifiants invalides."}), 401
+

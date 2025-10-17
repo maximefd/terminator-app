@@ -20,9 +20,10 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     try {
+      // CORRECTION ICI : On appelle 'login' avec les bonnes variables
       await login(email, password);
       router.push("/");
-    } catch (err: unknown) { // CORRECTION ICI : on utilise 'unknown' au lieu de 'any'
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -79,3 +80,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

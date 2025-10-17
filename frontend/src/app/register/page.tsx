@@ -20,9 +20,10 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     try {
+      // CORRECTION ICI : On appelle 'register' avec les bonnes variables
       await register(email, password);
       router.push("/");
-    } catch (err: unknown) { // CORRECTION ICI : on utilise 'unknown' au lieu de 'any'
+    } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {

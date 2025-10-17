@@ -27,12 +27,13 @@ services:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - DATABASE_URL=postgresql://user:password@db:5432/terminator_db
-      - JWT_SECRET_KEY=votre-super-cle-secrete-jwt-ici
-      # NOUVELLE VARIABLE : une liste d'origines autorisées
-      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.75:3000,http://192.0.0.2:3000
+      - JWT_SECRET_KEY=une-cle-secrete-tres-longue-et-difficile-a-deviner
+      # NOUVELLE VARIABLE : une liste d'origines autorisées, séparées par des virgules
+      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.56:3000
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
+

@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getApiBaseUrl } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-client"; // On importe notre nouveau client API
+import { apiFetch } from "@/lib/api-client";
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -29,34 +28,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // On utilise notre client API, qui gère les erreurs
-    const data = await apiFetch(`${getApiBaseUrl()}/api/auth/login`, {
+    const data = await apiFetch(`/api/auth/login`, {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: { email, password },
     });
 
     localStorage.setItem("access_token", data.access_token);
     localStorage.setItem("refresh_token", data.refresh_token);
     setIsAuthenticated(true);
-    // On invalide les requêtes pour forcer leur rafraîchissement avec le nouveau token
+    // On invalide les requêtes pour forcer un rafraîchissement des données protégées
     await queryClient.invalidateQueries();
   };
 
   const register = async (email: string, password: string) => {
-    await apiFetch(`${getApiBaseUrl()}/api/auth/register`, {
+    const data = await apiFetch(`/api/auth/register`, {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: { email, password },
     });
-    // Après une inscription réussie, on connecte l'utilisateur
-    await login(email, password);
+    // La route /register renvoie maintenant les tokens, on les stocke directement
+    localStorage.setItem("access_token", data.access_token);
+    localStorage.setItem("refresh_token", data.refresh_token);
+    setIsAuthenticated(true);
+    await queryClient.invalidateQueries();
   };
 
   const logout = () => {
-    // La déconnexion JWT est une opération purement client : on supprime les tokens
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     setIsAuthenticated(false);
-    // On vide le cache pour s'assurer qu'aucune donnée personnelle ne reste
     queryClient.clear();
   };
 
@@ -74,3 +73,4 @@ export function useAuth() {
   }
   return context;
 }
+

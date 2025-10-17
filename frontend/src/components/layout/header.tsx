@@ -52,7 +52,7 @@ export function Header() {
             {isAuthenticated ? (
               <Button onClick={logout} size="sm">Déconnexion</Button>
             ) : (
-              // Le bouton est maintenant un lien vers la page de connexion
+              // Le bouton est maintenant un lien qui redirige vers la page de connexion
               <Button asChild size="sm">
                 <Link href="/login">Connexion</Link>
               </Button>
@@ -90,3 +90,4 @@ export function Header() {
     </header>
   );
 }
+

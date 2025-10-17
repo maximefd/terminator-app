@@ -1,31 +1,33 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// On lit le fichier .env qui se trouve à la racine de notre projet frontend
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 export default defineConfig({
-  // Dossier où se trouvent nos fichiers de test
   testDir: './tests',
-  
-  // Temps maximum pour un test avant de l'arrêter (30 secondes)
   timeout: 30 * 1000,
-  
   expect: {
-    // Temps maximum pour qu'une assertion (ex: "s'attendre à ce que ce texte apparaisse") réussisse
     timeout: 5000
   },
-
-  // Exécuter les tests en parallèle
   fullyParallel: true,
-
-  // Nombre de tentatives si un test échoue
   retries: process.env.CI ? 2 : 0,
 
-  // Le plus important : on dit à Playwright de lancer notre serveur de développement avant de commencer
+  use: {
+    // On utilise la variable d'environnement, avec un fallback sécurisé sur localhost
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    // On s'assure que le serveur de dev écoute bien sur toutes les adresses
+    command: 'pnpm dev --hostname 0.0.0.0',
+    // On utilise la même URL que le baseURL pour que Playwright sache quand le serveur est prêt
+    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
   },
 
-  // On peut configurer les navigateurs sur lesquels on veut tester
   projects: [
     {
       name: 'chromium',
@@ -33,3 +35,4 @@ export default defineConfig({
     },
   ],
 });
+
