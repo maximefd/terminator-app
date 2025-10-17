@@ -4,7 +4,6 @@ from flask import Flask
 from flask_cors import CORS
 from datetime import timedelta
 
-# On importe les objets que nous allons initialiser
 from models import db
 from auth import bcrypt, auth_bp
 from routes import main_bp
@@ -12,29 +11,23 @@ from extensions import jwt
 from trie_engine import DictionnaireTrie
 
 def create_app(test_config=None):
-    """Crée et configure une instance de l'application Flask."""
-    
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     app = Flask(__name__)
-    
+
     if test_config is None:
-        # Configuration normale (production/développement)
-        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret-for-dev')
-        app.config["JWT_SECRET_KEY"] = app.config['SECRET_KEY']
-        app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///:memory:')
+        app.config.from_mapping(
+            SECRET_KEY=os.environ.get('SECRET_KEY', 'default-secret-for-dev'),
+            JWT_SECRET_KEY=os.environ.get('SECRET_KEY', 'default-secret-for-dev'),
+            SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///:memory:'),
+            SQLALCHEMY_TRACK_MODIFICATIONS=False,
+            JWT_ACCESS_TOKEN_EXPIRES=timedelta(minutes=15),
+            JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=7),
+            JSON_AS_ASCII=False
+        )
     else:
-        # On charge la configuration de test si elle est fournie
         app.config.from_mapping(test_config)
     
-    # Configurations communes
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
-    app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
-    app.config['JSON_AS_ASCII'] = False
-
-    # --- INITIALISATION DES SERVICES ---
-    # MODIFICATION ICI : On lit les origines depuis la variable d'environnement
     cors_origins_str = os.environ.get('CORS_ORIGINS', 'http://localhost:3000')
     cors_origins = cors_origins_str.split(',')
     CORS(app, origins=cors_origins, supports_credentials=True)
@@ -43,11 +36,10 @@ def create_app(test_config=None):
     bcrypt.init_app(app)
     jwt.init_app(app)
 
-    # --- ENREGISTREMENT DES BLUEPRINTS ---
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
 
-    # --- GESTION DU DICTIONNAIRE GLOBAL (TRIE) ---
+    # MODIFICATION ICI : On ne charge le Trie que si on n'est pas en mode test
     if not app.config.get("TESTING", False):
         DELA_FILE_FULL = 'dela_clean.csv'
         try:
@@ -58,6 +50,7 @@ def create_app(test_config=None):
             logging.critical(f"Erreur critique lors de l'initialisation du Trie: {e}", exc_info=True)
             app.dela_trie = None
     else:
+        # En mode test, on met un placeholder pour éviter les erreurs
         app.dela_trie = None
 
     with app.app_context():
@@ -68,4 +61,3 @@ def create_app(test_config=None):
             logging.critical(f"Échec de la création des tables BDD: {e}")
 
     return app
-
