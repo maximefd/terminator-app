@@ -1,0 +1,71 @@
+name: Continuous Integration
+
+# Déclenche le workflow à chaque push ou pull request sur la branche main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Mission 1 : Tester le Backend
+  backend-ci:
+    runs-on: ubuntu-latest # On utilise un serveur Linux standard
+    
+    steps:
+      # Étape 1 : Récupérer le code du projet
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Étape 2 : Configurer Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Étape 3 : Installer les dépendances
+      - name: Install backend dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r backend/requirements.txt
+        
+      # Étape 4 : Lancer les tests
+      - name: Run backend tests with pytest
+        run: |
+          source .venv/bin/activate
+          pytest backend/tests/
+
+  # Mission 2 : Construire le Frontend
+  frontend-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Récupérer le code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Étape 2 : Configurer pnpm
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8 # ou la version que vous utilisez
+
+      # Étape 3 : Configurer Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # Étape 4 : Installer les dépendances
+      - name: Install frontend dependencies
+        run: cd frontend && pnpm install
+      
+      # Étape 5 : Lancer le build de production
+      - name: Build frontend
+        run: cd frontend && pnpm build
+        env:
+          # On fournit une variable d'environnement factice, car le build en a besoin
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
