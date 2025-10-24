@@ -44,3 +44,33 @@ class WordRepository:
     
     def get_candidates(self, pattern: str) -> list[str]:
         return self.trie.search_pattern(pattern)
+    
+    # ------------------------------------------------------------------
+    # NOUVELLES MÉTHODES POUR LA CONSOMMATION DE MOTS (Backtracking)
+    # ------------------------------------------------------------------
+
+    def remove_word_from_available(self, word: str, length: int):
+        """
+        Retire un mot du pool disponible pour la longueur spécifiée.
+        Utilisé pour simuler la 'consommation' du mot dans la branche de l'arbre.
+        """
+        if length in self.words_by_len:
+            try:
+                self.words_by_len[length].remove(word)
+                # NOTE : l'utilisation de list.remove est O(n), ce qui peut impacter
+                # la performance. Si la grille est très grande, passer à des sets
+                # pour self.words_by_len serait O(1), mais nécessite une adaptation
+                # dans la classe si l'ordre est important ailleurs.
+            except ValueError:
+                # Le mot n'est plus dans la liste (déjà consommé ou retiré).
+                pass
+            
+    def add_word_to_available(self, word: str, length: int):
+        """
+        Remet un mot dans le pool disponible. Utilisé lors du backtrack.
+        """
+        if length in self.words_by_len:
+            self.words_by_len[length].append(word)
+        else:
+            # Cas rare si la longueur n'existait pas, mais on la crée par précaution.
+            self.words_by_len[length] = [word]
