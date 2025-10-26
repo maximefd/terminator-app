@@ -43,8 +43,26 @@ class WordRepository:
         return word in self.trie.words
     
     def get_candidates(self, pattern: str) -> list[str]:
-        return self.trie.search_pattern(pattern)
-    
+        """
+        Trouve tous les mots qui correspondent au motif ET qui sont disponibles.
+        """
+        # 1. Utilise le Trie pour la recherche par motif (rapide)
+        all_matching_words = self.trie.search_pattern(pattern)
+        
+        # 2. Utilise la longueur du pattern pour trouver la liste des mots disponibles
+        length = len(pattern)
+        available_words = self.words_by_len.get(length, [])
+        
+        # 3. Intersection: retourne uniquement les mots correspondants ET disponibles
+        # On utilise un set pour la rapidité de la vérification.
+        available_set = set(available_words)
+        
+        candidates = [word for word in all_matching_words if word in available_set]
+        
+        # OPTIMISATION : Si le Trie peut retourner un générateur et qu'on utilise des sets, ce serait plus propre.
+        # Pour l'instant, on se base sur la liste, en assumant que le Trie renvoie des mots globaux.
+        return candidates
+        
     # ------------------------------------------------------------------
     # NOUVELLES MÉTHODES POUR LA CONSOMMATION DE MOTS (Backtracking)
     # ------------------------------------------------------------------

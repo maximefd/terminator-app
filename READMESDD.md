@@ -31,7 +31,7 @@ POST /api/search — recherche par mask + lettres
 POST /api/grids/generate — génération de grille (auth requis pour l’instant)
 6. Grid Generator — état & contraintes
 
-Moteur : plusieurs versions itératives (V1 → V4 → V7 → V11 → V12 → V14/V16). Version actuelle priorisée pour fiabilité, vitesse et logs.
+Moteur : plusieurs versions itératives (V1 → V4 → V7 → V11 → V12 → V14/V16). 
 Paramètres exposés : width, height, use_global, use_personal, seed, target_black_ratio (configurable).
 Limites connues : règles esthétiques avancées (p.ex. connectivité des cases noires) en backlog V2.
 7. Sécurité & RGPD (obligatoire)
@@ -99,28 +99,19 @@ Logs : structuré JSON, centralisé (ELK/CloudWatch/LogDNA).
 DB backups : nightly snapshots, retention 30 days, test restore monthly.
 DELA source : versioned copy and checksum; store original CSV in object storage (S3).
 Export/Import : tools to export user's personal dictionaries when user requests data porting.
-13. Roadmap & objectifs
-
-13.1 Roadmap 4 semaines (sprint backlog)
-
-Semaine 1: Frontend skeleton (React + Vite + Tailwind), API integration (status, search). Basic login flow (POC). Deploy staging.
-Semaine 2: Search UI (mask input), personal dictionary UI (CRUD), list and manage dictionaries, mobile responsive layouts.
-Semaine 3: Grid viewer UI (render JSON grid -> DOM), generate flow + loader + save snapshot, printing/PDF export basic.
-Semaine 4: QA, E2E tests, performance tuning, UX polish, prepare beta release.
-13.2 Objectifs long terme (6–18 mois)
 
 Monetisation : freemium + plans pro, Stripe integration, feature gating.
 Advanced generator V2 : implement black-square connectivity, symmetry options, quality heuristics.
 Scaling : Redis cache, worker queue (Celery/RQ), horizontal DB scaling.
 Analytics product : user metrics, retention, A/B tests for generator parameters.
-14. Definition of Done (DoD) — critères minimaux pour features
+13. Definition of Done (DoD) — critères minimaux pour features
 
 Code revu & testé (unit/integration), couverture minimale 80% sur modules critiques.
 Lint pass (black, flake8), types check (mypy) si activé.
 Sécurité : secrets not in repo, env example present, basic rate limits.
 Déploiement validé en staging et smoke-tested.
 Documentation utilisateur/README mise à jour.
-15. Backlog (priorités)
+12. Backlog (priorités)
 
 Frontend MVP (next) — HIGH
 Save/Load grid, PDF export — HIGH
@@ -134,16 +125,3 @@ Commit this README_SDD.md to repository (suggested message: docs: SDD v1.7 — b
 Create GH issues for the 4-week roadmap tasks and assign owners/estimates.
 Initialize frontend repo with CI, linting, and a minimal landing page.
 Configure staging environment and add monitoring (Sentry).
-Si tu veux, je peux :
-
-Commit ce fichier README_SDD.md dans le repo (je peux te donner le diff/PR prêt à coller),
-Ou générer directement les issues GitHub (si tu me donnes le repo).
-Dis-moi ce que tu préfères : PR / commit message, ou que je crée les issues et la checklist du sprint 1 ?
-
-C’est fait — j’ai créé le fichier README_SDD.md dans la zone de travail (titre affiché : Readme Sdd). ✅
-Prochaines options — dis-moi ce que tu veux que je fasse ensuite (je peux enchaîner sans demande supplémentaire) :
-
-préparer un commit / PR avec ce fichier (je peux fournir le diff + message de commit),
-ou créer les issues GitHub correspondant au roadmap 4 semaines (il me faudra le repo / autorisation),
-ou démarrer le squelette frontend (repo, config Vite + Tailwind + CI) et te fournir la checklist pas-à-pas.
-Tu choisis.

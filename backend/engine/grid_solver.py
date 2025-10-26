@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class GridSolver:
     
     # --- NOUVELLE CONSTANTE POUR LA PERFORMANCE ---
-    MAX_CANDIDATES_PER_SLOT = 100 
+    MAX_CANDIDATES_PER_SLOT = 10 
     # ---------------------------------------------
 
     LETTER_SCORES = {
