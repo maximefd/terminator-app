@@ -22,11 +22,11 @@ Objectif : Transformer le générateur V1 "fonctionnel" en un générateur V2 "a
 - Cache hit rate : 80-89%
 - FC efficacité : 21-54% (vs 12-37% avec FC basique)
 
-### 🚧 Prochaine étape prioritaire
+### 🚧 Prochaines étapes prioritaires
 
 | ID | Tâche / Story | Priorité | Statut |
 |----|---------------|----------|--------|
-| P6 | **Forward Checking plus strict** : Vérifier qu'il reste au moins 3 candidats (au lieu de 1) pour avoir une marge de sécurité et éliminer les grilles lentes. | HAUTE | ✅ FAIT |
+| T1 | **Templates multiples par taille** : Fournir plusieurs templates pour chaque taille de grille (ex: 3-5 templates pour 10x10) et piocher aléatoirement selon la taille demandée. Améliore la variété visuelle des grilles. | HAUTE | À FAIRE |
 
 ### 📋 Backlog à venir
 
