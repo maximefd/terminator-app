@@ -18,9 +18,9 @@ from trie_engine import DictionnaireTrie
 
 # --- CONFIGURATION ---
 TEST_CONFIGS = [
-    {'width': 11, 'height': 6, 'count': 4},
+    {'width': 6, 'height': 7, 'count': 5},  # Template plus petit pour tests rapides
 ]
-SINGLE_GRID_TIMEOUT_SECONDS = 60 
+SINGLE_GRID_TIMEOUT_SECONDS = 30  # Réduit pour les petites grilles 
 DELA_FILE = 'dela_clean.csv'
 
 class TimeoutException(Exception): pass
