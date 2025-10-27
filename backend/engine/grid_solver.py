@@ -17,10 +17,10 @@ class GridSolver:
 
     LETTER_SCORES = {
         # ... (scores inchangés)
-        'A': 9, 'B': 2, 'C': 2, 'D': 3, 'E': 12, 'F': 1, 'G': 1, 'H': 1,
+        'A': 9, 'B': 2, 'C': 2, 'D': 3, 'E': 13, 'F': 1, 'G': 1, 'H': 1,
         'I': 8, 'J': 1, 'K': 0, 'L': 6, 'M': 3, 'N': 7, 'O': 6, 'P': 3,
-        'Q': 1, 'R': 8, 'S': 8, 'T': 7, 'U': 6, 'V': 2, 'W': 0, 'X': 1,
-        'Y': 1, 'Z': 1
+        'Q': 1, 'R': 8, 'S': 8, 'T': 7, 'U': 6, 'V': 2, 'W': 0, 'X': 0,
+        'Y': 0, 'Z': 1
     }
 
     def __init__(self, template: GridTemplate, repository: WordRepository, finder: SlotFinder):
@@ -43,6 +43,9 @@ class GridSolver:
         # Format: {slot_id: {pattern1, pattern2, ...}}
         # Enregistre les patterns qui ont échoué pour chaque slot
         self.nogoods = {}
+        
+        # OPTIMISATION : Pré-calculer les intersections entre slots
+        self._precompute_intersections()
 
     def solve(self) -> bool:
         """Point d'entrée principal pour lancer la résolution (démarre la récursion MRV)."""
@@ -144,12 +147,12 @@ class GridSolver:
             random.shuffle(top_candidates)
             scored_candidates = top_candidates + scored_candidates[top_20_percent:]
 
-        logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
+        logging.info(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
 
         # 4. Boucle de test des candidats
         for i, (score, word) in enumerate(scored_candidates):
             
-            logging.debug(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
+            logging.info(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
 
             # Place le mot temporairement et sauvegarde l'état pour le revert
             original_state = self._place_word_on_grid(word, slot)
@@ -161,32 +164,41 @@ class GridSolver:
                 continue
 
             # --- MODIFICATION 1 : On passe original_state à la validation ---
-            if self._is_placement_valid(word, slot, original_state):
-                
-                # --- CONSOMMATION ---
-                slot['is_filled'] = True # Marque le slot comme rempli
-                self.repository.remove_word_from_available(word, slot['length']) 
-                logging.debug(f"      -> Mot '{word}' est valide. Passage au slot suivant...")
-
-                if self._solve_recursive(): # Appel récursif SANS INDEX
-                    # SUCCES
-                    self.placed_words.insert(0, {
-                        "text": word, "x": slot['x'], "y": slot['y'],
-                        "direction": slot['direction'], "id": slot['id']
-                    })
-                    return True
-                else:
-                    # ÉCHEC RÉCURSIF (Backtrack)
-                    # CRITIQUE : Effacer les nogoods des slots intersectés car le contexte change
-                    self._invalidate_dependent_nogoods(slot)
-                    
-                    # Annule la consommation du mot et marque le slot comme vide
-                    self.repository.add_word_to_available(word, slot['length']) 
-                    slot['is_filled'] = False 
-                    logging.debug(f"      <- Retour arrière (Backtrack) pour '{word}'.")
+            if not self._is_placement_valid(word, slot, original_state):
+                self._revert_grid_state(original_state)
+                continue
             
-            # --- REVERT DE LA GRILLE ---
-            self._revert_grid_state(original_state)
+            # FORWARD CHECKING : Vérifier que les slots intersectés auront encore des candidats
+            if not self._forward_check(word, slot, original_state):
+                logging.info(f"      -> Mot '{word}' échoue au FC (dead-end), skip.")
+                self._revert_grid_state(original_state)
+                continue
+            
+            # Si on arrive ici, le mot est valide ET passe le forward checking
+            # --- CONSOMMATION ---
+            slot['is_filled'] = True # Marque le slot comme rempli
+            self.repository.remove_word_from_available(word, slot['length']) 
+            logging.info(f"      -> Mot '{word}' VALIDE + FC OK ✓ Passage au slot suivant...")
+
+            if self._solve_recursive(): # Appel récursif SANS INDEX
+                # SUCCES
+                self.placed_words.insert(0, {
+                    "text": word, "x": slot['x'], "y": slot['y'],
+                    "direction": slot['direction'], "id": slot['id']
+                })
+                return True
+            else:
+                # ÉCHEC RÉCURSIF (Backtrack)
+                # CRITIQUE : Effacer les nogoods des slots intersectés car le contexte change
+                self._invalidate_dependent_nogoods(slot)
+                
+                # Annule la consommation du mot et marque le slot comme vide
+                self.repository.add_word_to_available(word, slot['length']) 
+                slot['is_filled'] = False 
+                logging.debug(f"      <- Retour arrière (Backtrack) pour '{word}'.")
+                
+                # --- REVERT DE LA GRILLE ---
+                self._revert_grid_state(original_state)
 
         # 5. Échec de tous les candidats (aligné avec la boucle for)
         logging.debug(f"  ÉCHEC FINAL : Aucun candidat n'a abouti pour le slot.")
@@ -381,8 +393,8 @@ class GridSolver:
                 x = slot['x']
                 y = slot['y'] + pos_idx
             
-            # Trouver le slot intersecté
-            intersected = self._find_intersecting_slot(x, y, slot['direction'])
+            # Trouver le slot intersecté (version optimisée)
+            intersected = self._find_intersecting_slot_fast(x, y, slot['direction'])
             if intersected:
                 intersected_id = intersected.get('id', id(intersected))
                 slots_to_clear.add(intersected_id)
@@ -405,8 +417,8 @@ class GridSolver:
             if old_char == char:
                 continue
             
-            # Trouver le slot intersecté à cette position
-            intersected_slot = self._find_intersecting_slot(px, py, slot['direction'])
+            # Trouver le slot intersecté à cette position (version optimisée)
+            intersected_slot = self._find_intersecting_slot_fast(px, py, slot['direction'])
             if not intersected_slot:
                 continue
             
@@ -451,3 +463,96 @@ class GridSolver:
         avec les lettres déjà placées sur la grille).
         """
         return self._get_slot_pattern(slot)
+    
+    # ===================================================================
+    # OPTIMISATION : Pré-calcul des intersections
+    # ===================================================================
+    
+    def _precompute_intersections(self):
+        """
+        Pré-calcule toutes les intersections entre slots pour éviter
+        de parcourir tous les slots à chaque recherche.
+        
+        Format: {
+            (x, y, 'across'): slot_down_qui_croise,
+            (x, y, 'down'): slot_across_qui_croise
+        }
+        """
+        self.intersection_map = {}  # (x, y, direction) -> slot intersecté
+        
+        # Pour chaque cellule et direction, trouver quel slot l'occupe
+        for slot in self.slots:
+            for pos_idx in range(slot['length']):
+                if slot['direction'] == 'across':
+                    x = slot['x'] + pos_idx
+                    y = slot['y']
+                else:
+                    x = slot['x']
+                    y = slot['y'] + pos_idx
+                
+                # Enregistrer ce slot pour cette cellule et direction
+                key = (x, y, slot['direction'])
+                self.intersection_map[key] = slot
+        
+        logging.debug(f"Pré-calcul de {len(self.intersection_map)} positions de slots")
+    
+    def _find_intersecting_slot_fast(self, x: int, y: int, current_direction: str) -> dict | None:
+        """
+        Version optimisée de _find_intersecting_slot utilisant le pré-calcul.
+        Trouve un slot qui passe par la position (x, y) dans la direction opposée.
+        """
+        opposite_direction = 'down' if current_direction == 'across' else 'across'
+        key = (x, y, opposite_direction)
+        return self.intersection_map.get(key)
+    
+    # ===================================================================
+    # FORWARD CHECKING : Détection précoce des branches mortes
+    # ===================================================================
+    
+    def _forward_check(self, word: str, slot: dict, original_state: list[tuple[int, int, str]]) -> bool:
+        """
+        Forward Checking : Vérifie que placer ce mot ne crée pas de dead-end.
+        Pour chaque slot intersecté non rempli, vérifie qu'il aura encore
+        au moins 1 candidat valide après le placement.
+        
+        C'est LA clé pour éviter d'explorer des branches mortes pendant 30s.
+        """
+        # Collecter tous les slots intersectés uniques
+        intersected_slots = set()
+        
+        for i, (char, (px, py, old_char)) in enumerate(zip(word, original_state)):
+            # Trouver le slot intersecté
+            intersected_slot = self._find_intersecting_slot_fast(px, py, slot['direction'])
+            
+            if not intersected_slot:
+                continue
+            
+            # Ignorer les slots déjà remplis
+            if intersected_slot.get('is_filled', False):
+                continue
+            
+            # Ajouter à la liste des slots à vérifier
+            slot_id = intersected_slot.get('id', id(intersected_slot))
+            intersected_slots.add(slot_id)
+        
+        # Pour chaque slot intersecté, vérifier qu'il a encore des candidats
+        for slot_id in intersected_slots:
+            # Retrouver le slot complet
+            intersected_slot = next((s for s in self.slots if s.get('id', id(s)) == slot_id), None)
+            
+            if not intersected_slot:
+                continue
+            
+            # Calculer le pattern que ce slot aurait après le placement
+            future_pattern = self._get_slot_pattern(intersected_slot)
+            
+            # Vérifier s'il existe au moins un candidat pour ce pattern
+            candidates = self.repository.get_candidates(future_pattern)
+            
+            if not candidates:
+                # DEAD-END détecté : ce placement condamne un slot intersecté
+                logging.debug(f"        FC: Slot {slot_id} n'aurait aucun candidat (pattern: '{future_pattern}')")
+                return False
+        
+        # Tous les slots intersectés ont encore des candidats
+        return True

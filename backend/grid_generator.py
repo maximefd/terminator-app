@@ -79,13 +79,17 @@ class GridGenerator:
         repo.word_set = set(valid_words) 
 
         # Ce dictionnaire est spécifique à cette grille (pour la consommation)
+        # OPTIMISATION : Utiliser des sets pour O(1) add/remove
         repo.words_by_len = {}
         for word in valid_words:
             length = len(word)
             if length not in repo.words_by_len:
-                repo.words_by_len[length] = []
-            repo.words_by_len[length].append(word)
+                repo.words_by_len[length] = set()
+            repo.words_by_len[length].add(word)
             # PAS BESOIN DE repo.trie.insert(word), c'est déjà fait !
+        
+        # Initialiser le cache vide pour get_candidates
+        repo._candidate_cache = {}
 
         logging.info(f"{len(valid_words)} mots pertinents indexés pour cette grille.")
         return repo
