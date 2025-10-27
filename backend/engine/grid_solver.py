@@ -73,53 +73,66 @@ class GridSolver:
     
     def _choose_next_slot(self) -> dict | None:
         """
-        Choisit dynamiquement le prochain slot à traiter (le plus contraint)
-        par l'heuristique MRV (Minimum Remaining Values),
-        MAIS en priorisant les slots déjà contraints (intersectés).
-        """
-        best_constrained_slot = None
-        min_constrained_unknowns = float('inf')
+        Choisit dynamiquement le prochain slot à traiter avec l'heuristique MRV AMÉLIORÉE.
         
-        best_unconstrained_slot = None
-        min_unconstrained_unknowns = float('inf')
+        Score = nb_candidats / (1 + nb_intersections)
+        
+        Logique :
+        - Moins il y a de candidats, plus le slot est contraint (prioritaire)
+        - Plus il y a d'intersections, plus le slot contraint les autres (prioritaire)
+        
+        On choisit le slot avec le SCORE LE PLUS BAS.
+        """
+        best_slot = None
+        best_score = float('inf')
 
         for slot in self.slots:
-            # On ignore les slots qui sont déjà remplis
+            # Ignorer les slots déjà remplis
             if slot.get('is_filled', False):
                 continue
                 
             pattern = self._get_slot_pattern(slot)
             nb_unknowns = pattern.count('?')
             
-            # Si nb_unknowns est 0, c'est que le slot est rempli par des croisements
+            # Si complètement rempli par croisements, ignorer
             if nb_unknowns == 0:
                 continue
 
-            # On sépare les slots en 2 groupes :
-            # 1. Ceux déjà "touchés" par un autre mot (très prioritaires)
-            # 2. Ceux encore vierges (moins prioritaires)
-            is_constrained_by_intersection = (nb_unknowns < slot['length'])
-
-            if is_constrained_by_intersection:
-                # Priorité 1 : Le slot intersecté avec le MOINS d'inconnues
-                if nb_unknowns < min_constrained_unknowns:
-                    min_constrained_unknowns = nb_unknowns
-                    best_constrained_slot = slot
-            else:
-                # Priorité 2 : Le slot vierge le plus COURT
-                if nb_unknowns < min_unconstrained_unknowns:
-                    min_unconstrained_unknowns = nb_unknowns
-                    best_unconstrained_slot = slot
-
-        # On retourne TOUJOURS un slot contraint (intersecté) en priorité
-        if best_constrained_slot:
-            # logging.debug(f"  -> Choix MRV (Prio 1): Slot intersecté (Inconnues: {min_constrained_unknowns})")
-            return best_constrained_slot
+            # Récupérer le nombre de candidats pour ce pattern
+            candidates = self.repository.get_candidates(pattern)
+            nb_candidates = len(candidates) if candidates else 0
+            
+            # Si aucun candidat, ce slot est un dead-end immédiat
+            # (sera géré par _solve_recursive qui fera backtrack)
+            if nb_candidates == 0:
+                # Slot impossible : on le choisit pour déclencher le backtrack immédiatement
+                return slot
+            
+            # Compter le nombre d'intersections de ce slot
+            nb_intersections = 0
+            for pos_idx in range(slot['length']):
+                if slot['direction'] == 'across':
+                    x = slot['x'] + pos_idx
+                    y = slot['y']
+                else:
+                    x = slot['x']
+                    y = slot['y'] + pos_idx
+                
+                # Vérifier s'il y a un slot qui croise à cette position
+                if self._find_intersecting_slot_fast(x, y, slot['direction']):
+                    nb_intersections += 1
+            
+            # Calculer le score : on veut MINIMISER ce score
+            # Plus de candidats = mauvais (moins contraint)
+            # Plus d'intersections = bon (plus contraignant pour les autres)
+            score = nb_candidates / (1 + nb_intersections)
+            
+            # Choisir le slot avec le score le plus bas
+            if score < best_score:
+                best_score = score
+                best_slot = slot
         
-        # Si aucun slot n'est encore contraint (ex: au 1er appel),
-        # on retourne le slot vierge le plus court (l'ancien comportement)
-        # logging.debug(f"  -> Choix MRV (Prio 2): Slot vierge (Inconnues: {min_unconstrained_unknowns})")
-        return best_unconstrained_slot
+        return best_slot
         
     def _solve_recursive(self) -> bool:
         """
