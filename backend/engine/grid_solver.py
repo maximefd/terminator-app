@@ -2,6 +2,7 @@
 
 import logging
 import random
+import time
 
 from .grid_template import GridTemplate
 from .slot_finder import SlotFinder
@@ -46,11 +47,29 @@ class GridSolver:
         
         # OPTIMISATION : Pré-calculer les intersections entre slots
         self._precompute_intersections()
+        
+        # MÉTRIQUES de performance
+        self.metrics = {
+            'candidates_tested': 0,      # Nombre total de mots testés
+            'fc_skips': 0,               # Combien de mots éliminés par FC
+            'fc_checks': 0,              # Combien de fois FC a été appelé
+            'recursive_calls': 0,        # Nombre d'appels récursifs
+            'backtracks': 0,             # Nombre de backtracks
+            'cache_hits': 0,             # Nombre de cache hits
+            'cache_misses': 0,           # Nombre de cache misses
+        }
 
     def solve(self) -> bool:
         """Point d'entrée principal pour lancer la résolution (démarre la récursion MRV)."""
         logging.info("Début de la résolution de la grille (Heuristique MRV)...")
-        return self._solve_recursive() # <-- SANS INDEX
+        self.start_time = time.time()
+        
+        try:
+            result = self._solve_recursive() # <-- SANS INDEX
+            return result
+        finally:
+            # Afficher les métriques dans TOUS les cas (succès, échec, timeout)
+            self._print_metrics()
     
     def _choose_next_slot(self) -> dict | None:
         """
@@ -106,6 +125,8 @@ class GridSolver:
         """
         Implémente l'algorithme de backtracking. Utilise _choose_next_slot() (MRV).
         """
+        self.metrics['recursive_calls'] += 1
+        
         # 1. Choix dynamique du slot le plus contraint
         slot = self._choose_next_slot()
         
@@ -117,17 +138,17 @@ class GridSolver:
         pattern = self._get_slot_pattern(slot)
         slot_id = slot.get('id', id(slot))
         
-        logging.info(f"[Slot {slot.get('id', 'MRV')}] (Dir: {slot['direction']}, L: {slot['length']}) - Motif : '{pattern}' (Inconnues: {pattern.count('?')})")
+        logging.info(f"[Slot {slot.get('id', '?')}] {slot['direction']}, L={slot['length']}, Pattern='{pattern}'")
 
         # NOUVEAU : Vérifier si ce pattern est un nogood connu
         if self._is_nogood_pattern(slot_id, pattern):
-            logging.info(f"  Pattern '{pattern}' est un nogood connu, backtrack immédiat !")
+            logging.debug(f"  Pattern '{pattern}' est un nogood connu, backtrack immédiat !")
             return False
 
         # 3. Récupération des candidats possibles
         candidates = self.repository.get_candidates(pattern)
         if not candidates:
-            logging.info(f"  Aucun candidat pour ce slot, backtrack !")
+            logging.debug(f"  Aucun candidat pour ce slot, backtrack !")
             # NOUVEAU : Enregistrer ce pattern comme nogood (aucun mot n'existe dans le dico)
             self._record_nogood(slot_id, pattern)
             return False
@@ -147,12 +168,13 @@ class GridSolver:
             random.shuffle(top_candidates)
             scored_candidates = top_candidates + scored_candidates[top_20_percent:]
 
-        logging.info(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
+        logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
 
         # 4. Boucle de test des candidats
         for i, (score, word) in enumerate(scored_candidates):
+            self.metrics['candidates_tested'] += 1
             
-            logging.info(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
+            logging.debug(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
 
             # Place le mot temporairement et sauvegarde l'état pour le revert
             original_state = self._place_word_on_grid(word, slot)
@@ -169,8 +191,10 @@ class GridSolver:
                 continue
             
             # FORWARD CHECKING : Vérifier que les slots intersectés auront encore des candidats
+            self.metrics['fc_checks'] += 1
             if not self._forward_check(word, slot, original_state):
-                logging.info(f"      -> Mot '{word}' échoue au FC (dead-end), skip.")
+                self.metrics['fc_skips'] += 1
+                logging.debug(f"      -> Mot '{word}' échoue au FC (dead-end), skip.")
                 self._revert_grid_state(original_state)
                 continue
             
@@ -178,17 +202,19 @@ class GridSolver:
             # --- CONSOMMATION ---
             slot['is_filled'] = True # Marque le slot comme rempli
             self.repository.remove_word_from_available(word, slot['length']) 
-            logging.info(f"      -> Mot '{word}' VALIDE + FC OK ✓ Passage au slot suivant...")
+            logging.info(f"  → Place '{word}'")
 
             if self._solve_recursive(): # Appel récursif SANS INDEX
                 # SUCCES
                 self.placed_words.insert(0, {
                     "text": word, "x": slot['x'], "y": slot['y'],
-                    "direction": slot['direction'], "id": slot['id']
+                    "direction": slot['direction'], "id": slot['id'],
+                    "score": score  # Ajouter le score pour l'historique
                 })
                 return True
             else:
                 # ÉCHEC RÉCURSIF (Backtrack)
+                self.metrics['backtracks'] += 1
                 # CRITIQUE : Effacer les nogoods des slots intersectés car le contexte change
                 self._invalidate_dependent_nogoods(slot)
                 
@@ -201,7 +227,7 @@ class GridSolver:
                 self._revert_grid_state(original_state)
 
         # 5. Échec de tous les candidats (aligné avec la boucle for)
-        logging.debug(f"  ÉCHEC FINAL : Aucun candidat n'a abouti pour le slot.")
+        logging.debug(f"  ÉCHEC : Tous les candidats ont échoué pour ce slot.")
         # NE PAS enregistrer comme nogood ici : l'échec est contextuel, pas absolu
         # Le pattern pourrait fonctionner avec un autre contexte (autres mots placés)
         return False
@@ -556,3 +582,61 @@ class GridSolver:
         
         # Tous les slots intersectés ont encore des candidats
         return True
+    
+    def _print_metrics(self):
+        """
+        Affiche les métriques de performance pour diagnostiquer l'efficacité des optimisations.
+        """
+        m = self.metrics
+        cache_stats = getattr(self.repository, '_cache_stats', {'hits': 0, 'misses': 0})
+        
+        logging.info("\n" + "="*60)
+        logging.info("MÉTRIQUES DE PERFORMANCE")
+        logging.info("="*60)
+        logging.info(f"Appels récursifs      : {m['recursive_calls']}")
+        logging.info(f"Candidats testés       : {m['candidates_tested']}")
+        logging.info(f"Backtracks             : {m['backtracks']}")
+        logging.info(f"")
+        logging.info(f"FORWARD CHECKING:")
+        logging.info(f"  - Vérifications FC    : {m['fc_checks']}")
+        logging.info(f"  - Mots éliminés (FC)  : {m['fc_skips']}")
+        if m['fc_checks'] > 0:
+            fc_efficiency = (m['fc_skips'] / m['fc_checks']) * 100
+            logging.info(f"  - Efficacité FC       : {fc_efficiency:.1f}% (mots éliminés)")
+        logging.info(f"")
+        logging.info(f"CACHE get_candidates:")
+        total_cache = cache_stats['hits'] + cache_stats['misses']
+        if total_cache > 0:
+            hit_rate = (cache_stats['hits'] / total_cache) * 100
+            logging.info(f"  - Hits                : {cache_stats['hits']}")
+            logging.info(f"  - Misses              : {cache_stats['misses']}")
+            logging.info(f"  - Taux de hit         : {hit_rate:.1f}%")
+        else:
+            logging.info(f"  - Aucune donnée de cache")
+        logging.info("="*60 + "\n")
+    
+    def get_solve_statistics(self) -> dict:
+        """
+        Retourne un dictionnaire avec toutes les statistiques de résolution
+        pour le rapport HTML.
+        """
+        cache_stats = getattr(self.repository, '_cache_stats', {'hits': 0, 'misses': 0})
+        
+        # Construire l'historique à partir des mots finalement placés
+        # (dans l'ordre inverse car placed_words est construit avec insert(0))
+        final_placement_history = []
+        for idx, word_info in enumerate(reversed(self.placed_words)):
+            final_placement_history.append({
+                'word': word_info.get('text', ''),
+                'slot_id': word_info.get('id', '?'),
+                'direction': word_info.get('direction', ''),
+                'length': len(word_info.get('text', '')),
+                'score': word_info.get('score', 0),
+                'order': idx + 1
+            })
+        
+        return {
+            'metrics': self.metrics.copy(),
+            'cache_stats': cache_stats.copy(),
+            'placement_history': final_placement_history,
+        }

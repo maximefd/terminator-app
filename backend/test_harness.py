@@ -18,9 +18,9 @@ from trie_engine import DictionnaireTrie
 
 # --- CONFIGURATION ---
 TEST_CONFIGS = [
-    {'width': 6, 'height': 7, 'count': 4},  # Template plus petit pour tests rapides
+    {'width': 6, 'height': 7, 'count': 5},  # Template plus petit pour tests rapides
 ]
-SINGLE_GRID_TIMEOUT_SECONDS = 40  # Réduit pour les petites grilles 
+SINGLE_GRID_TIMEOUT_SECONDS = 30  # Réduit pour les petites grilles 
 DELA_FILE = 'dela_clean.csv'
 
 class TimeoutException(Exception): pass
@@ -166,7 +166,7 @@ def generate_html_report(all_results):
         for grid_data in grids:
             html += f"""
             <div class="grid-item">
-                <p>Seed: {grid_data['seed']} | Remplissage: {grid_data['fill_ratio']*100:.1f}% | Temps: {grid_data['generation_time']*1000:.0f}ms</p>
+                <h3>Seed: {grid_data['seed']} | Remplissage: {grid_data['fill_ratio']*100:.1f}% | Temps: {grid_data['generation_time']*1000:.0f}ms</h3>
                 <table><tbody>
             """
             rows = [[] for _ in range(grid_data['height'])]
@@ -181,7 +181,48 @@ def generate_html_report(all_results):
                     html += f'<td class="{class_name}">{char}</td>'
                 html += "</tr>"
 
-            html += "</tbody></table></div>"
+            html += "</tbody></table>"
+            
+            # Ajouter les statistiques si disponibles
+            stats = grid_data.get('statistics', {})
+            if stats:
+                metrics = stats.get('metrics', {})
+                cache_stats = stats.get('cache_stats', {})
+                placement_history = stats.get('placement_history', [])
+                
+                # Métriques
+                html += "<h4>Métriques de Performance</h4>"
+                html += "<ul style='font-size: 12px;'>"
+                html += f"<li>Appels récursifs: {metrics.get('recursive_calls', 0):,}</li>"
+                html += f"<li>Candidats testés: {metrics.get('candidates_tested', 0):,}</li>"
+                html += f"<li>Backtracks: {metrics.get('backtracks', 0):,}</li>"
+                
+                fc_checks = metrics.get('fc_checks', 0)
+                fc_skips = metrics.get('fc_skips', 0)
+                if fc_checks > 0:
+                    fc_eff = (fc_skips / fc_checks) * 100
+                    html += f"<li>Forward Checking: {fc_skips:,}/{fc_checks:,} ({fc_eff:.1f}% éliminés)</li>"
+                
+                total_cache = cache_stats.get('hits', 0) + cache_stats.get('misses', 0)
+                if total_cache > 0:
+                    hit_rate = (cache_stats.get('hits', 0) / total_cache) * 100
+                    html += f"<li>Cache: {cache_stats.get('hits', 0):,} hits / {total_cache:,} ({hit_rate:.1f}%)</li>"
+                
+                html += "</ul>"
+                
+                # Historique de placement (ordre de construction)
+                if placement_history:
+                    html += f"<h4>Historique de Construction ({len(placement_history)} mots)</h4>"
+                    html += "<ol style='font-size: 11px; max-height: 400px; overflow-y: auto;'>"
+                    for entry in placement_history:
+                        word = entry.get('word', '')
+                        direction = entry.get('direction', '')
+                        score = entry.get('score', 0)
+                        slot_id = entry.get('slot_id', '?')
+                        html += f"<li><strong>{word}</strong> (Slot {slot_id}, {direction}, score: {score:.0f})</li>"
+                    html += "</ol>"
+            
+            html += "</div>"
         html += "</div>"
 
     html += "</body></html>"

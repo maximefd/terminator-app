@@ -90,6 +90,7 @@ class GridGenerator:
         
         # Initialiser le cache vide pour get_candidates
         repo._candidate_cache = {}
+        repo._cache_stats = {'hits': 0, 'misses': 0}
 
         logging.info(f"{len(valid_words)} mots pertinents indexés pour cette grille.")
         return repo
@@ -137,6 +138,9 @@ class GridGenerator:
         )
         fill_ratio = filled_cells / non_black_cells if non_black_cells > 0 else 0
 
+        # Récupérer les statistiques du solver
+        stats = self.solver.get_solve_statistics() if hasattr(self.solver, 'get_solve_statistics') else {}
+        
         return {
             "seed": getattr(self, "seed", None),
             "width": self.width,
@@ -144,4 +148,5 @@ class GridGenerator:
             "fill_ratio": round(fill_ratio, 3),
             "cells": cells,
             "words": self.placed_words,
+            "statistics": stats,  # Ajout des statistiques
         }
