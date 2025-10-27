@@ -15,7 +15,6 @@ print(f"[DEBUG] Fichier grid_generator importé depuis : {grid_generator.__file_
 # On importe le chef d'orchestre et le Trie (pour charger les mots)
 from grid_generator import GridGenerator
 from trie_engine import DictionnaireTrie 
-# La classe 'Mot' n'est plus nécessaire ici
 
 # --- CONFIGURATION ---
 TEST_CONFIGS = [
@@ -61,14 +60,38 @@ def run_test_batch(words, config):
     width, height, count = config['width'], config['height'], config['count']
     print(f"\n--- Lancement du batch : {count} grilles de {width}x{height} ---")
 
+    # --- BLOC D'OPTIMISATION (AJOUTÉ) ---
+    # On pré-filtre les mots et construit le Trie UNE SEULE FOIS pour ce batch.
+    
+    logging.info(f"Pré-filtrage des mots pour la taille {width}x{height}...")
+    max_len = max(width, height)
+    
+    # 1. Pré-filtrer les mots (pertinents pour cette taille de grille)
+    valid_words_for_batch = [w for w in words if len(w) <= max_len]
+
+    logging.info(f"Construction du Trie partagé avec {len(valid_words_for_batch)} mots (1x)...")
+    
+    # 2. Construire le Trie (l'opération lente)
+    shared_trie = DictionnaireTrie()
+    for word in valid_words_for_batch:
+        shared_trie.insert(word)
+        
+    logging.info("Trie partagé construit. Démarrage des générations...")
+    # --- FIN DU BLOC D'OPTIMISATION ---
+
     for i in range(count):
         print(f"  Génération de la grille {i + 1}/{count} (seed={i})...", end='', flush=True)
         start_time = time.time()
         
         try:
             with time_limit(SINGLE_GRID_TIMEOUT_SECONDS):
-                # Le harness appelle le chef d'orchestre avec la liste de mots (strings)
-                generator = GridGenerator(width, height, words, seed=i)
+                
+                # --- APPEL MODIFIÉ (MAINTENANT TRÈS RAPIDE) ---
+                # On passe la liste de mots DÉJÀ filtrés et le Trie DÉJÀ construit
+                generator = GridGenerator(width, height, 
+                                          valid_words_for_batch,   # Mots pré-filtrés
+                                          prebuilt_trie=shared_trie, # Trie pré-construit
+                                          seed=i)
                 success = generator.generate()
             end_time = time.time()
 
@@ -76,7 +99,7 @@ def run_test_batch(words, config):
                 grid_data = generator.get_grid_data()
                 if grid_data and grid_data['fill_ratio'] > 0:
                     grid_data['generation_time'] = end_time - start_time
-                    grid_data['seed'] = i
+                    # Note: le seed est déjà dans grid_data via get_grid_data()
                     results['generated_grids'].append(grid_data)
                     print(" Succès.")
                 else:

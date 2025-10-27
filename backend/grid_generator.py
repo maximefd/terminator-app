@@ -8,7 +8,7 @@ from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
 from engine.word_repository import WordRepository
 from engine.grid_solver import GridSolver
-from trie_engine import DictionnaireTrie # NÉCESSAIRE pour votre correction
+from trie_engine import DictionnaireTrie # NÉCESSAIRE
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,27 @@ class GridGenerator:
     """
     Chef d'orchestre qui pilote la création d'une grille de A à Z.
     """
-    def __init__(self, width: int, height: int, all_words: list[str], seed: int = None):
+    
+    # 1. MODIFICATION DE LA SIGNATURE DE __init__
+    def __init__(self, width: int, height: int, valid_words: list[str], prebuilt_trie: DictionnaireTrie, seed: int = None):
+        """
+        Initialise le générateur.
+        
+        Args:
+            width (int): Largeur de la grille.
+            height (int): Hauteur de la grille.
+            valid_words (list[str]): Liste de mots DÉJÀ FILTRÉS pour la taille de la grille.
+            prebuilt_trie (DictionnaireTrie): Un Trie DÉJÀ CONSTRUIT avec les valid_words.
+            seed (int, optional): Seed pour la reproductibilité.
+        """
         self.width = width
         self.height = height
         self.seed = seed
         if seed is not None:
             random.seed(seed)
+            
+        # NOUVELLE LIGNE : On stocke le Trie pré-construit
+        self.prebuilt_trie = prebuilt_trie
 
         # 1. Charger le template
         template_path = self._find_template_path(width, height)
@@ -29,8 +44,8 @@ class GridGenerator:
             raise RuntimeError(f"Aucun template trouvé pour la taille {width}x{height}.")
         self.template = GridTemplate(width, height, template_path)
 
-        # 2. Préparer le dictionnaire (avec votre correction)
-        self.repository = self._create_repository(all_words)
+        # 2. Préparer le dictionnaire (utilise maintenant le Trie et les mots pré-filtrés)
+        self.repository = self._create_repository(valid_words)
 
         # 3. Trouver les slots
         finder = SlotFinder(self.template)
@@ -49,22 +64,28 @@ class GridGenerator:
         templates = [f for f in os.listdir(template_dir) if f.endswith('.txt')]
         return os.path.join(template_dir, random.choice(templates)) if templates else None
 
-    # VOTRE FONCTION CORRIGÉE :
-    def _create_repository(self, all_words: list[str]) -> WordRepository:
-        """Crée un repository avec un Trie construit à partir des mots filtrés."""
+    # 2. FONCTION _create_repository ENTIÈREMENT REMPLACÉE
+    def _create_repository(self, valid_words: list[str]) -> WordRepository:
+        """
+        Crée un repository en RÉUTILISANT le Trie pré-construit
+        et une liste de mots DÉJÀ FILTRÉS.
+        """
         repo = object.__new__(WordRepository)
-        repo.trie = DictionnaireTrie()
 
-        valid_words = [w for w in all_words if len(w) <= max(self.width, self.height)]
-        repo.word_set = set(valid_words)
+        # Réutilise le Trie au lieu d'en créer un
+        repo.trie = self.prebuilt_trie 
 
+        # 'valid_words' est maintenant la liste passée à __init__
+        repo.word_set = set(valid_words) 
+
+        # Ce dictionnaire est spécifique à cette grille (pour la consommation)
         repo.words_by_len = {}
         for word in valid_words:
             length = len(word)
             if length not in repo.words_by_len:
                 repo.words_by_len[length] = []
             repo.words_by_len[length].append(word)
-            repo.trie.insert(word) # On peuple le Trie
+            # PAS BESOIN DE repo.trie.insert(word), c'est déjà fait !
 
         logging.info(f"{len(valid_words)} mots pertinents indexés pour cette grille.")
         return repo
@@ -79,7 +100,7 @@ class GridGenerator:
 
 
     # ---------------------------------------------------------
-    # 2. Données de sortie
+    # 2. Données de sortie (INCHANGÉ)
     # ---------------------------------------------------------
     def get_grid_data(self) -> dict:
         """
@@ -113,7 +134,7 @@ class GridGenerator:
         fill_ratio = filled_cells / non_black_cells if non_black_cells > 0 else 0
 
         return {
-            "seed": getattr(self, "seed", None),  # ✅ empêche KeyError dans test_harness
+            "seed": getattr(self, "seed", None),
             "width": self.width,
             "height": self.height,
             "fill_ratio": round(fill_ratio, 3),
