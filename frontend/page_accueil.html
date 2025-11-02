@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer des Mots Fléchés : Le Guide Complet</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            'sans': ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            'serif': ['Lora', 'ui-serif', 'Georgia', 'serif'],
+          },
+        },
+      },
+      plugins: [
+        require('@tailwindcss/typography'), // Active la classe "prose"
+      ],
+    }
+  </script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Correction pour la police serif sur la classe prose */
+    .prose h1, .prose h2, .prose h3, .prose h4 {
+      font-family: 'Lora', serif;
+    }
+  </style>
+
+</head>
+<body class="font-sans text-slate-800 antialiased">
+
+  <div class="py-16 md:py-24 bg-white text-center px-6">
+    <h1 class="text-4xl md:text-6xl font-bold font-serif text-slate-900">
+      Créer des Mots Fléchés : Le Guide Complet
+    </h1>
+    <h1 class="text-4xl md:text-6xl font-bold font-serif text-blue-600">
+      pour Fabriquer vos Grilles
+    </h1>
+
+    <div class="mt-8 max-w-3xl mx-auto text-lg md:text-xl text-slate-600 space-y-4">
+      <p>
+        Est-ce que vous vous êtes déjà demandé comment étaient <em>vraiment</em> fabriquées les grilles de mots fléchés de vos magazines préférés ? Comment sont testées les grilles ? Comment est-ce qu’on détermine le niveau d’une grille ?
+      </p>
+      <p>
+        "Vous vous en doutez peut-être, la triste vérité est qu’aujourd’hui la plupart des grilles sont créées avec des logiciels. Parce que créer une grille de qualité à la main est un véritable savoir-faire, et si fut un temps c’était la norme, aujourd’hui, le processus est relativement automatisé avec des logiciels complexes.
+      </p>
+      <p>
+        Démystifions le travail des verbicrucistes, la création de grilles... J’aimerais vous partager les meilleurs conseils pour créer votre grille de mots fléchés, mais aussi faire le tour des outils disponibles pour créer vos propres grilles personnalisées, simplement et rapidement.
+      </p>
+    </div>
+  </div>
+
+  <article class="prose prose-lg lg:prose-xl mx-auto py-16 px-6">
+    
+    <h2>Les Coulisses des Verbicrucistes : Les Secrets des Pros Enfin Révélés</h2>
+    <p>Vous tenez ce livret de mots fléchés entre vos mains et vous vous demandez : "Mais qui fabrique ces choses ? Et comment ?" Si vous imaginez un passionné solitaire, dans une bibliothèque remplie de dictionnaires, peaufinant sa grille à la lueur d'une bougie... vous avez à la fois tort et raison. Levons le voile sur un art qui est devenu une science, un artisanat assisté par des outils surpuissants.</p>
+    
+    <h3>Mythe ou Réalité : Fait Main ou Machine ?</h3>
+    <p>C'est la première question que tout le monde se pose. Et la réponse va peut-être vous décevoir : non, la grande majorité des grilles que vous achetez en kiosque ne sont plus fabriquées à 100% à la main... La vérité est un hybride fascinant, un duo entre l'humain et la machine.</p>
+    <p>Le <strong>verbicruciste</strong> (ou cruciverbiste, le nom professionnel du créateur de grilles) est aujourd'hui un <strong>artisan qui guide la machine</strong>.</p>
+    <ul>
+      <li><strong>L'humain (l'Artisan) :</strong> C'est lui qui possède l'âme de la grille. Il choisit le thème (...), il prépare méticuleusement les listes de mots ("le lexique"), et surtout, il rédige les <strong>définitions</strong>.</li>
+      <li><strong>La machine (l'Outil) :</strong> C'est le "cerveau logique". Son travail est de prendre la liste de mots de l'artisan et de trouver la meilleure façon de les emboîter (le "placement")...</li>
+    </ul>
+    <p>En résumé : dans le monde professionnel moderne, la machine gère la <strong>logique</strong> (le placement), l'humain gère la <strong>créativité</strong> (le thème et les définitions). L'un ne va pas sans l'autre.</p>
+    
+    <h3>Quels logiciels "secrets" utilisent les pros ?</h3>
+    <p>Puisque notre objectif est la transparence totale, parlons des noms. Il n'y a pas UN logiciel magique, mais deux grandes familles d'outils que le grand public ne connaît (presque) pas.</p>
+
+    <div class="grid md:grid-cols-2 gap-6 my-8 not-prose">
+      <div class="border rounded-lg p-6 bg-slate-50">
+        <h4 class="text-xl font-semibold text-slate-800 font-serif">1. Les logiciels "maison"</h4>
+        <p class="text-base text-slate-700 mt-2">Des entreprises comme Keesing (qui possède Sport Cérébral...) ou RCI-Jeux sont de véritables "usines" à grilles... C'est leur secret de fabrication industriel.</p>
+      </div>
+      <div class="border rounded-lg p-6 bg-slate-50">
+        <h4 class="text-xl font-semibold text-slate-800 font-serif">2. Les logiciels "Artisan"</h4>
+        <p class="text-base text-slate-700 mt-2">C'est là que ça devient intéressant. Quand un verbicruciste indépendant veut <em>vendre</em> ses grilles à un journal (...), il utilise un logiciel "standard de l'industrie"... Crossword Compiler.</p>
+      </div>
+    </div>
+
+    <h3>Pourquoi est-ce si difficile de créer une grille "parfaite" ?</h3>
+    <p>Si vous avez déjà essayé de créer une grille à la main, même sur papier, vous connaissez ce sentiment. Vous placez 10 mots, tout va bien. Et au 11ème mot, vous êtes bloqué... Le défi est le <strong>placement</strong>.</p>
+    <p>C'est un problème mathématique d'une complexité folle... C'est ce "cerveau algorithmique" qui fait 80% du travail de construction et qui constitue le principal obstacle pour le créateur amateur.</p>
+
+    <h2>Pourquoi est-ce si Compliqué pour les Passionnés...?</h2>
+    <p>D'accord, donc les professionnels et les grands éditeurs ont leurs outils surpuissants... Mais que se passe-t-il si vous n'êtes "que" passionné ? ...Vous vous heurtez à un mur.</p>
+    
+    <h3>Le "Mur" des Outils Professionnels</h3>
+    <p>Votre premier réflexe pourrait être de chercher les outils des pros, comme le fameux <strong>Crossword Compiler</strong>. Ces outils sont de un peu des "usines à gaz". Ils sont conçus pour les verbicrucistes... L'interface est un peu datée (...), les fonctionnalités sont nombreuses, et le prix (... abonnement annuel de 50€ à 80€) ce qui peut être un frein total...</p>
+    
+    <h3>Les Outils Gratuits en Ligne : Pour quels usages ?</h3>
+    <p>Frustré par la complexité des outils "pro" (...), le créateur passionné se tourne naturellement vers les solutions gratuites en ligne. ...Chaque outil gratuit répond à un besoin spécifique :</p>
+    <ol>
+      <li><strong>Les "Générateurs à partir d'une liste" (Pour les Enseignants et l'Événementiel)</strong><br>
+      Des sites comme <strong>My2lbox</strong>, <strong>Educol.net</strong> ou <strong>Puzzel.org</strong> sont d'excellentes solutions... Leur force : Ils sont incroyablement rapides et simples... Leur limite (...) : Leur objectif n'est <em>pas</em> de créer une grille dense...</li>
+      <li><strong>Les "Outils de Création pour Passionnés" (Pour les Hobbyistes)</strong><br>
+      Des outils comme <strong>Ingrid.cx</strong> ou <strong>Crosserville.com</strong> (...) vont plus loin... Leur force : Ils sont faits pour le "constructeur"... Leur limite : Ils sont moins "plug-and-play"...</li>
+    </ol>
+    <p>Ces outils sont donc tous valables. Le "pro" utilisera <strong>Crossword Compiler</strong>, l'enseignant utilisera <strong>Puzzel.org</strong>, et le hobbyiste avancé se tournera vers <strong>Ingrid.cx</strong>.</p>
+    
+    <h3>Le Vrai Défi : La "Double Tâche" du Passionné</h3>
+    <p>Le problème n'est donc pas que ces outils sont "mauvais" ; ils sont simplement très spécialisés... Soit vous utilisez les générateurs simples (...), mais vous êtes frustré... Soit vous vous lancez dans la création "manuelle" (...), mais vous vous heurtez constamment au défi du placement.</p>
+    <p>Le vrai premier gros obstacle (...) reste le même : <strong>comment emboîter parfaitement des dizaines de mots</strong>... C'est l'étape la plus difficile... et c'est exactement ce que j’aimerais rendre plus facile. Pour cela j’ai créé différents outils.</p>
+
+  </article>
+
+  <section id="cta-outil" class="bg-slate-100 py-20 md:py-24">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+      
+      <h2 class="text-3xl md:text-4xl font-bold font-serif text-slate-900">
+        L'Outil Indispensable (et Gratuit) : L’Assistant de Recherche par Motifs
+      </h2>
+      
+      <h3 class="text-2xl font-semibold mt-12 font-serif">La "Hantise" du Créateur : Le Trou dans la Grille</h3>
+      <p class="text-lg text-slate-700 max-w-2xl mx-auto mt-4">
+        Vous connaissez cette situation. Vous créez votre grille à la main... C'est le moment où le plaisir se transforme en corvée, et où 90% des grilles amateurs sont abandonnées.
+      </p>
+
+      <h3 class="text-2xl font-semibold mt-10 font-serif">La Solution : Une Recherche Puissante pour Débloquer vos Grilles</h3>
+      <p class="text-lg text-slate-700 max-w-2xl mx-auto mt-4">
+        Pour résoudre <em>exactement ce problème précis</em>, j’ai créé un outil gratuit, simple et puissant. Testez-le ! L'assistant vous permet de rechercher des mots dans un dictionnaire francophone de plus de 900 000 entrées...
+      </p>
+
+      <div class="mt-12 bg-white rounded-xl shadow-2xl p-8 md:p-12 max-w-2xl mx-auto">
+        <label for="pattern" class="block text-xl font-semibold text-slate-800">
+          Trouvez le mot parfait (+900 000 entrées)
+        </label>
+        <p class="mt-2 text-slate-600">Tapez votre motif (ex: `T??A??R` ou `??F??`)</p>
+        
+        <div class="mt-6">
+          <input type="text" id="pattern" placeholder="T??A??R" class="w-full text-lg p-4 border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500" />
+          <button class="w-full mt-4 bg-blue-600 text-white font-bold text-lg py-4 px-8 rounded-md shadow-lg hover:bg-blue-700 transition duration-300">
+            Lancer la Recherche (Gratuit)
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-4xl mx-auto py-16 md:py-24 px-6">
+    <h2 class="text-3xl md:text-4xl font-bold font-serif text-center mb-16">
+      Tutoriel : Créer votre Grille "à la Main" (comme un Artisan)
+    </h2>
+    <p class="text-xl text-slate-700 text-center -mt-12 mb-16 max-w-2xl mx-auto">Vous êtes convaincu. Vous ne voulez pas d'un générateur automatique qui manque de personnalité... C'est un véritable travail d'artisan.</p>
+    
+    <ol class="space-y-12">
+      
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">1</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 1 : Choisir votre Thème et Préparer vos Mots</h3>
+          <p class="mt-3 text-lg text-slate-700">Une grille sans âme n'est qu'un exercice de vocabulaire... Pourquoi créez-vous cette grille ? ... Visez entre 30 et 60 mots...</p>
+        </div>
+      </li>
+      
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">2</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 2 : Dessiner la Grille (La méthode "Papier" ou "Canva")</h3>
+          <p class="mt-3 text-lg text-slate-700">C'est ici que vous préparez votre "toile"... Votre outil est simple : Une feuille de papier millimétré... Un 10x10 est un bon début...</p>
+        </div>
+      </li>
+
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">3</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 3 : Placer vos Mots "Stratégiques"</h3>
+          <p class="mt-3 text-lg text-slate-700">C'est le moment de vérité. Prenez les mots les plus longs... Ne commencez pas dans un coin... Vous construisez ainsi un "squelette"...</p>
+        </div>
+      </li>
+
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">4</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 4 : Débloquer les Trous avec l'Assistant de Motifs</h3>
+          <p class="mt-3 text-lg text-slate-700">Vous avez placé votre squelette... Vous voyez un espace qui s'est créé. Il vous faut un mot de 5 lettres... `??F??`... C'est ici que l'artisan a besoin de son meilleur outil...</p>
+          <a href="#cta-outil" class="inline-block mt-4 text-blue-600 font-semibold text-lg hover:underline">
+            Ouvrir l'assistant (Gratuit) &rarr;
+          </a>
+        </div>
+      </li>
+      
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">5</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 5 : L'Art d'Écrire les Définitions</h3>
+          <p class="mt-3 text-lg text-slate-700">Votre grille est enfin pleine. Le puzzle <em>logique</em> est terminé... Prenez une case en bordure de grille... Soyez malin ("Se prend au bar" pour <code>VERRE</code>)...</p>
+        </div>
+      </li>
+
+      <li class="flex items-start">
+        <div class="flex-shrink-0 bg-blue-600 text-white font-bold text-2xl rounded-full h-12 w-12 flex items-center justify-center mr-6">6</div>
+        <div>
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Étape 6 : Finaliser et Partager votre Grille</h3>
+          <p class="mt-3 text-lg text-slate-700">Une fois toutes vos définitions placées, vous avez techniquement deux grilles... Votre première grille artisanale est prête !</p>
+        </div>
+      </li>
+
+    </ol>
+  </section>
+
+  <section class="bg-slate-50 py-20 md:py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="text-3xl md:text-4xl font-bold font-serif text-center mb-16">
+        Analyse Complète : Quels Outils Vraiment Utiliser en 2025 ?
+      </h2>
+      <p class="text-xl text-slate-700 text-center -mt-12 mb-16 max-w-3xl mx-auto">Maintenant que vous comprenez le processus "artisanal"... Faisons un tour d'horizon honnête de ce qui existe aujourd'hui.</p>
+      
+      <div class="grid md:grid-cols-2 gap-8">
+        
+        <div class="bg-white border border-slate-200 rounded-lg p-8 shadow-lg">
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Option 1 : Les Logiciels Professionnels</h3>
+          <p class="text-slate-600 mt-2">Ex: Crossword Compiler, Crossfire</p>
+          <p class="mt-4 text-slate-700"><strong class="text-slate-900">Pour qui ?</strong> Le verbicruciste (professionnel ou aspirant)...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-green-600">Forces :</strong> Ils sont le standard de l'industrie... ultra-puissants...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-red-600">Faiblesses :</strong> Ce sont des outils "à l'ancienne"... lourds à installer, complexes, et payants...</p>
+          <p class="mt-4 italic font-medium"><strong>Verdict :</strong> Si vous visez une carrière professionnelle, c'est la référence. C'est le "Photoshop" de la création de grilles.</p>
+          <a href="https://www.crossword-compiler.com/" target="_blank" rel="noopener" class="text-blue-600 font-semibold mt-4 inline-block">Lien vers Crossword Compiler &rarr;</a>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-lg p-8 shadow-lg">
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Option 2 : Le 100% Manuel</h3>
+          <p class="text-slate-600 mt-2">Ex: Papier, Word, Excel, Canva</p>
+          <p class="mt-4 text-slate-700"><strong class="text-slate-900">Pour qui ?</strong> Le puriste, le passionné patient...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-green-600">Forces :</strong> Liberté créative totale, gratuit...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-red-600">Faiblesses :</strong> Extrêmement long, 100% manuel... La moindre erreur oblige à tout recommencer.</p>
+          <p class="mt-4 italic font-medium"><strong>Verdict :</strong> Pour les plus patients. Devient 10x plus agréable si assisté (voir Option 4).</p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-lg p-8 shadow-lg">
+          <h3 class="text-2xl font-semibold text-slate-800 font-serif">Option 3 : Les Générateurs Gratuits</h3>
+          <p class="text-slate-600 mt-2">Ex: My2lbox, Puzzel.org, Ingrid.cx</p>
+          <p class="mt-4 text-slate-700"><strong class="text-slate-900">Pour qui ?</strong> L'enseignant, l'animateur...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-green-600">Forces :</strong> Incroyablement rapides, parfaits pour l'école...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-red-600">Faiblesses :</strong> Grilles souvent clairsemées, pas de "qualité magazine"...</p>
+          <p class="mt-4 italic font-medium"><strong>Verdict :</strong> D'excellents outils pour un usage pédagogique spécifique.</p>
+        </div>
+
+        <div class="bg-blue-50 border-2 border-blue-500 rounded-lg p-8 shadow-2xl">
+          <h3 class="text-2xl font-semibold text-blue-800 font-serif">Option 4 : Notre Assistant de Motifs</h3>
+          <p class="text-blue-700 mt-2">L'Option "Compagnon"</p>
+          <p class="mt-4 text-slate-700"><strong class="text-slate-900">Pour qui ?</strong> Le "Puriste" (Option 2) qui se heurte au mur...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-green-600">Forces :</strong> Gratuit, puissant (+900k mots), fonctionne en ligne...</p>
+          <p class="mt-3 text-slate-700"><strong class="text-red-600">Faiblesses (par honnêteté) :</strong> Ce n'est PAS un générateur de grille...</p>
+          <p class="mt-4 italic font-medium text-blue-900"><strong>Verdict :</strong> L'outil parfait pour <strong>accompagner</strong> votre création manuelle (Option 2) et la rendre 10x plus agréable.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="max-w-3xl mx-auto py-16 md:py-24 px-6">
+    <h2 class="text-3xl md:text-4xl font-bold font-serif text-center mb-16">
+      FAQ : Vos Questions sur la Création de Mots Fléchés
+    </h2>
+    <p class="text-xl text-slate-700 text-center -mt-12 mb-16 max-w-2xl mx-auto">Vous avez encore des questions ? C'est normal. La création de grilles est un univers passionnant. Voici les réponses aux questions les plus fréquentes.</p>
+
+    <div class="space-y-4">
+      
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Comment créer des mots fléchés sur Word ou Excel ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : C'est une excellente façon de débuter... Notre conseil : gardez notre <strong>Assistant de Motifs</strong> (section 4) ouvert dans votre navigateur. Dès que vous êtes bloqué sur Word, basculez sur l'assistant...</p>
+        </div>
+      </details>
+
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Comment faire une grille pour un mariage ou un cours ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : C'est l'usage "thématique" par excellence ! La meilleure méthode est la suivante : 1. Préparez votre liste de mots... 2. Utilisez la méthode manuelle... 3. Utilisez notre <strong>Assistant de Motifs</strong>... 4. Écrivez des définitions personnalisées...</p>
+        </div>
+      </details>
+      
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Quelle est la différence entre mots fléchés et mots croisés ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : C'est la structure qui change. <strong>Mots Fléchés :</strong> Les définitions sont <em>à l'intérieur</em> de la grille... <strong>Mots Croisés :</strong> Les définitions sont <em>à l'extérieur</em> de la grille...</p>
+        </div>
+      </details>
+
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Peut-on utiliser des mots de 2 lettres ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : C'est une question de "style". Dans les grilles de magazines de qualité, on <strong>évite au maximum</strong> les mots de 2 lettres... Cependant, il n'y a pas d'interdiction formelle.</p>
+        </div>
+      </details>
+      
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Comment s'appelle un créateur de mots fléchés ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : Le terme officiel est <strong>"verbicruciste"</strong>. Mais "créateur de grilles" ou "auteur de mots fléchés" fonctionne parfaitement !</p>
+        </div>
+      </details>
+      
+      <details class="border-b border-slate-200 pb-4 group">
+        <summary class="text-xl font-semibold text-slate-800 cursor-pointer list-none flex justify-between items-center py-4">
+          Q : Comment s'appelle un amateur de mots fléchés ?
+          <span class="text-blue-600 group-open:rotate-180 transition-transform duration-300 transform-gpu">&darr;</span>
+        </summary>
+        <div class="mt-2 text-lg text-slate-700 prose prose-lg">
+          <p>R : On peut utiliser <strong>"cruciverbiste"</strong> pour désigner l'amateur de ces jeux. "Mots-fléchiste" est aussi parfois utilisé par les passionnés.</p>
+        </div>
+      </details>
+
+    </div>
+  </section>
+
+  <section class="bg-slate-100 py-20 md:py-24 text-center">
+    <div class="max-w-3xl mx-auto px-6">
+      <h2 class="text-3xl md:text-4xl font-bold font-serif text-slate-900">
+        Conclusion
+      </h2>
+      <div class="mt-6 text-xl text-slate-700 space-y-4">
+        <p>
+          Vous l'avez vu, la création de mots fléchés n'est plus un art mystérieux réservé à une élite. C'est un artisanat fascinant, à mi-chemin entre la patience du puriste et l'efficacité d'un bon logiciel.
+        </p>
+        <p>
+          Il n'existe pas un "meilleur" outil, mais seulement celui qui est le plus adapté à <em>votre</em> besoin : le <strong>professionnel</strong> (...) s'orientera vers un logiciel complet comme <code>Crossword Compiler</code>, l'<strong>enseignant</strong> pressé utilisera un générateur simple, et le <strong>passionné</strong> (l'artisan, comme vous !) commencera par la création manuelle...
+        </s<p>
+          Quelle que soit la méthode que vous choisissez, le plus important est de vous lancer.
+        </p>
+      </div>
+      
+      <a href="#cta-outil" class="inline-block mt-12 bg-blue-600 text-white font-bold text-xl py-4 px-10 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:-translate-y-1">
+        Trouvez le mot parfait (Commencez Gratuitement) &rarr;
+      </a>
+    </div>
+  </section>
+
+</body>
+</html>

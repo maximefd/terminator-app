@@ -113,3 +113,16 @@ class WordRepository:
         keys_to_remove = [key for key in self._candidate_cache.keys() if len(key[0]) == length]
         for key in keys_to_remove:
             del self._candidate_cache[key]
+
+    def get_cache_stats(self) -> dict:
+        """Retourne les statistiques formatées du cache get_candidates."""
+        hits = self._cache_stats.get('hits', 0)
+        misses = self._cache_stats.get('misses', 0)
+        total = hits + misses
+        hit_ratio = (hits / total * 100) if total > 0 else 0
+        return {
+            'hits': hits,
+            'misses': misses,
+            'total': total,
+            'hit_ratio': hit_ratio
+        }

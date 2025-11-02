@@ -70,15 +70,6 @@ Moyenne
 
 À FAIRE
 
-B2
-
-Permettre à l'utilisateur de dessiner des cases noires avant la génération.
-
-Basse
-
-En attente
-
-
 
 2. L'Outil de Test ("Harness") - Spécifications
 
