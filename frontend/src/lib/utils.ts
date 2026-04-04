@@ -7,10 +7,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// ON SIMPLIFIE RADICALEMENT CETTE FONCTION
+// ON SIMPLIFIE ET SÉCURISE CETTE FONCTION
 export function getApiBaseUrl() {
-  // En développement, le frontend (Next.js) et le backend (Docker) tournent sur la même machine.
-  // Le backend est TOUJOURS accessible via localhost:5001 grâce au port mapping de Docker.
-  // C'est la seule URL dont nous avons besoin.
-  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001';
-}
+  // 1. Priorité à la variable d'environnement (si configurée sur Vercel/Local)
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+
+  // 2. Fallback intelligent selon l'environnement
+  // Si on est sur Vercel (production), on pointe vers Render.
+  // Sinon (développement), on pointe vers le Docker local.
+  return process.env.NODE_ENV === 'production'
+    ? 'https://motsfleches-terminator-backend.onrender.com'
+    : 'http://localhost:5001';
+}
