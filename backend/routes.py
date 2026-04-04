@@ -144,9 +144,9 @@ def search_words():
     final_results = personal_results_json
     personal_mots_set = {p['mot'] for p in personal_results_json}
     
-    for mot_obj in dela_results_raw:
-        if mot_obj.texte_normalise not in personal_mots_set:
-            final_results.append(mot_obj.to_json())
+    for word in dela_results_raw:
+        if word not in personal_mots_set:
+            final_results.append({"mot": word, "definition": None})
 
     limit = min(int(data.get("limit", 200)), 500)
     return jsonify({"results": final_results[:limit]}), 200
