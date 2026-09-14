@@ -10,12 +10,14 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 DELA_LINES = [
+    "PORTE;porté;Forme fléchie de 'porté'",
     "PORTE;porte;Forme fléchie de 'porte'",
     "PORTES;portes;Forme fléchie de 'portes'",
     "ETE;été;Forme fléchie de 'été'",
     "ETE;étê;Forme fléchie de 'étê'",
     "OUVRAGE;ouvrage;Forme fléchie de 'ouvrage'",
     "OUVRAGEAMES;ouvrageâmes;Forme fléchie de 'ouvrageâmes'",
+    "OUVRAGER;ouvrager;Forme fléchie de 'ouvrager'",
     "AABAM;aabam;Forme fléchie de 'aabam'",
     "A PRIORI;a priori;Forme fléchie de 'a priori'",
     "X;x;Forme fléchie de 'x'",
@@ -33,6 +35,12 @@ LEXIQUE_ROWS = [
 ]
 
 WIKTIONARY_RECORDS = [
+    # Nom propre placé en premier : doit être ignoré (définition et forme affichée)
+    {"word": "Porte", "lang_code": "fr", "pos": "name", "senses": [{"glosses": ["Nom de famille."]}]},
+    # Préfixe et sigle : ignorés eux aussi
+    {"word": "porte-", "lang_code": "fr", "pos": "prefix", "senses": [{"glosses": ["Préfixe désignant ce qui porte."]}]},
+    {"word": "ETE", "lang_code": "fr", "pos": "noun", "senses": [{"glosses": ["Sigle d'un organisme."]}]},
+    {"word": "été", "lang_code": "fr", "pos": "noun", "senses": [{"glosses": ["La plus chaude des saisons."]}]},
     {"word": "ouvrage", "lang_code": "fr", "pos": "noun",
      "senses": [{"glosses": ["Œuvre produite par un travail."]}]},
     {"word": "ouvrageâmes", "lang_code": "fr", "pos": "verb",

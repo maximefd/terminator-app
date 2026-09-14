@@ -5,6 +5,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Pipeline du lexique (`tools/lexicon/`, Phase 1a) :
+  - téléchargement de Lexique 3.83 et du Wiktionnaire avec empreintes consignées ;
+  - base locale (fréquence, lemme, définition, suggestion) ;
+  - décisions de curation versionnées avec annulation par lot ;
+  - export du lexique curé ; statistiques d'avancement ;
+  - ADR 0005.
 - Documentation de relecture :
   - README réécrit ;
   - `docs/ARCHITECTURE.md`, `docs/ENGINE.md`, `docs/LAYOUTS.md`, `docs/LEXICON.md` ;

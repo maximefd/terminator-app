@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
-from .readers import read_dela, read_lexique, read_wiktionary, resolve_definition
+from .readers import read_dela, read_lexique, read_wiktionary, resolve_definition, wiktionary_pos
 from .scoring import SUGGESTIONS, Thresholds, suggest, zipf_from_per_million
 
 SCHEMA = f"""
@@ -22,6 +22,7 @@ CREATE TABLE words (
     lemma TEXT,
     pos TEXT,
     definition TEXT,
+    definition_kind TEXT CHECK (definition_kind IN ('own', 'inflection')),  -- NULL si pas de définition
     suggestion TEXT NOT NULL CHECK (suggestion IN ({", ".join(f"'{s}'" for s in SUGGESTIONS)}))
 );
 CREATE INDEX idx_words_queue ON words (length, zipf);
@@ -66,10 +67,14 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
     for normalized, displays in dela.items():
         entry = lexique.get(normalized)
         zipf = zipf_from_per_million(entry.frequency) if entry else 0.0
-        definition = resolve_definition(normalized, wiktionary)
+        definition = resolve_definition(normalized, wiktionary, wiktionary_pos(entry.pos) if entry else None)
         forms = list(displays)
         if normalized in wiktionary:
             forms += [f for f in wiktionary[normalized].forms if f not in forms]
+        # La forme affichée en premier (et exportée) est l'orthographe la plus fréquente selon Lexique
+        if entry and entry.display in forms:
+            forms.remove(entry.display)
+            forms.insert(0, entry.display)
         rows.append((
             normalized,
             len(normalized),
@@ -77,8 +82,9 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
             zipf,
             entry.lemma if entry else None,
             entry.pos if entry else None,
-            definition,
-            suggest(zipf, definition is not None, thresholds),
+            definition.text if definition else None,
+            ("own" if definition.own else "inflection") if definition else None,
+            suggest(zipf, bool(definition and definition.own), thresholds),
         ))
 
     db_path = Path(db_path)
@@ -94,7 +100,7 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
     connection = sqlite3.connect(tmp_path)
     try:
         connection.executescript(SCHEMA)
-        connection.executemany("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        connection.executemany("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
         connection.executemany("INSERT INTO meta VALUES (?, ?)", [
             ("built_at", datetime.now(timezone.utc).isoformat(timespec="seconds")),
             ("thresholds", json.dumps(thresholds.as_dict())),
@@ -109,7 +115,7 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
         words=len(rows),
         with_frequency=sum(1 for r in rows if r[3] > 0),
         with_definition=sum(1 for r in rows if r[6]),
-        suggestions=dict(Counter(r[7] for r in rows)),
+        suggestions=dict(Counter(r[8] for r in rows)),
     )
     log(f"Base écrite : {db_path} ({stats.words} mots)")
     return stats

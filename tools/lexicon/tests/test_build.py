@@ -19,15 +19,20 @@ def test_build_combines_the_three_sources(dela_file, lexique_file, wiktionary_fi
     stats = build_lexicon(dela_file, lexique_file, db_path, wiktionary_file, log=lambda _: None)
 
     words = fetch_words(db_path)
-    assert stats.words == len(words) == 7
+    assert stats.words == len(words) == 8
     assert words["PORTE"]["suggestion"] == "keep"
-    assert words["PORTE"]["definition"] == "Ouverture permettant le passage."
+    assert (words["PORTE"]["definition"], words["PORTE"]["definition_kind"]) == ("Ouverture permettant le passage.", "own")
+    # « porté » vient en premier dans le DELA, mais « porte » est l'orthographe la plus fréquente
+    assert json.loads(words["PORTE"]["display_forms"]) == ["porte", "porté"]
     assert words["ETE"]["lemma"] == "être"
     assert json.loads(words["ETE"]["display_forms"]) == ["été", "étê"]
     assert (words["OUVRAGE"]["zipf"], words["OUVRAGE"]["suggestion"]) == (2.3, "review")
     assert words["APRIORI"]["suggestion"] == "likely_keep"
-    assert words["OUVRAGEAMES"]["suggestion"] == "review"  # absent de Lexique mais défini
-    assert words["AABAM"] == {**words["AABAM"], "zipf": 0.0, "definition": None, "suggestion": "likely_delete"}
+    # Absent de Lexique, défini seulement comme forme fléchie : très probablement rare
+    assert (words["OUVRAGEAMES"]["definition_kind"], words["OUVRAGEAMES"]["suggestion"]) == ("inflection", "likely_delete")
+    # Absent de Lexique mais avec une définition propre : à trier
+    assert (words["OUVRAGER"]["definition_kind"], words["OUVRAGER"]["suggestion"]) == ("own", "review")
+    assert (words["AABAM"]["zipf"], words["AABAM"]["definition"], words["AABAM"]["suggestion"]) == (0.0, None, "likely_delete")
 
 
 def test_build_records_sources_and_thresholds(dela_file, lexique_file, tmp_path):
@@ -50,7 +55,7 @@ def test_build_without_wiktionary_has_no_definitions(dela_file, lexique_file, tm
     stats = build_lexicon(dela_file, lexique_file, db_path, log=lambda _: None)
 
     assert stats.with_definition == 0
-    assert fetch_words(db_path)["OUVRAGEAMES"]["suggestion"] == "likely_delete"
+    assert fetch_words(db_path)["OUVRAGER"]["suggestion"] == "likely_delete"
 
 
 def test_rebuild_replaces_the_previous_database(dela_file, lexique_file, tmp_path):
@@ -59,5 +64,5 @@ def test_rebuild_replaces_the_previous_database(dela_file, lexique_file, tmp_pat
 
     build_lexicon(dela_file, lexique_file, db_path, log=lambda _: None)
 
-    assert len(fetch_words(db_path)) == 7
+    assert len(fetch_words(db_path)) == 8
     assert not db_path.with_suffix(".tmp").exists()

@@ -8,7 +8,7 @@ def test_zipf_scale(per_million, zipf):
     assert zipf_from_per_million(per_million) == zipf
 
 
-@pytest.mark.parametrize("zipf, has_definition, expected", [
+@pytest.mark.parametrize("zipf, has_own_definition, expected", [
     (5.7, False, KEEP),
     (3.5, False, KEEP),
     (2.6, False, LIKELY_KEEP),
@@ -16,8 +16,8 @@ def test_zipf_scale(per_million, zipf):
     (0.0, True, REVIEW),
     (0.0, False, LIKELY_DELETE),
 ])
-def test_suggestions(zipf, has_definition, expected):
-    assert suggest(zipf, has_definition) == expected
+def test_suggestions(zipf, has_own_definition, expected):
+    assert suggest(zipf, has_own_definition) == expected
 
 
 def test_thresholds_are_configurable():

@@ -4,12 +4,13 @@ import csv
 import gzip
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Callable, Iterator
 
 from .normalize import is_usable, normalize_word
 
 MAX_DEFINITION_LENGTH = 240
+# Les noms propres (« Nom de famille », « Commune française… ») ne décrivent pas le mot commun
+PROPER_NOUN_POS = "name"
 
 
 # --- DELA ---
@@ -39,6 +40,7 @@ class LexiqueEntry:
     frequency: float = 0.0
     lemma: str | None = None
     pos: str | None = None
+    display: str | None = None  # orthographe de l'emploi le plus fréquent (« porte » plutôt que « porté »)
     _best_row_frequency: float = field(default=-1.0, repr=False)
 
 
@@ -64,17 +66,44 @@ def read_lexique(path) -> dict[str, LexiqueEntry]:
                 entry._best_row_frequency = row_frequency
                 entry.lemma = row["lemme"] or None
                 entry.pos = row["cgram"] or None
+                entry.display = row["ortho"] or None
     return entries
+
+
+# Catégories Lexique (cgram) -> catégories du Wiktionnaire (kaikki)
+LEXIQUE_TO_WIKTIONARY_POS = {
+    "NOM": "noun", "VER": "verb", "AUX": "verb", "ADJ": "adj", "ADV": "adv",
+    "PRE": "prep", "CON": "conj", "ONO": "intj", "PRO": "pron", "ART": "article",
+}
+
+
+def wiktionary_pos(lexique_pos: str | None) -> str | None:
+    """`ADJ:num` -> `adj`, `VER` -> `verb`..."""
+    if not lexique_pos:
+        return None
+    return LEXIQUE_TO_WIKTIONARY_POS.get(lexique_pos.split(":")[0])
 
 
 # --- Wiktionnaire (extrait kaikki.org, JSON Lines éventuellement compressé) ---
 
 @dataclass
 class WiktionaryEntry:
-    definition: str | None = None   # première définition d'un sens « normal »
+    # Catégorie (noun, verb, adj...) -> première définition d'un sens propre au mot
+    definitions: dict[str, str] = field(default_factory=dict)
     form_gloss: str | None = None   # « Première personne du pluriel ... de ouvrager. »
     form_lemma: str | None = None   # « ouvrager »
+    form_pos: str | None = None     # catégorie de la forme fléchie (pour choisir le bon sens du lemme)
     forms: list[str] = field(default_factory=list)
+
+    @property
+    def definition(self) -> str | None:
+        return next(iter(self.definitions.values()), None)
+
+
+@dataclass(frozen=True)
+class Definition:
+    text: str
+    own: bool  # True : définition du mot lui-même ; False : forme fléchie expliquée par son lemme
 
 
 def _iter_jsonl(path) -> Iterator[dict]:
@@ -87,19 +116,22 @@ def _iter_jsonl(path) -> Iterator[dict]:
 
 def read_wiktionary(path, wanted: set[str] | None = None,
                     progress: Callable[[int], None] | None = None) -> dict[str, WiktionaryEntry]:
-    """Définitions françaises par forme normalisée.
+    """Définitions françaises par forme normalisée (noms propres ignorés).
 
-    Les définitions des sens « normaux » sont gardées pour tous les mots (elles servent aussi à
-    expliquer les formes fléchies via leur lemme) ; les formes fléchies et formes affichées ne
-    sont gardées que pour les mots de `wanted`, pour limiter la mémoire.
+    Les définitions propres sont gardées pour tous les mots (elles servent aussi à expliquer les
+    formes fléchies via leur lemme) ; les formes fléchies et formes affichées ne sont gardées que
+    pour les mots de `wanted`, pour limiter la mémoire.
     """
     entries: dict[str, WiktionaryEntry] = {}
     for count, record in enumerate(_iter_jsonl(path), start=1):
         if progress and count % 200_000 == 0:
             progress(count)
-        if record.get("lang_code") != "fr":
+        pos = record.get("pos") or ""
+        if record.get("lang_code") != "fr" or pos == PROPER_NOUN_POS:
             continue
         word = record.get("word")
+        if not isinstance(word, str) or _is_affix_or_acronym(word):
+            continue
         normalized = normalize_word(word)
         if not is_usable(normalized):
             continue
@@ -116,18 +148,24 @@ def read_wiktionary(path, wanted: set[str] | None = None,
                 entry = entries.setdefault(normalized, WiktionaryEntry())
                 if entry.form_gloss is None:
                     entry.form_gloss = glosses[0]
+                    entry.form_pos = pos
                     targets = sense.get("form_of") or []
                     if targets and isinstance(targets[0], dict):
                         entry.form_lemma = targets[0].get("word")
             else:
                 entry = entries.setdefault(normalized, WiktionaryEntry())
-                if entry.definition is None:
-                    entry.definition = glosses[0]
+                entry.definitions.setdefault(pos, glosses[0])
                 break  # une vraie définition suffit pour cet article
 
         if is_wanted and normalized in entries and word not in entries[normalized].forms:
             entries[normalized].forms.append(word)
     return entries
+
+
+def _is_affix_or_acronym(word: str) -> bool:
+    """Préfixes/suffixes (« porte- », « -ète ») et sigles (« ETE ») ne sont pas des mots de grille."""
+    stripped = word.strip()
+    return stripped.startswith("-") or stripped.endswith("-") or (len(stripped) > 1 and stripped.isupper())
 
 
 def _shorten(text: str) -> str:
@@ -137,20 +175,28 @@ def _shorten(text: str) -> str:
     return cut.rstrip(" ,;:") + "…"
 
 
-def resolve_definition(normalized: str, wiktionary: dict[str, WiktionaryEntry]) -> str | None:
-    """Définition à afficher : celle du mot, sinon « forme de X — définition de X »."""
+def _pick(definitions: dict[str, str], preferred_pos: str | None) -> str | None:
+    if preferred_pos and preferred_pos in definitions:
+        return definitions[preferred_pos]
+    return next(iter(definitions.values()), None)
+
+
+def resolve_definition(normalized: str, wiktionary: dict[str, WiktionaryEntry],
+                       preferred_pos: str | None = None) -> Definition | None:
+    """Définition à afficher.
+
+    - définition propre au mot, dans la catégorie `preferred_pos` si elle existe ;
+    - sinon « forme de X — définition de X », avec le sens de X de la même catégorie que la forme.
+    """
     entry = wiktionary.get(normalized)
     if entry is None:
         return None
-    if entry.definition:
-        return _shorten(entry.definition)
+    own = _pick(entry.definitions, preferred_pos)
+    if own:
+        return Definition(_shorten(own), own=True)
     if entry.form_gloss:
         lemma_entry = wiktionary.get(normalize_word(entry.form_lemma)) if entry.form_lemma else None
-        if lemma_entry and lemma_entry.definition:
-            return _shorten(f"{entry.form_gloss} — {lemma_entry.definition}")
-        return _shorten(entry.form_gloss)
+        lemma_definition = _pick(lemma_entry.definitions, entry.form_pos) if lemma_entry else None
+        text = f"{entry.form_gloss} — {lemma_definition}" if lemma_definition else entry.form_gloss
+        return Definition(_shorten(text), own=False)
     return None
-
-
-def source_label(path) -> str:
-    return Path(path).name

@@ -30,7 +30,7 @@ def test_export_removes_only_author_deletions_by_default(db_path, tmp_path):
     assert "OUVRAGEAMES" not in words
     assert "AABAM" in words  # suggéré à supprimer, mais pas encore décidé
     assert words["PORTE"] == ["PORTE", "porte", "Ouverture permettant le passage.", "5.7"]
-    assert counts == {"exported": 6, "deleted_by_author": 1}
+    assert counts == {"exported": 7, "deleted_by_author": 1}
 
 
 def test_export_can_also_remove_suggested_deletions(db_path, tmp_path):
@@ -39,8 +39,8 @@ def test_export_can_also_remove_suggested_deletions(db_path, tmp_path):
 
     counts = export_curated(db_path, decisions, out, exclude_suggested_deletes=True)
 
-    assert "AABAM" not in exported_words(out)
-    assert counts["deleted_by_suggestion"] == 1
+    assert {"AABAM", "OUVRAGEAMES"}.isdisjoint(exported_words(out))
+    assert counts["deleted_by_suggestion"] == 2
 
 
 def test_explicit_keep_overrides_the_suggestion(db_path, tmp_path):
@@ -70,7 +70,7 @@ def test_stats_count_remaining_words_to_review(db_path, tmp_path):
 
     stats = lexicon_stats(db_path, decisions)
 
-    assert stats["words"] == 7
+    assert stats["words"] == 8
     assert stats["decisions"] == {"delete": 1}
-    # Restent à trier (hors « keep » et hors décidés) : OUVRAGE, APRIORI, OUVRAGEAMES
-    assert stats["to_review_by_length"] == {"2-5": 0, "6-8": 2, "9-11": 1, "12+": 0}
+    # Restent à trier (hors « keep » et hors décidés) : OUVRAGE, APRIORI, OUVRAGER, OUVRAGEAMES
+    assert stats["to_review_by_length"] == {"2-5": 0, "6-8": 3, "9-11": 1, "12+": 0}
