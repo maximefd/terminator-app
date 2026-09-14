@@ -28,12 +28,18 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}) 
   });
 
   if (!response.ok) {
+    // On lit le message d'erreur de l'API s'il existe ; le throw reste hors du try
+    // pour ne pas être avalé par le catch (qui ne gère que les réponses non JSON).
+    let message = `Erreur ${response.status}: ${response.statusText}`;
     try {
       const errorData = await response.json();
-      throw new Error(errorData.error || `Erreur ${response.status}`);
+      if (typeof errorData?.error === "string" && errorData.error) {
+        message = errorData.error;
+      }
     } catch {
-      throw new Error(`Erreur ${response.status}: ${response.statusText}`);
+      // Réponse non JSON : on garde le message générique
     }
+    throw new Error(message);
   }
 
   if (response.status === 204) {
