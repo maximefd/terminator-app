@@ -55,14 +55,19 @@ class DictionnaireTrie:
             logging.error(f"Erreur lors de la lecture du CSV: {e}")
             raise
 
-    def search_pattern(self, pattern) -> list[str]:
-        """Recherche les mots (strings) correspondant à un motif (ex: 'P?LE')."""
+    def search_pattern(self, pattern, limit=None) -> list[str]:
+        """Recherche les mots (strings) correspondant à un motif (ex: 'P?LE').
+
+        Si `limit` est fourni, le parcours s'arrête dès que `limit` résultats sont trouvés.
+        """
         results = []
         # Le motif est déjà normalisé par le repository
-        self._search_recursive(self.root, pattern, "", results)
+        self._search_recursive(self.root, pattern, "", results, limit)
         return results
 
-    def _search_recursive(self, node, pattern, current_word, results):
+    def _search_recursive(self, node, pattern, current_word, results, limit=None):
+        if limit is not None and len(results) >= limit:
+            return
         if len(current_word) == len(pattern):
             if node.is_end_of_word:
                 results.append(current_word)
@@ -72,10 +77,10 @@ class DictionnaireTrie:
 
         if char_pattern == '?':
             for char, child_node in node.children.items():
-                self._search_recursive(child_node, pattern, current_word + char, results)
+                self._search_recursive(child_node, pattern, current_word + char, results, limit)
         elif char_pattern in node.children:
             child_node = node.children[char_pattern]
-            self._search_recursive(child_node, pattern, current_word + char_pattern, results)
+            self._search_recursive(child_node, pattern, current_word + char_pattern, results, limit)
 
     def get_all_words(self) -> list[str]:
         """Retourne une liste de tous les mots du set."""

@@ -5,4 +5,7 @@ Flask-Cors
 Flask-Login
 Flask-Bcrypt
 Flask-JWT-Extended
+Flask-Limiter
+pydantic>=2
+email-validator
 pytest

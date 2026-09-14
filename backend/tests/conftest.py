@@ -13,7 +13,8 @@ def test_app():
     app = create_app({
         'TESTING': True,
         'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
-        'JWT_SECRET_KEY': 'test-secret-key-long-enough-for-hs256-signing' # Clé de test (>= 32 octets)
+        'JWT_SECRET_KEY': 'test-secret-key-long-enough-for-hs256-signing', # Clé de test (>= 32 octets)
+        'RATELIMIT_ENABLED': False,  # Activé uniquement dans les tests dédiés (test_security.py)
     })
 
     with app.app_context():
