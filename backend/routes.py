@@ -1,14 +1,20 @@
 # DANS backend/routes.py
 
-import logging
 import unicodedata
-from flask import Blueprint, jsonify, request, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import func
+from flask import Blueprint, jsonify, current_app
+from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
-from models import db, User, Dictionary, PersonalWord
+from models import db, Dictionary, PersonalWord
 from grid_generator import GridGenerator, LayoutNotFoundError, available_formats
+from schemas import (
+    DictionaryCreateRequest,
+    DictionaryUpdateRequest,
+    GenerateRequest,
+    SearchRequest,
+    WordCreateRequest,
+    parse_body,
+)
 
 # On crée un nouveau Blueprint pour les routes principales
 main_bp = Blueprint('main', __name__, url_prefix='/api')
@@ -18,9 +24,16 @@ def normalize_pattern(text):
     if not isinstance(text, str): return ""
     return ''.join(c for c in unicodedata.normalize('NFD', text.upper()) if unicodedata.category(c) != 'Mn').strip()
 
-def get_current_user():
-    user_id = get_jwt_identity()
-    return db.session.get(User, user_id) if user_id else None
+def escape_like(value: str) -> str:
+    """Échappe les jokers SQL (%, _) et le caractère d'échappement pour une clause LIKE."""
+    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+def get_owned_dictionary(user, dict_id):
+    """Dictionnaire de l'utilisateur, ou 404 (on ne révèle pas l'existence des dictionnaires des autres)."""
+    return Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
+
+# Note : sur les routes @jwt_required(), get_current_user() ne renvoie jamais None.
+# Un jeton dont le compte n'existe plus est rejeté en 401 (voir security.register_jwt_callbacks).
 
 # --- ROUTES API ---
 
@@ -34,8 +47,7 @@ def status_check():
 @jwt_required()
 def get_dictionaries():
     user = get_current_user()
-    if not user: return jsonify({"error": "Utilisateur non trouvé"}), 404
-    
+
     # AMÉLIORATION : Si l'utilisateur n'a pas de dictionnaire, on lui en crée un.
     if not user.dictionaries:
         default_dict = Dictionary(name="Dictionnaire par défaut", user_id=user.id, is_active=True)
@@ -50,15 +62,17 @@ def get_dictionaries():
 @jwt_required()
 def create_dictionary():
     user = get_current_user()
-    data = request.get_json()
-    name = data.get('name', '').strip()
-    if not name: return jsonify({'error': 'Le nom du dictionnaire est manquant.'}), 400
-    if Dictionary.query.filter_by(user_id=user.id, name=name).first():
-        return jsonify({'error': f"Un dictionnaire nommé '{name}' existe déjà."}), 409
-    
+    payload = parse_body(DictionaryCreateRequest)
+
+    max_dictionaries = current_app.config['MAX_DICTIONARIES_PER_USER']
+    if len(user.dictionaries) >= max_dictionaries:
+        return jsonify({'error': f"Limite atteinte : {max_dictionaries} dictionnaires maximum."}), 400
+    if Dictionary.query.filter_by(user_id=user.id, name=payload.name).first():
+        return jsonify({'error': f"Un dictionnaire nommé '{payload.name}' existe déjà."}), 409
+
     Dictionary.query.filter_by(user_id=user.id).update({'is_active': False})
-    
-    new_dict = Dictionary(name=name, user_id=user.id, is_active=True)
+
+    new_dict = Dictionary(name=payload.name, user_id=user.id, is_active=True)
     db.session.add(new_dict)
     db.session.commit()
     return jsonify(new_dict.to_json()), 201
@@ -67,22 +81,25 @@ def create_dictionary():
 @jwt_required()
 def update_dictionary(dict_id):
     user = get_current_user()
-    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
-    data = request.get_json()
-    if 'name' in data: dictionary.name = data['name'].strip()
-    
-    if data.get('is_active') is True:
+    dictionary = get_owned_dictionary(user, dict_id)
+    payload = parse_body(DictionaryUpdateRequest)
+
+    if payload.name is not None and payload.name != dictionary.name:
+        if Dictionary.query.filter_by(user_id=user.id, name=payload.name).first():
+            return jsonify({'error': f"Un dictionnaire nommé '{payload.name}' existe déjà."}), 409
+        dictionary.name = payload.name
+
+    if payload.is_active is True:
         Dictionary.query.filter(Dictionary.user_id == user.id).update({'is_active': False})
         dictionary.is_active = True
-        
+
     db.session.commit()
     return jsonify(dictionary.to_json()), 200
 
 @main_bp.route('/dictionaries/<int:dict_id>', methods=['DELETE'])
 @jwt_required()
 def delete_dictionary(dict_id):
-    user = get_current_user()
-    dictionary = Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
+    dictionary = get_owned_dictionary(get_current_user(), dict_id)
     db.session.delete(dictionary)
     db.session.commit()
     return jsonify({'message': 'Dictionnaire supprimé avec succès.'}), 200
@@ -90,33 +107,33 @@ def delete_dictionary(dict_id):
 @main_bp.route('/dictionaries/<int:dict_id>/words', methods=['GET'])
 @jwt_required()
 def get_words_in_dictionary(dict_id):
-    user = get_current_user()
-    Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
-    words = PersonalWord.query.filter_by(dictionary_id=dict_id).order_by(PersonalWord.id.desc()).all()
+    dictionary = get_owned_dictionary(get_current_user(), dict_id)
+    words = PersonalWord.query.filter_by(dictionary_id=dictionary.id).order_by(PersonalWord.id.desc()).all()
     return jsonify([word.to_json() for word in words]), 200
 
 @main_bp.route('/dictionaries/<int:dict_id>/words', methods=['POST'])
 @jwt_required()
 def add_word_to_dictionary(dict_id):
-    user = get_current_user()
-    Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
-    data = request.get_json()
-    mot_affiche = data.get('mot', '').strip()
-    if not mot_affiche: return jsonify({'error': 'Le mot est obligatoire.'}), 400
-    mot_upper = normalize_pattern(mot_affiche)
-    if PersonalWord.query.filter_by(dictionary_id=dict_id, mot=mot_upper).first():
-        return jsonify({'error': f"Le mot '{mot_affiche}' existe déjà."}), 409
-    new_word = PersonalWord(mot=mot_upper, mot_affiche=mot_affiche, definition=data.get('definition', ''), dictionary_id=dict_id)
+    dictionary = get_owned_dictionary(get_current_user(), dict_id)
+    payload = parse_body(WordCreateRequest)
+
+    max_words = current_app.config['MAX_WORDS_PER_DICTIONARY']
+    if PersonalWord.query.filter_by(dictionary_id=dictionary.id).count() >= max_words:
+        return jsonify({'error': f"Limite atteinte : {max_words} mots maximum par dictionnaire."}), 400
+
+    mot_upper = normalize_pattern(payload.mot)
+    if PersonalWord.query.filter_by(dictionary_id=dictionary.id, mot=mot_upper).first():
+        return jsonify({'error': f"Le mot '{payload.mot}' existe déjà."}), 409
+    new_word = PersonalWord(mot=mot_upper, mot_affiche=payload.mot, definition=payload.definition or '', dictionary_id=dictionary.id)
     db.session.add(new_word)
     db.session.commit()
     return jsonify(new_word.to_json()), 201
-    
+
 @main_bp.route('/dictionaries/<int:dict_id>/words/<int:word_id>', methods=['DELETE'])
 @jwt_required()
 def delete_word_from_dictionary(dict_id, word_id):
-    user = get_current_user()
-    Dictionary.query.filter_by(id=dict_id, user_id=user.id).first_or_404()
-    word = PersonalWord.query.filter_by(id=word_id, dictionary_id=dict_id).first_or_404()
+    dictionary = get_owned_dictionary(get_current_user(), dict_id)
+    word = PersonalWord.query.filter_by(id=word_id, dictionary_id=dictionary.id).first_or_404()
     db.session.delete(word)
     db.session.commit()
     return jsonify({'message': 'Mot supprimé avec succès.'}), 200
@@ -124,32 +141,37 @@ def delete_word_from_dictionary(dict_id, word_id):
 @main_bp.route('/search', methods=['POST'])
 @jwt_required(optional=True)
 def search_words():
-    user = get_current_user()
+    user = get_current_user()  # None pour un invité
     dela_trie = current_app.dela_trie
-    data = request.json
-    mask = data.get('mask', '')
-    cleaned_mask = normalize_pattern(mask)
-    
+    payload = parse_body(SearchRequest)
+    cleaned_mask = normalize_pattern(payload.mask)
+
     personal_results_json = []
     if user:
         active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
         if active_dict:
-            sql_mask = cleaned_mask.replace('?', '_')
-            personal_words = PersonalWord.query.filter(PersonalWord.dictionary_id == active_dict.id, PersonalWord.mot.like(sql_mask)).all()
+            # Les jokers SQL saisis par l'utilisateur sont échappés : seul « ? » est un joker
+            sql_mask = escape_like(cleaned_mask).replace('?', '_')
+            personal_words = (
+                PersonalWord.query
+                .filter(PersonalWord.dictionary_id == active_dict.id, PersonalWord.mot.like(sql_mask, escape='\\'))
+                .limit(payload.limit)
+                .all()
+            )
             personal_results_json = [w.to_json() for w in personal_words]
 
     if not dela_trie: return jsonify({"error": "Dictionnaire principal non disponible."}), 503
 
-    dela_results_raw = dela_trie.search_pattern(cleaned_mask)
+    # Le parcours du Trie s'arrête dès que la limite est atteinte (masques très larges comme « ?????? »)
+    dela_results_raw = dela_trie.search_pattern(cleaned_mask, limit=payload.limit + len(personal_results_json))
     final_results = personal_results_json
     personal_mots_set = {p['mot'] for p in personal_results_json}
-    
+
     for word in dela_results_raw:
         if word not in personal_mots_set:
             final_results.append({"mot": word, "definition": None})
 
-    limit = min(int(data.get("limit", 200)), 500)
-    return jsonify({"results": final_results[:limit]}), 200
+    return jsonify({"results": final_results[:payload.limit]}), 200
 
 @main_bp.route('/grids/formats', methods=['GET'])
 def list_grid_formats():
@@ -163,21 +185,15 @@ def generate_grid():
     dela_trie = current_app.dela_trie
     if not dela_trie: return jsonify({"error": "Dictionnaire principal non disponible."}), 503
 
-    data = request.get_json(silent=True) or {}
-    size = data.get('size', {})
-    try:
-        width = max(2, min(int(size.get('width', 10)), 20))
-        height = max(2, min(int(size.get('height', 10)), 20))
-    except (TypeError, ValueError):
-        return jsonify({"error": "La taille de grille doit être composée de nombres entiers."}), 400
-    seed = data.get('seed')
-    
+    payload = parse_body(GenerateRequest)
+    width, height = payload.size.width, payload.size.height
+
     word_list = []
-    if data.get('use_global', True):
+    if payload.use_global:
         # Tous les mots de longueur utile : un échantillon (ex-30 000 mots, ~4 % du DELA)
         # rendait presque tous les croisements impossibles.
         word_list.extend(w for w in dela_trie.words if 2 <= len(w) <= max(width, height))
-    
+
     if user:
       active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
       if active_dict:
@@ -193,7 +209,7 @@ def generate_grid():
         generator = GridGenerator(
             width, height, unique_words,
             prebuilt_trie=dela_trie,
-            seed=seed,
+            seed=payload.seed,
             templates_dir=templates_dir,
             time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
         )
@@ -217,32 +233,14 @@ def generate_grid():
 
     return jsonify({"grid": generator.get_grid_data()}), 200
 
-# NOUVELLE ROUTE POUR LE RGPD
+# ROUTE RGPD : droit à l'effacement
 @main_bp.route('/users/me', methods=['DELETE'])
 @jwt_required()
 def delete_self():
-    """Permet à un utilisateur authentifié de supprimer son propre compte et ses données."""
+    """Supprime définitivement le compte de l'utilisateur et toutes ses données."""
     user = get_current_user()
-    if not user:
-        return jsonify({"error": "Utilisateur non trouvé ou token invalide."}), 404
-
-    try:
-        # L'option cascade="all, delete-orphan" sur la relation User -> Dictionary
-        # va automatiquement supprimer tous les dictionnaires et mots associés.
-        # Nous allons simplement "anonymiser" l'utilisateur.
-        user_id = user.id
-        
-        # On supprime les dictionnaires explicitement pour être sûr que la cascade fonctionne
-        Dictionary.query.filter_by(user_id=user_id).delete()
-
-        # On anonymise l'utilisateur
-        user.email = f"deleted_user_{user_id}@terminator.app"
-        user.password = "deleted" # On remplace le hash par une valeur invalide
-        
-        db.session.commit()
-        
-        return jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."}), 200
-    except Exception as e:
-        db.session.rollback()
-        logging.error(f"Erreur lors de la suppression du compte de l'utilisateur {user.id}: {e}")
-        return jsonify({"error": "Une erreur est survenue lors de la suppression du compte."}), 500
+    # Suppression via l'ORM : la cascade User -> Dictionary -> PersonalWord efface aussi
+    # dictionnaires et mots (une suppression SQL en masse laissait les mots orphelins).
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."}), 200
