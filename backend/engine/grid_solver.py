@@ -10,8 +10,13 @@ from .word_repository import WordRepository
 
 logger = logging.getLogger(__name__)
 
+
+class SolverBudgetExceeded(Exception):
+    """Levée quand le solveur dépasse son budget de temps ou d'appels récursifs."""
+
+
 class GridSolver:
-    
+
     # --- CONSTANTE ---
     MAX_CANDIDATES_PER_SLOT = 100  # Réduit pour accélérer le backtracking
     MIN_SAFE_CANDIDATES = 3  # Nombre minimum de candidats pour considérer un slot "sûr" (Forward Checking strict)
@@ -25,7 +30,29 @@ class GridSolver:
         'Y': 0, 'Z': 1
     }
 
-    def __init__(self, template: GridTemplate, repository: WordRepository, finder: SlotFinder):
+    def __init__(
+        self,
+        template: GridTemplate,
+        repository: WordRepository,
+        finder: SlotFinder,
+        time_budget_s: float | None = None,
+        max_recursive_calls: int | None = None,
+        min_safe_candidates: int = MIN_SAFE_CANDIDATES,
+        rng: random.Random | None = None,
+    ):
+        # Générateur aléatoire propre à cette résolution : reproductible et sans état global partagé
+        self.rng = rng or random.Random()
+        # INVARIANT : le forward checking doit exiger au moins 2 candidats.
+        # Un slot entièrement complété par ses croisements a au plus 1 candidat : avec un
+        # seuil >= 2, ce placement est rejeté, ce qui garantit que chaque slot est rempli
+        # explicitement (mot validé, consommé et présent dans placed_words).
+        if min_safe_candidates < 2:
+            raise ValueError("min_safe_candidates doit être >= 2 (voir l'invariant ci-dessus).")
+        self.min_safe_candidates = min_safe_candidates
+        self.time_budget_s = time_budget_s
+        self.max_recursive_calls = max_recursive_calls
+        self.budget_exceeded = False
+
         self.template = template
         self.repository = repository
         
@@ -64,10 +91,15 @@ class GridSolver:
         """Point d'entrée principal pour lancer la résolution (démarre la récursion MRV)."""
         logging.info("Début de la résolution de la grille (Heuristique MRV)...")
         self.start_time = time.time()
-        
+        self.budget_exceeded = False
+
         try:
-            result = self._solve_recursive() # <-- SANS INDEX
-            return result
+            return self._solve_recursive()
+        except SolverBudgetExceeded as e:
+            logging.warning(f"Résolution interrompue : {e}")
+            self.budget_exceeded = True
+            self.placed_words = []
+            return False
         finally:
             # Afficher les métriques dans TOUS les cas (succès, échec, timeout)
             self._print_metrics()
@@ -140,7 +172,8 @@ class GridSolver:
         Implémente l'algorithme de backtracking. Utilise _choose_next_slot() (MRV).
         """
         self.metrics['recursive_calls'] += 1
-        
+        self._check_budget()
+
         # 1. Choix dynamique du slot le plus contraint
         slot = self._choose_next_slot()
         
@@ -152,7 +185,7 @@ class GridSolver:
         pattern = self._get_slot_pattern(slot)
         slot_id = slot.get('id', id(slot))
         
-        logging.info(f"[Slot {slot.get('id', '?')}] {slot['direction']}, L={slot['length']}, Pattern='{pattern}'")
+        logging.debug(f"[Slot {slot.get('id', '?')}] {slot['direction']}, L={slot['length']}, Pattern='{pattern}'")
 
         # NOUVEAU : Vérifier si ce pattern est un nogood connu
         if self._is_nogood_pattern(slot_id, pattern):
@@ -179,7 +212,7 @@ class GridSolver:
         top_20_percent = max(1, len(scored_candidates) // 5)
         if top_20_percent > 1:
             top_candidates = scored_candidates[:top_20_percent]
-            random.shuffle(top_candidates)
+            self.rng.shuffle(top_candidates)
             scored_candidates = top_candidates + scored_candidates[top_20_percent:]
 
         logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
@@ -216,7 +249,7 @@ class GridSolver:
             # --- CONSOMMATION ---
             slot['is_filled'] = True # Marque le slot comme rempli
             self.repository.remove_word_from_available(word, slot['length']) 
-            logging.info(f"  → Place '{word}'")
+            logging.debug(f"  → Place '{word}'")
 
             if self._solve_recursive(): # Appel récursif SANS INDEX
                 # SUCCES
@@ -245,6 +278,13 @@ class GridSolver:
         # NE PAS enregistrer comme nogood ici : l'échec est contextuel, pas absolu
         # Le pattern pourrait fonctionner avec un autre contexte (autres mots placés)
         return False
+
+    def _check_budget(self) -> None:
+        """Interrompt la résolution si le budget de temps ou d'appels est dépassé."""
+        if self.time_budget_s is not None and time.time() - self.start_time > self.time_budget_s:
+            raise SolverBudgetExceeded(f"budget de temps dépassé ({self.time_budget_s}s)")
+        if self.max_recursive_calls is not None and self.metrics['recursive_calls'] > self.max_recursive_calls:
+            raise SolverBudgetExceeded(f"budget d'appels récursifs dépassé ({self.max_recursive_calls})")
 
     def _check_grid_integrity(self):
         """
@@ -591,9 +631,9 @@ class GridSolver:
             candidates = self.repository.get_candidates(future_pattern)
             nb_candidates = len(candidates) if candidates else 0
             
-            if nb_candidates < self.MIN_SAFE_CANDIDATES:
+            if nb_candidates < self.min_safe_candidates:
                 # DEAD-END détecté : ce placement laisse trop peu de candidats
-                logging.debug(f"        FC STRICT: Slot {slot_id} n'aurait que {nb_candidates} candidat(s) (min: {self.MIN_SAFE_CANDIDATES}, pattern: '{future_pattern}')")
+                logging.debug(f"        FC STRICT: Slot {slot_id} n'aurait que {nb_candidates} candidat(s) (min: {self.min_safe_candidates}, pattern: '{future_pattern}')")
                 return False
         
         # Tous les slots intersectés ont encore des candidats

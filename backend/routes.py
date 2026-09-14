@@ -1,5 +1,6 @@
 # DANS backend/routes.py
 
+import logging
 import random
 import unicodedata
 from flask import Blueprint, jsonify, request, current_app
@@ -8,7 +9,7 @@ from sqlalchemy import func
 
 # On importe depuis nos modules centraux
 from models import db, User, Dictionary, PersonalWord
-from grid_generator import GridGenerator
+from grid_generator import GridGenerator, LayoutNotFoundError, available_formats
 
 # On crée un nouveau Blueprint pour les routes principales
 main_bp = Blueprint('main', __name__, url_prefix='/api')
@@ -151,15 +152,25 @@ def search_words():
     limit = min(int(data.get("limit", 200)), 500)
     return jsonify({"results": final_results[:limit]}), 200
 
+@main_bp.route('/grids/formats', methods=['GET'])
+def list_grid_formats():
+    """Liste les formats de grille pour lesquels au moins un layout existe."""
+    return jsonify({"formats": available_formats(current_app.config.get('TEMPLATES_DIR'))}), 200
+
 @main_bp.route('/grids/generate', methods=['POST'])
 @jwt_required(optional=True)
 def generate_grid():
     user = get_current_user()
     dela_trie = current_app.dela_trie
-    data = request.get_json()
+    if not dela_trie: return jsonify({"error": "Dictionnaire principal non disponible."}), 503
+
+    data = request.get_json(silent=True) or {}
     size = data.get('size', {})
-    width = min(int(size.get('width', 10)), 20)
-    height = min(int(size.get('height', 10)), 20)
+    try:
+        width = max(2, min(int(size.get('width', 10)), 20))
+        height = max(2, min(int(size.get('height', 10)), 20))
+    except (TypeError, ValueError):
+        return jsonify({"error": "La taille de grille doit être composée de nombres entiers."}), 400
     seed = data.get('seed')
     
     word_list = []
@@ -175,13 +186,36 @@ def generate_grid():
 
     if not word_list: return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
-    unique_words = list(set(word_list))
-    
-    generator = GridGenerator(width, height, unique_words, seed=seed)
-    success = generator.generate()
+    # Tri : l'ordre des mots ne dépend que du contenu (reproductibilité à seed égal)
+    unique_words = sorted(set(word_list))
+    templates_dir = current_app.config.get('TEMPLATES_DIR')
 
-    if not success: return jsonify({"error": "Impossible de générer une grille avec les mots fournis."}), 500
-        
+    try:
+        generator = GridGenerator(
+            width, height, unique_words,
+            prebuilt_trie=dela_trie,
+            seed=seed,
+            templates_dir=templates_dir,
+            time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
+        )
+    except LayoutNotFoundError:
+        formats = available_formats(templates_dir)
+        return jsonify({
+            "error": f"Aucun layout disponible pour le format {width}x{height}.",
+            "available_formats": formats,
+        }), 400
+
+    if not generator.generate():
+        if generator.budget_exceeded:
+            return jsonify({
+                "error": "La génération a dépassé le temps imparti. Réessayez (nouveau tirage) ou choisissez un autre format.",
+                "reason": "timeout",
+            }), 422
+        return jsonify({
+            "error": "Impossible de générer une grille avec les mots fournis.",
+            "reason": "no_solution",
+        }), 422
+
     return jsonify({"grid": generator.get_grid_data()}), 200
 
 # NOUVELLE ROUTE POUR LE RGPD

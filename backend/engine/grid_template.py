@@ -1,5 +1,3 @@
-import os
-import random
 import logging
 
 class GridTemplate:
@@ -10,33 +8,36 @@ class GridTemplate:
         self.width = width
         self.height = height
         self.grid = [[self.EMPTY_CELL for _ in range(width)] for _ in range(height)]
-        
+
         if template_path:
             if not self._load_from_file(template_path):
                 raise FileNotFoundError(f"Impossible de charger le template : {template_path}")
-        else:
-            # Si aucun template n'est fourni, on crée une grille vide
-            # (utile pour notre fallback ou de futurs algorithmes)
-            for y in range(height):
-                for x in range(width):
-                    self.grid[y][x] = self.EMPTY_CELL
+
+    @classmethod
+    def from_rows(cls, rows: list[str]) -> "GridTemplate":
+        """Construit un template directement depuis ses lignes (ex: ['#.#', '...'])."""
+        height = len(rows)
+        width = max((len(row) for row in rows), default=0)
+        template = cls(width, height)
+        template._apply_rows(rows)
+        return template
+
+    def _apply_rows(self, rows) -> None:
+        """Place les cases noires décrites par les lignes ; tout le reste est une case vide."""
+        for y, line in enumerate(rows):
+            if y >= self.height:
+                break
+            line = line.rstrip('\n')
+            for x, char in enumerate(line):
+                if x >= self.width:
+                    break
+                self.grid[y][x] = self.BLACK_SQUARE if char == self.BLACK_SQUARE else self.EMPTY_CELL
 
     def _load_from_file(self, file_path: str) -> bool:
         """Charge une structure de grille depuis un fichier .txt."""
         try:
             with open(file_path, 'r') as f:
-                for y, line in enumerate(f):
-                    if y >= self.height:
-                        break
-                    line = line.rstrip('\n')
-                    for x, char in enumerate(line):
-                        if x >= self.width:
-                            break
-                        if char == self.BLACK_SQUARE:
-                            self.grid[y][x] = self.BLACK_SQUARE
-                        else:
-                            # Tout ce qui n'est pas '#' devient case vide
-                            self.grid[y][x] = self.EMPTY_CELL
+                self._apply_rows(f)
             return True
         except Exception as e:
             logging.error(f"Erreur lors du chargement du template {file_path}: {e}")
@@ -47,7 +48,7 @@ class GridTemplate:
         if 0 <= y < self.height and 0 <= x < self.width:
             return self.grid[y][x]
         return None # Retourne None si en dehors des limites
-    
+
     def is_black_square(self, x, y):
         """Vérifie si une case est une case noire."""
         return self.get_cell(x, y) == self.BLACK_SQUARE
