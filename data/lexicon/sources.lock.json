@@ -1,0 +1,20 @@
+{
+  "lexique": {
+    "url": "http://www.lexique.org/databases/Lexique383/Lexique383.tsv",
+    "file": "Lexique383.tsv",
+    "sha256": "637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b",
+    "size": 25850780,
+    "license": "CC BY-SA 4.0",
+    "homepage": "http://www.lexique.org",
+    "recorded_at": "2026-09-14T21:43:54+00:00"
+  },
+  "wiktionary": {
+    "url": "https://kaikki.org/frwiktionary/Fran%C3%A7ais/kaikki.org-dictionary-Fran%C3%A7ais.jsonl.gz",
+    "file": "kaikki-fr-wiktionary-francais.jsonl.gz",
+    "sha256": "218f0bca0f2a62083bbb1ba7779d3a0f1ac4d8426b52c72d7738993b74d0dfd1",
+    "size": 385118277,
+    "license": "CC BY-SA 4.0 (contenu du Wiktionnaire)",
+    "homepage": "https://kaikki.org/frwiktionary/",
+    "recorded_at": "2026-09-14T21:43:54+00:00"
+  }
+}
