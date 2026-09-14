@@ -1,0 +1,5 @@
+# Dépendances autorisées à exécuter leurs scripts d'installation (binaires natifs)
+allowBuilds:
+  '@tailwindcss/oxide': true
+  sharp: true
+  unrs-resolver: true
