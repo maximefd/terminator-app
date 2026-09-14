@@ -1,0 +1,32 @@
+name: 🧩 Nouveau layout
+description: Proposer une mise en page de grille recopiée d'un livre de mots fléchés
+labels: [layouts]
+body:
+  - type: input
+    id: format
+    attributes:
+      label: Format (largeur × hauteur)
+      placeholder: "11x6"
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Livre, éditeur, page (pour la traçabilité).
+  - type: textarea
+    id: grid
+    attributes:
+      label: Grille
+      description: "Une ligne par rangée : # = case définition, . = case lettre."
+      render: text
+      placeholder: |
+        #.#.#.
+        ......
+        #.....
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

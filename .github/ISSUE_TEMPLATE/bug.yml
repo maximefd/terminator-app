@@ -1,0 +1,46 @@
+name: 🐛 Bug
+description: Quelque chose ne fonctionne pas comme prévu
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Que se passe-t-il ?
+      description: Description courte du problème.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      placeholder: |
+        1. Aller sur /grid
+        2. Choisir le format 11 × 6
+        3. Cliquer sur « Générer la grille »
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Résultat attendu
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Résultat obtenu
+      description: Messages d'erreur, logs de l'API, captures d'écran.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Partie concernée
+      options:
+        - Recherche par motif
+        - Dictionnaires personnels
+        - Génération de grilles
+        - Comptes / connexion
+        - Autre
+    validations:
+      required: true

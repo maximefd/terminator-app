@@ -1,63 +1,106 @@
-# 🧩 Terminator - Outil d'aide à la création de grilles de mots fléchés
+# 🧩 Terminator
 
-## 📝 Description
+[![CI](https://github.com/maximefd/terminator-app/actions/workflows/ci.yml/badge.svg)](https://github.com/maximefd/terminator-app/actions/workflows/ci.yml)
 
-Terminator est une application web conçue pour les créateurs de grilles de mots fléchés, qu'ils soient amateurs, auteurs ou éditeurs. L'objectif est d'offrir un outil professionnel pour remplir automatiquement des grilles avec des mots cohérents, en respectant des contraintes de lettres et en s'appuyant sur des dictionnaires personnels et globaux.
+**Terminator est un outil de création de mots fléchés.** Il aide à fabriquer des grilles au rendu professionnel français, de deux façons :
 
-Ce n'est **pas** un jeu, mais un **outil de création**.
+- **à la main** : il vous manque un mot de 5 lettres qui commence par P et finit par LE ? La **recherche par motif** (`P??LE`) le trouve dans un dictionnaire de plus de 700 000 mots et dans vos dictionnaires personnels ;
+- **automatiquement** : choisissez un format de grille, et le **moteur de génération** remplit toute la grille avec des mots qui se croisent correctement.
 
-## 🛠️ Stack Technique
+Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet est aujourd'hui un outil personnel, pensé dès le départ pour pouvoir servir un jour à des créateurs professionnels.
 
-* **Frontend**: Next.js 15 (App Router), TypeScript, TailwindCSS, shadcn/ui, React Query, Zustand
-* **Backend**: Flask, SQLAlchemy, Python 3.11+
-* **Base de données**: PostgreSQL 15+
-* **Moteur de recherche**: Trie custom en mémoire pour le dictionnaire global (DELA)
-* **Environnement**: Docker & Docker Compose
+## Fonctionnalités
 
-## ✅ Prérequis
+| Fonctionnalité | État |
+|----------------|------|
+| Recherche par motif (`?` = lettre inconnue) dans le dictionnaire commun | ✅ |
+| Dictionnaires personnels (plusieurs, avec définitions) mêlés à la recherche | ✅ |
+| Comptes utilisateurs (inscription, connexion, suppression des données) | ✅ |
+| Génération automatique d'une grille à partir d'un layout | ✅ fiable en 6×7, fragile en 11×6 ([détails](docs/ENGINE.md)) |
+| Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
+| Nombreux layouts recopiés de vrais livres | 🚧 Phase 2 |
+| Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |
+| Flèches, définitions, export PDF | 🔜 Phase 5 |
 
-Avant de commencer, assurez-vous d'avoir installé les outils suivants :
+Détail et calendrier : **[roadmap](docs/ROADMAP.md)**.
 
-* [Git](https://git-scm.com/downloads)
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* Un éditeur de code, comme [VS Code](https://code.visualstudio.com/)
+## Démarrage rapide
 
-## 🚀 Démarrage Rapide
-
-1.  Clonez ce dépôt.
-2.  Créez votre configuration locale (jamais versionnée) et remplacez les secrets :
-    ```bash
-    cp .env.example .env
-    ```
-3.  Assurez-vous que Docker Desktop est en cours d'exécution.
-4.  Lancez l'application avec la commande suivante à la racine du projet :
-    ```bash
-    docker compose up --build
-    ```
-5.  Ouvrez votre navigateur :
-    * Frontend : `http://localhost:3000`
-    * Backend API : `http://localhost:5001`
-
-## 🧪 Tests et benchmark
-
-Depuis `backend/` (Python 3.11) :
+**Prérequis** : [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Node.js 22](https://nodejs.org/), [pnpm](https://pnpm.io/installation), `make`.
 
 ```bash
-pytest
+git clone https://github.com/maximefd/terminator-app.git
+cd terminator-app
+make setup
 ```
+
+`make setup` crée `.env` depuis `.env.example` et installe le frontend. Remplacez ensuite les secrets dans `.env`.
+
+Lancer l'API (http://localhost:5001) et la base PostgreSQL :
 
 ```bash
-python test_harness.py --seeds 5 --output benchmarks/latest.json
+make dev-api
 ```
 
-Toute modification du moteur de génération doit être comparée à `backend/benchmarks/baseline.json` (sur la même machine).
+Le premier démarrage charge tout le dictionnaire en mémoire (une à deux minutes). Puis, dans un autre terminal, lancer le frontend :
 
-## 📂 Structure du Projet
+```bash
+make dev-front
+```
 
-Le projet utilise une architecture monorepo :
+Ouvrez **http://localhost:3000** : la page d'accueil est la recherche par motif, l'onglet **Générer** crée une grille.
+
+## Commandes utiles
+
+| Commande | Rôle |
+|----------|------|
+| `make help` | Liste des commandes |
+| `make test` | Tests backend + lint et types frontend |
+| `make bench` | Benchmark du moteur de génération |
+
+## Structure du dépôt
+
+```text
 terminator-app/
-├── backend/        # API Flask, moteur de recherche, logique métier
-├── frontend/       # Application Next.js (UI)
-├── docs/           # Documentation technique (ADR, etc.)
-└── docker-compose.yml # Fichier d'orchestration Docker
+├── backend/                 API Flask (Python 3.11)
+│   ├── app.py, routes.py, auth.py   Application, endpoints, authentification
+│   ├── schemas.py, security.py      Validation des entrées, sécurité transverse
+│   ├── trie_engine.py               Dictionnaire en mémoire et recherche par motif
+│   ├── grid_generator.py, engine/   Moteur de génération de grilles
+│   ├── templates/                   Layouts de grilles (<largeur>x<hauteur>/*.txt)
+│   ├── benchmarks/, test_harness.py Benchmark reproductible du moteur
+│   └── tests/                       Tests pytest
+├── frontend/                Application Next.js 15 (React, Tailwind, shadcn/ui)
+├── docs/                    Documentation (architecture, moteur, sécurité, ADR…)
+├── docker-compose.yml       API + PostgreSQL pour le développement
+└── Makefile                 Commandes courantes
+```
 
+## Documentation
+
+| Document | Contenu |
+|----------|---------|
+| [Roadmap](docs/ROADMAP.md) | Où en est le projet, prochaines phases |
+| [PRD](docs/PRD.md) | Vision produit, personas, critères de succès |
+| [Architecture](docs/ARCHITECTURE.md) | Composants, endpoints, modèle de données, authentification |
+| [Moteur](docs/ENGINE.md) | Comment une grille est remplie, heuristiques, benchmark, limites |
+| [Layouts](docs/LAYOUTS.md) | Format des mises en page, ajout d'un layout |
+| [Lexique](docs/LEXICON.md) | Dictionnaire DELA et projet de curation |
+| [Sécurité](docs/SECURITY.md) | Modèle de menace, mesures, limites connues |
+| [Décisions (ADR)](docs/adr/) | Choix d'architecture et leurs raisons |
+| [Contribuer](CONTRIBUTING.md) | Installation, tests, conventions, processus de PR |
+| [Changelog](CHANGELOG.md) | Historique des versions |
+
+## État du projet
+
+- Version **0.1.0** : génération réparée et testée, socle de sécurité, benchmark reproductible.
+- Pas de déploiement en ligne pour l'instant : tout tourne en local ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)).
+- En cours : Phase 0c (documentation et GitHub), puis curation du lexique et catalogue de layouts.
+
+## Contribuer
+
+Les issues sont organisées par phase dans les [milestones](https://github.com/maximefd/terminator-app/milestones). Voir [CONTRIBUTING.md](CONTRIBUTING.md) avant d'ouvrir une PR. Pour une faille de sécurité, voir [SECURITY.md](docs/SECURITY.md) (pas d'issue publique).
+
+## Licence
+
+Aucune licence open source n'est accordée pour l'instant : tous droits réservés.

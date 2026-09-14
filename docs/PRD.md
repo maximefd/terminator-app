@@ -1,125 +1,67 @@
-# 🧩 Product Requirements Document (PRD)
+# 🧩 Product Requirements Document (PRD) — Terminator
 
-## 1. 🎯 Objectif global et proposition de valeur
+> Vision produit. Pour le « comment » et le « quand », voir [ROADMAP.md](ROADMAP.md) et [ARCHITECTURE.md](ARCHITECTURE.md).
+> Dernière mise à jour : septembre 2026.
 
-### Problème à résoudre
-Les créateurs de mots croisés et fléchés perdent un temps précieux à chercher manuellement des mots rares qui s’adaptent à des motifs complexes (ex : avec accents ou tirets) ou sont contraints à des dictionnaires statiques et désuets.
+## 1. Problème et proposition de valeur
 
-### Proposition de valeur unique
-Fournir le **moteur de recherche et de génération de grilles le plus rapide du marché francophone**, combinant :
-- un **Trie lexical optimisé (<200 ms)** pour la recherche par masque,
-- la **gestion de dictionnaires personnels et communs**,
-- une **heuristique de génération MRV (Minimum Remaining Values)** pour des grilles denses et valides.
+### Le problème
+Créer une grille de mots fléchés prend du temps. À la main, on bute sur la case qui manque : il faut un mot d'une longueur donnée, avec certaines lettres imposées par les croisements. Remplir automatiquement une grille est encore plus dur : les mots doivent tous exister et tous se croiser. Et pour qu'une grille paraisse professionnelle, il faut respecter les mises en page des publications françaises et utiliser des mots naturels.
 
-L’objectif final est de permettre aux utilisateurs d’utiliser simultanément les dictionnaires commun (DELA) et personnels pour générer des grilles de haute qualité et densité.
+### La proposition
+Un atelier pour l'auteur de mots fléchés :
+1. **Création manuelle assistée** : trouver instantanément les mots correspondant à un motif (`P??LE`), dans un grand dictionnaire et dans ses propres listes.
+2. **Création automatique** : choisir un format, donner quelques mots qu'on veut absolument voir ou aimerait voir (environ 30 % de la grille), et laisser le moteur compléter avec le dictionnaire commun.
+3. **Rendu professionnel** : des layouts recopiés de vrais livres, un vocabulaire courant, puis des flèches, des définitions et un export.
 
----
+Ce n'est **pas un jeu**, c'est un **outil de création**.
 
-## 2. 👥 Public cible et critères de succès
+## 2. Personas
 
-### A. Public cible
+| Persona | Besoin | Aujourd'hui |
+|---------|--------|-------------|
+| **L'auteur** (créateur du projet, seul utilisateur actuel) | Gagner du temps sur ses grilles, avec un résultat de qualité professionnelle | Cible principale |
+| **Créateur expérimenté / professionnel** | Grilles denses, esthétiques, vocabulaire maîtrisé, export | Cible future (après la mise en production) |
+| **Visiteur** | Découvrir l'outil via la recherche par motif, sans compte | Supporté |
 
-| Type d’utilisateur | Objectif principal | Accès |
-|--------------------|--------------------|--------|
-| **Invité** | Découvrir l'outil et tester la recherche par motif. | Lecture seule sur le dictionnaire commun. |
-| **Utilisateur enregistré** | Créer et gérer ses propres dictionnaires (multiples), et utiliser les fonctionnalités avancées de génération de grilles. | Lecture/écriture sur dictionnaires personnels. |
-| **Auteur/Éditeur (Premium – V2)** | Générer des grilles professionnelles, denses et esthétiques, avec un gain de temps significatif. | Accès complet (fonctions premium à venir). |
+## 3. Fonctionnalités
 
----
+| # | Fonctionnalité | Détail | État |
+|---|----------------|--------|------|
+| F1 | Recherche par motif | `?` = lettre inconnue ; accents ignorés ; résultats personnels en tête | ✅ (~90 %) |
+| F2 | Dictionnaires personnels | Plusieurs par utilisateur, un actif, mots avec définition | ✅ |
+| F3 | Comptes | Inscription, connexion, session renouvelée, suppression des données | ✅ |
+| F4 | Génération automatique | À partir d'un layout ; déterministe par seed ; budget temps | ✅ fragile sur les grands formats |
+| F5 | Lexique curé | Tri manuel rapide des mots rares, aidé par la fréquence et les définitions | Phase 1 |
+| F6 | Catalogue de layouts | Nombreux formats et mises en page issus de livres ; éditeur | Phase 2 |
+| F7 | Mots imposés | Obligatoires, souhaités, dictionnaires thématiques | Phase 3 |
+| F8 | Écran de génération complet et sauvegarde des grilles | Choix visuel du layout, sources des mots, historique | Phase 4 |
+| F9 | Rendu mots fléchés | Flèches, cases définitions, saisie des définitions, export PDF | Phase 5 |
 
-### B. Critères de succès (KPIs V1)
+## 4. Contraintes
 
-| Exigence | Métrique | Statut |
-|-----------|-----------|--------|
-| **Performance recherche** | Temps de réponse API `/search` < **200 ms (P95)** | ✅ Critique |
-| **Performance génération** | Temps de génération < **5 s** pour une grille 15×15 standard | ✅ Critique |
-| **Adoption utilisateur** | X utilisateurs enregistrés après 3 mois de lancement | 📈 À définir |
-| **Qualité technique** | Couverture de tests unitaires/intégration ≥ **70 %** sur les modules Trie et Algorithme | ✅ Critique |
+- **Aspect professionnel français** : les layouts viennent de publications réelles ; les mots doivent être courants.
+- **Clavier AZERTY** : raccourcis sans Maj ni AltGr.
+- **UX irréprochable** : chaque écran explique ce qu'il fait et ce qui se passe ensuite, même pour un public expert.
+- **Sécurité** dès maintenant (données utilisateur en base), même sans mise en production.
+- **Pratiques d'ingénierie de niveau production** (tests, CI, revue, ADR) malgré l'usage personnel.
 
----
+## 5. Hors périmètre (pour l'instant)
 
-## 3. 🧠 Fonctionnalités et scénarios d’usage (V1)
+- Déploiement en ligne et URL publique ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
+- Offre payante, collaboration multi-utilisateurs.
+- Mots croisés « à l'américaine », autres langues.
 
-### 3.1. Authentification & Comptes (EPIC C)
-- Inscription / Connexion / Déconnexion.
-- Session persistante via cookie sécurisé (JWT prévu pour la V2).
+## 6. Critères de succès
 
----
+| Critère | Mesure | Aujourd'hui |
+|---------|--------|-------------|
+| Recherche rapide | Réponse `/api/search` < 200 ms (P95) | ✅ (arrêt du parcours à la limite) |
+| Génération fiable | ≥ 95 % de succès en 20 s pour chaque layout du catalogue (benchmark, 20 seeds) | 6×7 : 100 % · 11×6 : 15 % |
+| Qualité des mots | Grilles sans formes fléchies rares, jugées publiables par l'auteur | ❌ avant la Phase 1 |
+| Mots imposés | Mots obligatoires toujours placés, ou échec expliqué | Phase 3 |
+| Qualité technique | CI verte ; couverture ≥ 70 % sur le moteur et le pipeline du lexique | Tests en place, couverture non mesurée |
 
-### 3.2. Dictionnaires & Recherche (EPIC A)
+## 7. Architecture (résumé)
 
-| Fonctionnalité | Spécification / Amélioration | État |
-|----------------|-------------------------------|------|
-| **Dictionnaire commun (`global_words`)** | Lecture seule. Indexé pour la recherche rapide (DELA). | ✅ OK |
-| **Dictionnaires personnels (`user_words`)** | L’utilisateur peut créer/gérer plusieurs dictionnaires personnels. | 🧩 À faire (EPIC A4) |
-| **Recherche par motif** | Recherche multi-critères : par motif (`P??LE`), par longueur, par lettres incluses/exclues, gestion des accents et espaces. | 🧩 À faire (EPIC A1) |
-| **Fusion des résultats** | `search_scope = "global" ∪ "user"` : résultats fusionnés et triés par priorité utilisateur. | 🔄 En conception |
-
----
-
-### 3.3. Génération de grilles (EPIC B)
-
-| Fonctionnalité | Spécification / Amélioration | État |
-|----------------|-------------------------------|------|
-| **Algorithme MRV** | Heuristique MRV (Minimum Remaining Values) pour la sélection dynamique des slots. | ✅ Intégré |
-| **Contrôle performance** | Limite de candidats (Top N) lors du backtracking (ex. max 100 tentatives/slot). | 🧩 À faire (EPIC A2) |
-| **Contraintes pro** | Application du motif de damier sur la bordure (`x=0`, `y=0`). Validation croisée de tous les mots formés. | ✅ OK |
-| **Visualisation** | Composant Front-End (`GridDisplay`) pour afficher la grille (cases, lettres, croisements). | 🧩 À faire (EPIC B3) |
-
----
-
-## 4. ⚙️ Architecture technique & exploitation
-
-### 4.1. Schéma d’architecture
-
-| Composant | Technologie | Rôle |
-|------------|-------------|------|
-| **Frontend** | Next.js (App Router), React Query, Tailwind CSS / shadcn-ui | Interface utilisateur, SSR/SEO, affichage de grilles. |
-| **API** | Flask (Python) | Service REST principal (auth, recherche, génération). |
-| **Base de données** | PostgreSQL + SQLAlchemy | Utilisateurs, dictionnaires personnels, métadonnées de grilles. |
-| **Moteur lexical** | DictionnaireTrie (Python) | Recherche ultra-rapide par masque et préfixe sur dictionnaire DELA. |
-
-#### 🔍 Notes sur la base de données
-- En **développement local** : SQLite (léger, sans serveur).  
-- En **production** : PostgreSQL (multi-utilisateur, transactions concurrentes, support JSONB pour les métadonnées lexicales).  
-- Le **dictionnaire global** (lecture seule) est commun à tous.  
-- Les **dictionnaires personnels** (`user_words`) sont isolés par utilisateur pour préserver confidentialité et performance.
-
----
-
-### 4.2. Qualité et stabilité (EPIC D & E)
-
-| Exigence | Mesure | Statut |
-|-----------|--------|--------|
-| **Stabilité dev** | Démarrage Docker fiable (résolution du “Connection refused” entre API et DB). | 🧩 À faire |
-| **Débogage** | Logging structuré (module `logging` déjà intégré). | ✅ OK |
-| **CI/CD** | Pipeline complète (Lint, Tests, Build, Deploy) via GitHub Actions vers Vercel/Render. | 🧩 À faire (EPIC D5) |
-| **Conformité** | Implémentation des pages RGPD (cookies, privacy). | 🧩 À faire (EPIC E5) |
-
----
-
-## 5. 🗺️ Roadmap produit
-
-| Version | Objectif principal | Contenu clé |
-|----------|--------------------|--------------|
-| **V1** | Base stable & performante | Auth, recherche, dictionnaire commun/perso, MRV stable |
-| **V1.5** | Passage SQLite → PostgreSQL | Optimisation multi-utilisateur, indexations lexicales |
-| **V2** | Expansion produit | Comptes premium, stockage cloud, statistiques lexicales, collab |
-| **V3** | Éditeur complet de grilles | Interface web de création, export PDF/PNG, auto-vérification |
-
----
-
-### 📚 Annexes techniques
-- **Langage principal** : Python 3.11
-- **Normes de code** : PEP8 + Flake8
-- **Documentation** : Docstrings + MkDocs (V2)
-- **Tests** : pytest + coverage
-- **Performance cible** : `<200 ms` pour la recherche et `<5 s` pour la génération standard
-
----
-
-### 💬 Auteur
-Document rédigé et maintenu par **[ton nom ou pseudo]**  
-Rôle : *Product Owner & Dev Lead du projet de moteur lexical et de génération de grilles*
-
-Dernière mise à jour : **octobre 2025**
+Frontend Next.js ↔ API Flask ↔ PostgreSQL ; dictionnaire DELA chargé en mémoire dans un Trie ; moteur de génération par backtracking guidé. Détails : [ARCHITECTURE.md](ARCHITECTURE.md) et [ENGINE.md](ENGINE.md).
