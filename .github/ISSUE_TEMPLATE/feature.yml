@@ -1,0 +1,36 @@
+name: ✨ Fonctionnalité
+description: Proposer une amélioration ou une nouvelle fonctionnalité
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quel problème cela résout-il ?
+      description: Le besoin du créateur de grilles, pas encore la solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Phase de la roadmap
+      options:
+        - Phase 0 — Stabiliser, sécuriser
+        - Phase 1 — Curation du lexique
+        - Phase 2 — Catalogue de layouts
+        - Phase 3 — Moteur avec mots imposés
+        - Phase 4 — UX
+        - Phase 5 — Rendu professionnel
+        - Phase 6 — Production
+        - Phase 7 — Passage à l'échelle
+        - Je ne sais pas
+  - type: textarea
+    id: done
+    attributes:
+      label: Critères de fin
+      description: Comment savoir que c'est terminé ?

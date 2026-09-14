@@ -52,7 +52,13 @@ jobs:
           cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install frontend dependencies
-        run: cd frontend && pnpm install
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: Lint frontend
+        run: cd frontend && pnpm lint
+
+      - name: Type-check frontend
+        run: cd frontend && pnpm exec tsc --noEmit
       
       - name: Build frontend
         run: cd frontend && pnpm build

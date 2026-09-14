@@ -3,6 +3,17 @@
 > Plan de complétion du projet. Document vivant : chaque phase correspond à un **Milestone GitHub**, chaque point à une ou plusieurs **issues**.
 > Dernière mise à jour : septembre 2026.
 
+## État d'avancement
+
+| Phase | État |
+|-------|------|
+| 0a — Stabilisation | ✅ PR #2 (génération réparée, tests, benchmark) |
+| 0b — Sécurité | ✅ PR #3 |
+| 0c — Documentation et GitHub | 🚧 en cours |
+| 1 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
+
+Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
+
 ## Contexte
 
 Terminator est un outil personnel de création de **mots fléchés d'aspect professionnel français**. Cible future : créateurs expérimentés et professionnels. La mise en production n'est pas immédiate, mais les pratiques d'ingénierie doivent déjà être au niveau production.
