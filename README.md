@@ -25,14 +25,32 @@ Avant de commencer, assurez-vous d'avoir installé les outils suivants :
 ## 🚀 Démarrage Rapide
 
 1.  Clonez ce dépôt.
-2.  Assurez-vous que Docker Desktop est en cours d'exécution.
-3.  Lancez l'application avec la commande suivante à la racine du projet :
+2.  Créez votre configuration locale (jamais versionnée) et remplacez les secrets :
+    ```bash
+    cp .env.example .env
+    ```
+3.  Assurez-vous que Docker Desktop est en cours d'exécution.
+4.  Lancez l'application avec la commande suivante à la racine du projet :
     ```bash
     docker compose up --build
     ```
-4.  Ouvrez votre navigateur :
+5.  Ouvrez votre navigateur :
     * Frontend : `http://localhost:3000`
-    * Backend API : `http://localhost:5000`
+    * Backend API : `http://localhost:5001`
+
+## 🧪 Tests et benchmark
+
+Depuis `backend/` (Python 3.11) :
+
+```bash
+pytest
+```
+
+```bash
+python test_harness.py --seeds 5 --output benchmarks/latest.json
+```
+
+Toute modification du moteur de génération doit être comparée à `backend/benchmarks/baseline.json` (sur la même machine).
 
 ## 📂 Structure du Projet
 

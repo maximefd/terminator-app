@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS / éditeurs
+.DS_Store
+.idea/
+.vscode/
+
+# Variables d'environnement (seul le modèle est versionné)
+.env
+.env.*
+!.env.example
+
+# Rapports générés
+backend/report.html
+backend/benchmarks/*.html
+
+# Artefacts de tests frontend
+frontend/test-results/
+frontend/playwright-report/
+
+# Le frontend utilise pnpm : pas de lockfile npm
+frontend/package-lock.json

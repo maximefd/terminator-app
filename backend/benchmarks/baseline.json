@@ -1,0 +1,451 @@
+{
+  "generated_at": "2026-09-14T20:12:50+00:00",
+  "git_commit": null,
+  "environment": {
+    "python": "3.11.16",
+    "platform": "Linux-7.0.12-linuxkit-aarch64-with-glibc2.41",
+    "cpu_count": 8
+  },
+  "config": {
+    "seeds": 20,
+    "time_budget_s": 20.0,
+    "dictionary": "dela_clean.csv",
+    "dictionary_words": 714092
+  },
+  "layouts": [
+    {
+      "layout": "6x7/template_01.txt",
+      "width": 6,
+      "height": 7,
+      "summary": {
+        "runs": 20,
+        "successes": 20,
+        "success_rate": 1.0,
+        "timeouts": 0,
+        "time_p50_s": 0.281,
+        "time_p95_s": 5.426,
+        "time_max_s": 5.426,
+        "mean_backtracks": 964.4
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 4.848,
+          "fill_ratio": 1.0,
+          "recursive_calls": 8338,
+          "backtracks": 8324,
+          "candidates_tested": 73839
+        },
+        {
+          "seed": 1,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.231,
+          "fill_ratio": 1.0,
+          "recursive_calls": 173,
+          "backtracks": 159,
+          "candidates_tested": 1163
+        },
+        {
+          "seed": 2,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.156,
+          "fill_ratio": 1.0,
+          "recursive_calls": 21,
+          "backtracks": 7,
+          "candidates_tested": 109
+        },
+        {
+          "seed": 3,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.237,
+          "fill_ratio": 1.0,
+          "recursive_calls": 231,
+          "backtracks": 217,
+          "candidates_tested": 3550
+        },
+        {
+          "seed": 4,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 5.426,
+          "fill_ratio": 1.0,
+          "recursive_calls": 3411,
+          "backtracks": 3397,
+          "candidates_tested": 54395
+        },
+        {
+          "seed": 5,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.557,
+          "fill_ratio": 1.0,
+          "recursive_calls": 782,
+          "backtracks": 768,
+          "candidates_tested": 6674
+        },
+        {
+          "seed": 6,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.123,
+          "fill_ratio": 1.0,
+          "recursive_calls": 26,
+          "backtracks": 12,
+          "candidates_tested": 229
+        },
+        {
+          "seed": 7,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 1.032,
+          "fill_ratio": 1.0,
+          "recursive_calls": 138,
+          "backtracks": 124,
+          "candidates_tested": 1573
+        },
+        {
+          "seed": 8,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.449,
+          "fill_ratio": 1.0,
+          "recursive_calls": 63,
+          "backtracks": 49,
+          "candidates_tested": 473
+        },
+        {
+          "seed": 9,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.161,
+          "fill_ratio": 1.0,
+          "recursive_calls": 142,
+          "backtracks": 128,
+          "candidates_tested": 1247
+        },
+        {
+          "seed": 10,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.108,
+          "fill_ratio": 1.0,
+          "recursive_calls": 20,
+          "backtracks": 6,
+          "candidates_tested": 82
+        },
+        {
+          "seed": 11,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 1.088,
+          "fill_ratio": 1.0,
+          "recursive_calls": 1787,
+          "backtracks": 1773,
+          "candidates_tested": 17459
+        },
+        {
+          "seed": 12,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.441,
+          "fill_ratio": 1.0,
+          "recursive_calls": 654,
+          "backtracks": 640,
+          "candidates_tested": 5184
+        },
+        {
+          "seed": 13,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.126,
+          "fill_ratio": 1.0,
+          "recursive_calls": 22,
+          "backtracks": 8,
+          "candidates_tested": 219
+        },
+        {
+          "seed": 14,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 1.1,
+          "fill_ratio": 1.0,
+          "recursive_calls": 1504,
+          "backtracks": 1490,
+          "candidates_tested": 18709
+        },
+        {
+          "seed": 15,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.144,
+          "fill_ratio": 1.0,
+          "recursive_calls": 28,
+          "backtracks": 14,
+          "candidates_tested": 244
+        },
+        {
+          "seed": 16,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.492,
+          "fill_ratio": 1.0,
+          "recursive_calls": 894,
+          "backtracks": 880,
+          "candidates_tested": 12114
+        },
+        {
+          "seed": 17,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.281,
+          "fill_ratio": 1.0,
+          "recursive_calls": 461,
+          "backtracks": 447,
+          "candidates_tested": 3496
+        },
+        {
+          "seed": 18,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.8,
+          "fill_ratio": 1.0,
+          "recursive_calls": 317,
+          "backtracks": 303,
+          "candidates_tested": 8909
+        },
+        {
+          "seed": 19,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 0.256,
+          "fill_ratio": 1.0,
+          "recursive_calls": 555,
+          "backtracks": 541,
+          "candidates_tested": 4885
+        }
+      ]
+    },
+    {
+      "layout": "11x6/template_01.txt",
+      "width": 11,
+      "height": 6,
+      "summary": {
+        "runs": 20,
+        "successes": 3,
+        "success_rate": 0.15,
+        "timeouts": 17,
+        "time_p50_s": 20.087,
+        "time_p95_s": 20.35,
+        "time_max_s": 20.35,
+        "mean_backtracks": 23626.8
+      },
+      "runs": [
+        {
+          "seed": 0,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.084,
+          "fill_ratio": 0,
+          "recursive_calls": 19969,
+          "backtracks": 19957,
+          "candidates_tested": 139530
+        },
+        {
+          "seed": 1,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.35,
+          "fill_ratio": 0,
+          "recursive_calls": 12303,
+          "backtracks": 12292,
+          "candidates_tested": 141261
+        },
+        {
+          "seed": 2,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.277,
+          "fill_ratio": 0,
+          "recursive_calls": 16720,
+          "backtracks": 16708,
+          "candidates_tested": 144713
+        },
+        {
+          "seed": 3,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.274,
+          "fill_ratio": 0,
+          "recursive_calls": 13281,
+          "backtracks": 13269,
+          "candidates_tested": 229037
+        },
+        {
+          "seed": 4,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.309,
+          "fill_ratio": 0,
+          "recursive_calls": 15495,
+          "backtracks": 15482,
+          "candidates_tested": 134157
+        },
+        {
+          "seed": 5,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.303,
+          "fill_ratio": 0,
+          "recursive_calls": 20847,
+          "backtracks": 20835,
+          "candidates_tested": 312015
+        },
+        {
+          "seed": 6,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.191,
+          "fill_ratio": 0,
+          "recursive_calls": 14891,
+          "backtracks": 14880,
+          "candidates_tested": 155991
+        },
+        {
+          "seed": 7,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.346,
+          "fill_ratio": 0,
+          "recursive_calls": 27567,
+          "backtracks": 27554,
+          "candidates_tested": 313950
+        },
+        {
+          "seed": 8,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.329,
+          "fill_ratio": 0,
+          "recursive_calls": 24005,
+          "backtracks": 23993,
+          "candidates_tested": 407469
+        },
+        {
+          "seed": 9,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.207,
+          "fill_ratio": 0,
+          "recursive_calls": 13037,
+          "backtracks": 13025,
+          "candidates_tested": 162169
+        },
+        {
+          "seed": 10,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.083,
+          "fill_ratio": 0,
+          "recursive_calls": 28434,
+          "backtracks": 28422,
+          "candidates_tested": 281231
+        },
+        {
+          "seed": 11,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 15.688,
+          "fill_ratio": 1.0,
+          "recursive_calls": 14714,
+          "backtracks": 14692,
+          "candidates_tested": 139589
+        },
+        {
+          "seed": 12,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.078,
+          "fill_ratio": 0,
+          "recursive_calls": 144824,
+          "backtracks": 144809,
+          "candidates_tested": 1146122
+        },
+        {
+          "seed": 13,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 7.039,
+          "fill_ratio": 1.0,
+          "recursive_calls": 27147,
+          "backtracks": 27125,
+          "candidates_tested": 179618
+        },
+        {
+          "seed": 14,
+          "success": true,
+          "budget_exceeded": false,
+          "time_s": 3.636,
+          "fill_ratio": 1.0,
+          "recursive_calls": 2045,
+          "backtracks": 2023,
+          "candidates_tested": 52331
+        },
+        {
+          "seed": 15,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.076,
+          "fill_ratio": 0,
+          "recursive_calls": 26874,
+          "backtracks": 26861,
+          "candidates_tested": 1049518
+        },
+        {
+          "seed": 16,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.072,
+          "fill_ratio": 0,
+          "recursive_calls": 16535,
+          "backtracks": 16523,
+          "candidates_tested": 232536
+        },
+        {
+          "seed": 17,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.087,
+          "fill_ratio": 0,
+          "recursive_calls": 17123,
+          "backtracks": 17110,
+          "candidates_tested": 207146
+        },
+        {
+          "seed": 18,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.129,
+          "fill_ratio": 0,
+          "recursive_calls": 4683,
+          "backtracks": 4674,
+          "candidates_tested": 36569
+        },
+        {
+          "seed": 19,
+          "success": false,
+          "budget_exceeded": true,
+          "time_s": 20.079,
+          "fill_ratio": 0,
+          "recursive_calls": 12312,
+          "backtracks": 12302,
+          "candidates_tested": 89769
+        }
+      ]
+    }
+  ]
+}
