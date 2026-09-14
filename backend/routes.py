@@ -1,7 +1,6 @@
 # DANS backend/routes.py
 
 import logging
-import random
 import unicodedata
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -174,10 +173,10 @@ def generate_grid():
     seed = data.get('seed')
     
     word_list = []
-    if data.get('use_global', True) and dela_trie:
-        all_dela_words = list(dela_trie.words)
-        dela_sample = random.sample(all_dela_words, min(30000, len(all_dela_words)))
-        word_list.extend(w for w in dela_sample if len(w) >= 2 and len(w) <= max(width, height))
+    if data.get('use_global', True):
+        # Tous les mots de longueur utile : un échantillon (ex-30 000 mots, ~4 % du DELA)
+        # rendait presque tous les croisements impossibles.
+        word_list.extend(w for w in dela_trie.words if 2 <= len(w) <= max(width, height))
     
     if user:
       active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
@@ -186,8 +185,7 @@ def generate_grid():
 
     if not word_list: return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
-    # Tri : ordre stable des mots. Attention, l'échantillon DELA ci-dessus reste aléatoire,
-    # donc un même seed ne redonne pas encore la même grille via l'API (voir ROADMAP, Phase 3).
+    # Tri : ordre stable des mots
     unique_words = sorted(set(word_list))
     templates_dir = current_app.config.get('TEMPLATES_DIR')
 
