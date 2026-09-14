@@ -28,6 +28,7 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 | `make lint-frontend` | ESLint + vérification TypeScript |
 | `make bench` | Benchmark du générateur (quelques minutes) |
 | `make lexicon-build`, `lexicon-stats`, `lexicon-export` | Pipeline du lexique (voir [LEXICON.md](docs/LEXICON.md)) |
+| `make curator` | Mini-app de curation du lexique (PIN dans `.env`) |
 
 Tests end-to-end (API démarrée) : `cd frontend && pnpm exec playwright test`.
 
