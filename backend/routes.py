@@ -186,7 +186,8 @@ def generate_grid():
 
     if not word_list: return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
-    # Tri : l'ordre des mots ne dépend que du contenu (reproductibilité à seed égal)
+    # Tri : ordre stable des mots. Attention, l'échantillon DELA ci-dessus reste aléatoire,
+    # donc un même seed ne redonne pas encore la même grille via l'API (voir ROADMAP, Phase 3).
     unique_words = sorted(set(word_list))
     templates_dir = current_app.config.get('TEMPLATES_DIR')
 
