@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, clearTokens, hasStoredSession, SESSION_EXPIRED_EVENT, storeTokens } from "@/lib/api-client";
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -20,12 +20,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      setIsAuthenticated(true);
-    }
+    setIsAuthenticated(hasStoredSession());
     setIsLoading(false);
   }, []);
+
+  // Session impossible à renouveler (refresh token expiré, compte supprimé...) : on repasse en invité
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setIsAuthenticated(false);
+      queryClient.clear();
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [queryClient]);
 
   const login = async (email: string, password: string) => {
     const data = await apiFetch(`/api/auth/login`, {
@@ -33,8 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: { email, password },
     });
 
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("refresh_token", data.refresh_token);
+    storeTokens(data);
     setIsAuthenticated(true);
     // On invalide les requêtes pour forcer un rafraîchissement des données protégées
     await queryClient.invalidateQueries();
@@ -45,16 +51,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: "POST",
       body: { email, password },
     });
-    // La route /register renvoie maintenant les tokens, on les stocke directement
-    localStorage.setItem("access_token", data.access_token);
-    localStorage.setItem("refresh_token", data.refresh_token);
+    // La route /register renvoie les tokens, on les stocke directement
+    storeTokens(data);
     setIsAuthenticated(true);
     await queryClient.invalidateQueries();
   };
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    clearTokens();
     setIsAuthenticated(false);
     queryClient.clear();
   };
@@ -73,4 +77,3 @@ export function useAuth() {
   }
   return context;
 }
-

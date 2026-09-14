@@ -49,6 +49,7 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 placeholder="nom@exemple.com"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -59,10 +60,17 @@ export default function RegisterPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                aria-describedby="password-hint"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <p id="password-hint" className="text-xs text-muted-foreground">
+                8 caractères minimum.
+              </p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full">
