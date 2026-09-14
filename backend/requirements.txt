@@ -6,6 +6,6 @@ Flask-Login
 Flask-Bcrypt
 Flask-JWT-Extended
 Flask-Limiter
-pydantic>=2
+pydantic>=2.13.5
 email-validator
 pytest
