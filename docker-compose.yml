@@ -1,17 +1,19 @@
+# Environnement de développement local.
+# Prérequis : cp .env.example .env  (les valeurs sont lues depuis .env, jamais versionné)
 services:
   db:
     image: postgres:15-alpine
     container_name: terminator_db
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: terminator_db
+      POSTGRES_USER: ${POSTGRES_USER:?Copiez .env.example vers .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copiez .env.example vers .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Copiez .env.example vers .env}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d terminator_db"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,16 +26,17 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - FLASK_ENV=development
+      - APP_ENV=${APP_ENV:-development}
       - FLASK_DEBUG=1
-      - DATABASE_URL=postgresql://user:password@db:5432/terminator_db
-      - JWT_SECRET_KEY=une-cle-secrete-tres-longue-et-difficile-a-deviner
-      # NOUVELLE VARIABLE : une liste d'origines autorisées, séparées par des virgules
-      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.56:3000
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - SECRET_KEY=${SECRET_KEY:?Copiez .env.example vers .env}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Copiez .env.example vers .env}
+      # Origines autorisées, séparées par des virgules
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - GENERATION_TIME_BUDGET_S=${GENERATION_TIME_BUDGET_S:-20}
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   pgdata:
-
