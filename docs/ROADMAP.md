@@ -123,7 +123,8 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 1. Pools de mots dans `WordRepository` : commun (curé), souhaités (saisis + dictionnaires thématiques), obligatoires.
 2. **Mots obligatoires** : vérification préalable des longueurs ; placement en premier (le plus contraint d'abord, avec backtracking) ; en cas d'échec, explication plutôt qu'une erreur 500.
 3. **Mots souhaités** : tri des candidats par pool, puis fréquence, puis score de lettres ; ratio visé en objectif souple via **redémarrages aléatoires** dans le budget temps.
-4. **Mots communs** : abandon de l'échantillon aléatoire de 30 k mots au profit d'un tri par fréquence.
+4. **Mots communs** : tri par fréquence des candidats (l'échantillon aléatoire de 30 k mots a déjà été supprimé en Phase 0a : il rendait presque toute génération impossible).
+5. **Redémarrages aléatoires** : la baseline montre un profil « vite ou jamais » (11×6 : 3/20 en 20 s, grilles réussies en 3,6 à 15,7 s) ; plusieurs trajectoires courtes dans le budget plutôt qu'une longue. Voir `backend/benchmarks/README.md`.
 5. **Performance** guidée par le benchmark : index des candidats par (position, lettre), invalidation ciblée du cache.
 6. Tests : mot obligatoire placé, impossibilité expliquée, ratio rapporté, même seed ⇒ même grille.
 
