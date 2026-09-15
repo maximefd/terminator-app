@@ -10,8 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from .normalize import normalize_word
 from .readers import read_dela, read_lexique, read_wiktionary, resolve_definition, wiktionary_pos
-from .scoring import SUGGESTIONS, Thresholds, suggest, zipf_from_per_million
+from .scoring import KEEP, LIKELY_DELETE, LIKELY_KEEP, REVIEW, SUGGESTIONS, Thresholds, suggest, zipf_from_per_million
 
 SCHEMA = f"""
 CREATE TABLE words (
@@ -19,15 +20,20 @@ CREATE TABLE words (
     length INTEGER NOT NULL,
     display_forms TEXT NOT NULL,    -- liste JSON des formes affichées
     zipf REAL NOT NULL,             -- 0 si absent de Lexique
-    lemma TEXT,
+    lemma TEXT,                     -- Lexique, sinon lemme de la forme fléchie selon le Wiktionnaire
+    lemma_norm TEXT,                -- lemme normalisé : regroupe un mot et ses formes fléchies
     pos TEXT,
     definition TEXT,
     definition_kind TEXT CHECK (definition_kind IN ('own', 'inflection')),  -- NULL si pas de définition
-    suggestion TEXT NOT NULL CHECK (suggestion IN ({", ".join(f"'{s}'" for s in SUGGESTIONS)}))
+    suggestion TEXT NOT NULL CHECK (suggestion IN ({", ".join(f"'{s}'" for s in SUGGESTIONS)})),
+    queue_order INTEGER NOT NULL UNIQUE  -- ordre de tri : mots courts, puis suggestion, puis fréquence
 );
-CREATE INDEX idx_words_queue ON words (length, zipf);
+CREATE INDEX idx_words_lemma ON words (lemma_norm);
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
+
+# Dans une même longueur : les mots probablement à supprimer d'abord, les mots courants en dernier
+QUEUE_RANK = {LIKELY_DELETE: 0, REVIEW: 1, LIKELY_KEEP: 2, KEEP: 3}
 
 
 @dataclass
@@ -75,17 +81,25 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
         if entry and entry.display in forms:
             forms.remove(entry.display)
             forms.insert(0, entry.display)
-        rows.append((
+        lemma = entry.lemma if entry and entry.lemma else None
+        if lemma is None and normalized in wiktionary:
+            lemma = wiktionary[normalized].form_lemma
+        rows.append([
             normalized,
             len(normalized),
             json.dumps(forms, ensure_ascii=False),
             zipf,
-            entry.lemma if entry else None,
+            lemma,
+            normalize_word(lemma) or None,
             entry.pos if entry else None,
             definition.text if definition else None,
             ("own" if definition.own else "inflection") if definition else None,
             suggest(zipf, bool(definition and definition.own), thresholds),
-        ))
+        ])
+
+    rows.sort(key=lambda r: (r[1], QUEUE_RANK[r[9]], r[3], r[0]))
+    for order, row in enumerate(rows):
+        row.append(order)
 
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -100,7 +114,7 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
     connection = sqlite3.connect(tmp_path)
     try:
         connection.executescript(SCHEMA)
-        connection.executemany("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+        connection.executemany("INSERT INTO words VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
         connection.executemany("INSERT INTO meta VALUES (?, ?)", [
             ("built_at", datetime.now(timezone.utc).isoformat(timespec="seconds")),
             ("thresholds", json.dumps(thresholds.as_dict())),
@@ -114,8 +128,8 @@ def build_lexicon(dela_path, lexique_path, db_path, wiktionary_path=None,
     stats = BuildStats(
         words=len(rows),
         with_frequency=sum(1 for r in rows if r[3] > 0),
-        with_definition=sum(1 for r in rows if r[6]),
-        suggestions=dict(Counter(r[8] for r in rows)),
+        with_definition=sum(1 for r in rows if r[7]),
+        suggestions=dict(Counter(r[9] for r in rows)),
     )
     log(f"Base écrite : {db_path} ({stats.words} mots)")
     return stats

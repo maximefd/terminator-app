@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 # Pour vérifier l'équivalence de normalisation avec le backend
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 

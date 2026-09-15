@@ -11,6 +11,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - décisions de curation versionnées avec annulation par lot ;
   - export du lexique curé ; statistiques d'avancement ;
   - ADR 0005.
+- Mini-app de curation du lexique (`tools/curator/`, `make curator`, Phase 1b) :
+  - une carte par mot : définition, fréquence, lemme, suggestion ;
+  - une touche par décision (← supprimer, → garder, ↓ annuler, ↑ passer, Maj + ← toute la famille) ;
+  - glisser sur téléphone ;
+  - accès par code PIN ; statistiques du jour et série.
 - Documentation de relecture :
   - README réécrit ;
   - `docs/ARCHITECTURE.md`, `docs/ENGINE.md`, `docs/LAYOUTS.md`, `docs/LEXICON.md` ;

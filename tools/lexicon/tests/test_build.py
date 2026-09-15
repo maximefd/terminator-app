@@ -35,6 +35,28 @@ def test_build_combines_the_three_sources(dela_file, lexique_file, wiktionary_fi
     assert (words["AABAM"]["zipf"], words["AABAM"]["definition"], words["AABAM"]["suggestion"]) == (0.0, None, "likely_delete")
 
 
+def test_inflected_forms_are_grouped_with_their_lemma(dela_file, lexique_file, wiktionary_file, tmp_path):
+    db_path = tmp_path / "lexicon.sqlite"
+
+    build_lexicon(dela_file, lexique_file, db_path, wiktionary_file, log=lambda _: None)
+
+    words = fetch_words(db_path)
+    # Absent de Lexique : le lemme vient du Wiktionnaire (« forme de ouvrager »)
+    assert (words["OUVRAGEAMES"]["lemma"], words["OUVRAGEAMES"]["lemma_norm"]) == ("ouvrager", "OUVRAGER")
+    assert words["PORTES"]["lemma_norm"] == "PORTE"
+
+
+def test_queue_order_puts_short_rare_words_first(dela_file, lexique_file, wiktionary_file, tmp_path):
+    db_path = tmp_path / "lexicon.sqlite"
+
+    build_lexicon(dela_file, lexique_file, db_path, wiktionary_file, log=lambda _: None)
+
+    ordered = sorted(fetch_words(db_path).values(), key=lambda w: w["queue_order"])
+    assert [w["norm"] for w in ordered] == [
+        "ETE", "AABAM", "PORTE", "PORTES", "OUVRAGE", "APRIORI", "OUVRAGER", "OUVRAGEAMES",
+    ]
+
+
 def test_build_records_sources_and_thresholds(dela_file, lexique_file, tmp_path):
     db_path = tmp_path / "lexicon.sqlite"
 

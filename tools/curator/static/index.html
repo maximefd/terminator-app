@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Curateur — Terminator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">🧩 Curateur</span>
+    <p class="stats" aria-live="polite">
+      <span><strong id="stat-today">0</strong> aujourd'hui</span>
+      <span>série <strong id="stat-streak">0</strong> j</span>
+      <span>reste <strong id="stat-remaining">…</strong></span>
+    </p>
+  </header>
+
+  <section class="filters" aria-label="Filtres">
+    <label>Longueur
+      <select id="filter-length">
+        <option value="2-5">2 à 5 lettres</option>
+        <option value="6-8">6 à 8 lettres</option>
+        <option value="9-11">9 à 11 lettres</option>
+        <option value="12-99">12 lettres et plus</option>
+        <option value="2-99">Toutes</option>
+      </select>
+    </label>
+    <label>Suggestion
+      <select id="filter-suggestion">
+        <option value="">Toutes</option>
+        <option value="likely_delete">Probablement rare</option>
+        <option value="review">À examiner</option>
+        <option value="likely_keep">Probablement courant</option>
+      </select>
+    </label>
+  </section>
+
+  <main class="workspace">
+    <article id="card" class="card" aria-live="polite" aria-label="Mot à trier">
+      <div class="card-top">
+        <span id="card-suggestion" class="badge"></span>
+        <span id="card-length" class="muted"></span>
+      </div>
+      <h1 id="card-word" class="word"></h1>
+      <p id="card-forms" class="forms muted"></p>
+      <p id="card-definition" class="definition"></p>
+      <dl class="meta">
+        <div><dt>Fréquence</dt><dd><span class="freq" aria-hidden="true"><span id="card-freq-bar"></span></span> <span id="card-freq-label"></span></dd></div>
+        <div><dt>Catégorie</dt><dd id="card-pos"></dd></div>
+        <div><dt>Lemme</dt><dd id="card-lemma"></dd></div>
+      </dl>
+      <p class="swipe-hint muted">Glissez à gauche pour supprimer, à droite pour garder</p>
+    </article>
+
+    <p id="loading" class="empty">Chargement des mots…</p>
+    <p id="empty" class="empty" hidden>Plus aucun mot à trier avec ces filtres 🎉</p>
+
+    <div class="actions">
+      <button id="btn-delete" class="danger" type="button"><span class="key">←</span> Supprimer</button>
+      <button id="btn-keep" class="success" type="button">Garder <span class="key">→</span></button>
+      <button id="btn-skip" type="button"><span class="key">↑</span> Passer</button>
+      <button id="btn-undo" type="button"><span class="key">↓</span> Annuler</button>
+    </div>
+    <button id="btn-family" class="family" type="button">
+      <span class="key">Maj + ←</span> Supprimer le mot et toutes ses formes <span id="family-count"></span>
+    </button>
+
+    <p class="legend muted">
+      Clavier : <kbd>←</kbd> supprimer · <kbd>→</kbd> garder · <kbd>↓</kbd> ou <kbd>⌫</kbd> annuler ·
+      <kbd>↑</kbd> passer · <kbd>Maj</kbd> + <kbd>←</kbd> toute la famille.
+      Les mots gardés ou très courants ne sont jamais supprimés avec la famille.
+    </p>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -92,18 +92,52 @@ AABAM;undo;2026-09-15T08:30:09+00:00;20260915083000-3f9a1c
 - Par défaut, seuls les mots **supprimés par l'auteur** sont retirés.
 - `python -m tools.lexicon export --exclude-suggested-deletes` retire aussi les mots suggérés `likely_delete` que l'auteur n'a pas gardés explicitement.
 
-## La suite de la curation (Phase 1b et 1c)
+## La mini-app de curation (Phase 1b)
 
-Objectif : un lexique curé, construit à partir de **décisions manuelles** de l'auteur, aidées par des données de fréquence.
+Code : `tools/curator/` (Flask + une page HTML/JS sans dépendance). Elle lit la base locale en **lecture seule** et n'écrit que dans `data/lexicon/decisions.csv`.
 
-1. **Pipeline de données** (`tools/lexicon/`) :
-   - croiser le DELA avec **Lexique 3.83** (fréquence, lemme, catégorie grammaticale) et le **Wiktionnaire** (définitions) ;
-   - produire une base locale reconstructible.
-2. **Source de vérité versionnée** : `data/lexicon/decisions.csv` (`mot;decision;date`). Un mot supprimé le reste ; la décision porte sur la forme normalisée utilisée dans les grilles.
-3. **Mini-app de tri** (`tools/curator/`) :
-   - utilisable depuis le téléphone ou l'ordinateur sur le réseau local ;
-   - une carte par mot (définition, fréquence, suggestion) ;
-   - **une touche par décision** : `←` supprimer, `→` garder, `↓` annuler, `↑` passer.
-4. **Bascule** : l'API charge le lexique curé (derrière un flag de configuration), la recherche affiche les définitions, le générateur utilise la fréquence.
+### Lancer
 
-Détails : [ROADMAP.md](ROADMAP.md), Phase 1.
+1. Construire la base une fois : `make lexicon-build`.
+2. Choisir un code PIN (6 caractères minimum) dans `.env` : `CURATOR_PIN=...`.
+3. Lancer :
+   ```bash
+   make curator
+   ```
+4. Ouvrir l'adresse affichée :
+   - sur l'ordinateur : http://localhost:8765 ;
+   - sur le téléphone, connecté au même Wi-Fi : http://<IP du Mac>:8765 (ajoutable à l'écran d'accueil).
+
+### Trier
+
+Une carte par mot : le mot et ses graphies, la définition (signalée quand ce n'est qu'une forme fléchie), la fréquence, la catégorie, le lemme et la suggestion.
+
+| Action | Clavier | Téléphone |
+|--------|---------|-----------|
+| Supprimer | `←` | glisser à gauche ou bouton |
+| Garder | `→` | glisser à droite ou bouton |
+| Annuler la dernière action | `↓` ou `⌫` | bouton |
+| Passer (revient en fin de file) | `↑` | bouton |
+| Supprimer le mot et toutes ses formes | `Maj` + `←` | bouton |
+
+- **Une touche maintenue ne décide qu'une fois.** Pas de confirmation : l'annulation est toujours possible, y compris pour une famille entière.
+- **Suppression par famille** : le mot, son lemme et toutes les formes du même lemme. Les mots gardés et les mots très courants (`keep`) ne sont jamais supprimés de cette façon.
+- **Ordre de la file** : mots les plus courts d'abord ; dans une longueur, `likely_delete`, puis `review`, puis `likely_keep`, du moins fréquent au plus fréquent. Filtres par longueur et par suggestion.
+- **En haut de l'écran** : décisions du jour, série de jours consécutifs, mots restant à trier.
+
+Les décisions sont écrites immédiatement. Pensez à commiter `data/lexicon/decisions.csv` de temps en temps.
+
+### Sécurité
+
+Le curateur est accessible depuis le réseau local : il ne démarre pas sans `CURATOR_PIN`.
+
+- Blocage de 5 minutes après 5 codes erronés.
+- Cookie de session `HttpOnly` et `SameSite=Strict`.
+- En-tête obligatoire sur chaque écriture (protection CSRF).
+- CSP stricte (aucun script externe ou inline).
+- Base ouverte en lecture seule ; seules des décisions valides sur des mots connus sont acceptées.
+- À ne lancer que sur un réseau de confiance (Wi-Fi domestique) : la connexion n'est pas chiffrée (HTTP).
+
+## Prochaine étape (Phase 1c)
+
+L'API chargera le lexique curé (`make lexicon-export`) derrière un flag de configuration ; la recherche affichera les définitions ; le générateur utilisera la fréquence. Voir [ROADMAP.md](ROADMAP.md) et l'issue #11.
