@@ -31,8 +31,8 @@ Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` compl
 
 | Layout | Succès | p50 | p95 | Backtracks moyens |
 |--------|--------|-----|-----|-------------------|
-| 6x7/template_01 | 20/20 | 0,28 s | 5,4 s | 964 |
-| 11x6/template_01 | 3/20 | timeout | timeout | 23 627 |
+| 6x7-001 | 20/20 | 0,28 s | 5,4 s | 964 |
+| 11x6-001 | 3/20 | timeout | timeout | 23 627 |
 
 ## Ce qu'on a appris en établissant cette baseline
 

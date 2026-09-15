@@ -10,8 +10,8 @@ On part d'une **mise en page** (layout) : un rectangle de cases, certaines rése
 
 | Terme | Sens |
 |-------|------|
-| **Layout** | Mise en page d'une grille (fichier `backend/templates/<L>x<H>/*.txt`, voir [LAYOUTS.md](LAYOUTS.md)) |
-| **Case définition** | Case `#` du layout : ne reçoit pas de lettre |
+| **Layout** | Mise en page d'une grille (fichier `backend/layouts/<L>x<H>/<NNN>.txt`, voir [LAYOUTS.md](LAYOUTS.md)) |
+| **Case définition** | Case `x` du layout : ne reçoit pas de lettre |
 | **Slot** | Emplacement d'un mot : suite d'au moins 2 cases lettres, horizontale (`across`) ou verticale (`down`) |
 | **Motif** | État actuel d'un slot, `?` pour une case vide (ex : `P??LE`) |
 | **Candidat** | Mot du dictionnaire qui correspond au motif et n'est pas déjà utilisé dans la grille |
@@ -29,7 +29,7 @@ flowchart TD
     F -->|échec ou budget dépassé| H[Erreur explicite]
 ```
 
-1. **`GridTemplate`** lit le layout : `#` = case définition, tout le reste = case lettre.
+1. **`GridTemplate`** lit le layout avec `layout_format.py` : `x` = case définition, `-` = case lettre (ancien format `#` / `.` accepté). Un caractère inconnu ou une taille différente de celle du dossier est une erreur.
 2. **`SlotFinder`** repère tous les slots horizontaux et verticaux d'au moins 2 lettres.
 3. **`WordRepository`** répond à « quels mots disponibles correspondent à ce motif ? » grâce au Trie (`trie_engine.py`), avec un cache des motifs déjà demandés. Un mot placé est retiré des mots disponibles : **pas de doublon dans une grille**.
 4. **`GridSolver`** remplit la grille :

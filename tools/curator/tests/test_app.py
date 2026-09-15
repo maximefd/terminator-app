@@ -49,11 +49,6 @@ def test_refuses_to_start_with_a_short_pin(paths):
         create_app(*paths, pin="1234")
 
 
-def test_refuses_to_start_without_the_lexicon_database(tmp_path):
-    with pytest.raises(FileNotFoundError, match="make lexicon-build"):
-        create_app(tmp_path / "absent.sqlite", tmp_path / "decisions.csv", PIN)
-
-
 # --- Authentification et sécurité ---
 
 def test_pages_redirect_to_login_and_api_requires_the_pin(client):

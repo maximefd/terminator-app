@@ -4,7 +4,8 @@ import pytest
 
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
-from grid_generator import DEFAULT_TEMPLATES_DIR, GridGenerator, LayoutNotFoundError, available_formats
+from grid_generator import GridGenerator, LayoutNotFoundError
+from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
 
 
@@ -30,7 +31,11 @@ def test_available_formats_on_missing_directory(tmp_path):
 
 def test_missing_layout_raises(small_words, small_trie):
     with pytest.raises(LayoutNotFoundError):
-        GridGenerator(9, 9, small_words, prebuilt_trie=small_trie, templates_dir=FIXTURE_LAYOUTS_DIR)
+        GridGenerator(9, 9, small_words, prebuilt_trie=small_trie, layouts_dir=FIXTURE_LAYOUTS_DIR)
+
+
+def test_layout_id_is_derived_from_the_path():
+    assert layout_id(os.path.join("layouts", "11x6", "007.txt")) == "11x6-007"
 
 
 def test_shipped_layouts_load_regardless_of_working_directory(tmp_path, monkeypatch):
@@ -39,19 +44,19 @@ def test_shipped_layouts_load_regardless_of_working_directory(tmp_path, monkeypa
 
     assert {(6, 7), (11, 6)} <= {(f["width"], f["height"]) for f in formats}
     for fmt in formats:
-        format_dir = os.path.join(DEFAULT_TEMPLATES_DIR, f"{fmt['width']}x{fmt['height']}")
+        format_dir = os.path.join(DEFAULT_LAYOUTS_DIR, f"{fmt['width']}x{fmt['height']}")
         for name in os.listdir(format_dir):
             template = GridTemplate(fmt["width"], fmt["height"], os.path.join(format_dir, name))
             assert SlotFinder(template).find_all_slots(), f"{name} ne contient aucun slot"
 
 
 def test_grid_data_shape(small_words, small_trie):
-    generator = GridGenerator(5, 5, small_words, prebuilt_trie=small_trie, templates_dir=FIXTURE_LAYOUTS_DIR, seed=3)
+    generator = GridGenerator(5, 5, small_words, prebuilt_trie=small_trie, layouts_dir=FIXTURE_LAYOUTS_DIR, seed=3)
     assert generator.generate()
 
     data = generator.get_grid_data()
 
     assert (data["width"], data["height"], data["seed"]) == (5, 5, 3)
-    assert data["layout"] == os.path.join("5x5", "layout_01.txt")
+    assert data["layout"] == "5x5-001"
     assert len(data["cells"]) == 25
     assert {"metrics", "cache_stats", "placement_history"} <= data["statistics"].keys()
