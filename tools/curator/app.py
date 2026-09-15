@@ -14,6 +14,7 @@ from tools.lexicon.decisions import DELETE, KEEP, NORMALIZED_WORD
 
 from .exporter import DEFAULT_EXPORT_EVERY, LexiconExporter
 from .gamification import DEFAULT_DAILY_GOAL
+from .layouts import DEFAULT_LAYOUTS_DIR, LayoutSaveError, catalog, check_rows, parse_rows, save_layout
 from .lookup import LookupService
 from .repository import QUEUE_SUGGESTIONS, LexiconRepository
 from .stats import curation_stats
@@ -26,6 +27,9 @@ LOCKOUT_SECONDS = 300
 MAX_WORDS_PER_DECISION = 50
 # En-tête exigé sur toute écriture : un site tiers ne peut pas l'envoyer sans CORS (protection CSRF)
 CSRF_HEADER = "X-Curator"
+# Routes qui lisent la base du lexique : indisponibles tant qu'elle n'est pas construite
+LEXICON_API_PREFIXES = ("/api/queue", "/api/cards", "/api/decisions", "/api/undo", "/api/stats",
+                        "/api/lookup", "/api/lexicon")
 
 PUBLIC_PATHS = {"/login", "/static/login.js", "/static/style.css", "/static/icon.svg", "/manifest.webmanifest"}
 
@@ -91,15 +95,19 @@ def _word_list(value) -> list[str] | None:
 
 def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None, testing: bool = False,
                daily_goal: int = DEFAULT_DAILY_GOAL, lookup: LookupService | None = None,
-               exporter: LexiconExporter | None = None, terminator_url: str | None = None) -> Flask:
+               exporter: LexiconExporter | None = None, terminator_url: str | None = None,
+               layouts_dir=None) -> Flask:
     """`lookup`, `exporter` et `terminator_url` se configurent par défaut depuis l'environnement
-    (SERPER_API_KEY, CURATOR_EXPORT_EVERY, TERMINATOR_URL) ; les tests les fournissent."""
+    (SERPER_API_KEY, CURATOR_EXPORT_EVERY, TERMINATOR_URL) ; les tests les fournissent.
+
+    Sans base du lexique, le curateur démarre quand même : l'éditeur de layouts reste utilisable et
+    le tri des mots s'active dès que la base existe (`make lexicon-build`), sans redémarrage.
+    """
     if not isinstance(pin, str) or len(pin) < MIN_PIN_LENGTH:
         raise ValueError(f"CURATOR_PIN doit contenir au moins {MIN_PIN_LENGTH} caractères (à définir dans .env).")
     if not isinstance(daily_goal, int) or not 1 <= daily_goal <= 5000:
         raise ValueError("CURATOR_DAILY_GOAL doit être un nombre entier entre 1 et 5000.")
-    if not Path(db_path).exists():
-        raise FileNotFoundError(f"Base du lexique absente ({db_path}) : lancez d'abord `make lexicon-build`.")
+    layouts_dir = str(layouts_dir or DEFAULT_LAYOUTS_DIR)
 
     app = Flask(__name__, static_folder=None)
     app.config.update(
@@ -132,6 +140,8 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
             return redirect("/login")
         if request.method == "POST" and request.path.startswith("/api/") and request.headers.get(CSRF_HEADER) != "1":
             return _error("Requête refusée.", 403)
+        if request.path.startswith(LEXICON_API_PREFIXES) and not Path(db_path).exists():
+            return _error("Base du lexique absente : lancez `make lexicon-build` pour trier les mots.", 503)
         return None
 
     @app.after_request
@@ -176,7 +186,13 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
 
     @app.get("/")
     def index():
+        if not Path(db_path).exists():
+            return redirect("/layouts")
         return send_from_directory(STATIC_DIR, "index.html")
+
+    @app.get("/layouts")
+    def layouts_page():
+        return send_from_directory(STATIC_DIR, "layouts.html")
 
     @app.get("/manifest.webmanifest")
     def manifest():
@@ -272,5 +288,33 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
     def export_lexicon():
         started = exporter.start(len(store.state()))
         return jsonify({**exporter.snapshot(), "started": started, "terminator_url": terminator_url}), 202 if started else 200
+
+    # --- Layouts (écriture dans backend/layouts, jamais d'écrasement) ---
+
+    def _rows_from_body() -> list[str] | None:
+        return parse_rows((request.get_json(silent=True) or {}).get("rows"))
+
+    @app.get("/api/layouts")
+    def layouts_catalog():
+        return jsonify({"formats": catalog(layouts_dir)})
+
+    @app.post("/api/layouts/check")
+    def check_layout():
+        rows = _rows_from_body()
+        if rows is None:
+            return _error("Grille invalide.", 400)
+        return jsonify(check_rows(rows, layouts_dir))
+
+    @app.post("/api/layouts")
+    def create_layout():
+        rows = _rows_from_body()
+        if rows is None:
+            return _error("Grille invalide.", 400)
+        try:
+            saved = save_layout(rows, layouts_dir)
+        except LayoutSaveError as error:
+            body = {"error": str(error), "duplicate_of": error.duplicate_of, "report": error.report}
+            return jsonify(body), 409 if error.duplicate_of else 400
+        return jsonify({"id": saved["id"], "stats": saved["report"]["stats"]}), 201
 
     return app

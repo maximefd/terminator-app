@@ -10,8 +10,8 @@ On part d'une **mise en page** (layout) : un rectangle de cases, certaines rése
 
 | Terme | Sens |
 |-------|------|
-| **Layout** | Mise en page d'une grille (fichier `backend/templates/<L>x<H>/*.txt`, voir [LAYOUTS.md](LAYOUTS.md)) |
-| **Case définition** | Case `#` du layout : ne reçoit pas de lettre |
+| **Layout** | Mise en page d'une grille (fichier `backend/layouts/<L>x<H>/<NNN>.txt`, voir [LAYOUTS.md](LAYOUTS.md)) |
+| **Case définition** | Case `x` du layout : ne reçoit pas de lettre |
 | **Slot** | Emplacement d'un mot : suite d'au moins 2 cases lettres, horizontale (`across`) ou verticale (`down`) |
 | **Motif** | État actuel d'un slot, `?` pour une case vide (ex : `P??LE`) |
 | **Candidat** | Mot du dictionnaire qui correspond au motif et n'est pas déjà utilisé dans la grille |
@@ -29,9 +29,9 @@ flowchart TD
     F -->|échec ou budget dépassé| H[Erreur explicite]
 ```
 
-1. **`GridTemplate`** lit le layout : `#` = case définition, tout le reste = case lettre.
+1. **`GridTemplate`** lit le layout avec `layout_format.py` : `x` = case définition, `-` = case lettre (ancien format `#` / `.` accepté). Un caractère inconnu ou une taille différente de celle du dossier est une erreur.
 2. **`SlotFinder`** repère tous les slots horizontaux et verticaux d'au moins 2 lettres.
-3. **`WordRepository`** répond à « quels mots disponibles correspondent à ce motif ? » grâce au Trie (`trie_engine.py`), avec un cache des motifs déjà demandés. Un mot placé est retiré des mots disponibles : **pas de doublon dans une grille**.
+3. **`WordRepository`** répond à « quels mots disponibles correspondent à ce motif ? » grâce à un **index par (position, lettre)** (`pattern_index.py`) : pour chaque longueur, l'ensemble des mots ayant telle lettre à telle position est un ensemble de bits (un entier Python). Les candidats de `P??LE` sont le ET binaire des ensembles « P en 1 », « L en 4 », « E en 5 » et des mots encore disponibles ; les compter ne demande qu'un `bit_count()`. L'index est construit une fois par lexique chargé et partagé entre les générations. Un mot placé est retiré des mots disponibles : **pas de doublon dans une grille**.
 4. **`GridSolver`** remplit la grille :
    - il choisit le **slot le plus contraint** ;
    - il essaie ses meilleurs candidats un par un ;
@@ -50,6 +50,7 @@ flowchart TD
 | **Validation croisée** | Un mot est refusé s'il forme un mot invalide dans l'autre sens | `_is_placement_valid` |
 | **Forward checking strict** | Refuser un mot qui laisserait un slot croisé avec moins de 3 candidats | `MIN_SAFE_CANDIDATES = 3` (doit rester ≥ 2) |
 | **Nogoods** | Mémoriser les motifs sans aucun mot pour ne pas les recréer | invalidés au retour arrière |
+| **Redémarrages** | Plusieurs essais courts plutôt qu'un long : l'essai n°i s'arrête après `unité × luby(i)` appels récursifs (1, 1, 2, 1, 1, 2, 4…), puis repart avec une nouvelle trajectoire dérivée du seed, tant que le budget temps le permet. Les mots consommés par un essai interrompu sont rendus au dépôt | `DEFAULT_RESTART_UNIT_CALLS = 300` (`grid_generator.py`) |
 
 ## Garanties
 
@@ -67,22 +68,21 @@ make bench
 
 Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/README.md).
 
-**Baseline actuelle** (20 seeds, budget 20 s) :
+**Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-| Layout | Succès |
-|--------|--------|
-| 6×7 | 20/20 (médiane 0,3 s) |
-| 11×6 | 3/20 |
+| Layout | Succès | Première baseline |
+|--------|--------|-------------------|
+| 6×7 | 20/20 (p95 0,29 s) | 20/20 (p95 5,4 s) |
+| 11×6 | 20/20 (p50 3,1 s, p95 15,6 s) | 3/20 |
 
-Le 11×6 est « vite ou jamais » : les grilles réussies le sont en 3,6 à 15,7 s, les autres s'enlisent.
+Le 11×6 était « vite ou jamais » : les grilles réussies l'étaient en 3,6 à 15,7 s, les autres s'enlisaient. Les redémarrages exploitent ce profil (#19) et l'index des candidats rend chaque essai 2 à 6 fois plus rapide (#20).
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| Taux de succès faible sur les layouts difficiles (11×6 : 3/20) | Beaucoup de timeouts | Phase 3 : redémarrages aléatoires, index des candidats par (position, lettre) |
 | **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
-| Invalidation du cache par longueur à chaque placement | Travail répété | Phase 3 (guidé par le benchmark) |
+| Première génération après le chargement d'un lexique : construction de l'index (1,4 s sur le DELA complet, puis 0,3 s par génération) | Première génération un peu plus lente | Construire l'index au chargement du lexique si besoin |

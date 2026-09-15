@@ -1,38 +1,71 @@
 # DANS backend/engine/word_repository.py
 
 import logging
+
 from trie_engine import DictionnaireTrie # On importe la classe Trie
+
+from .pattern_index import PatternIndex
+
+
+def _shared_index(trie: DictionnaireTrie, length: int) -> PatternIndex:
+    """Index (position, lettre) des mots du Trie de cette longueur, construit une seule fois par Trie.
+
+    Un Trie n'est plus modifié après son chargement (l'API en charge un nouveau quand le lexique change) :
+    l'index est donc partagé par toutes les générations qui l'utilisent. Ordre alphabétique, comme le
+    parcours d'un Trie construit dans l'ordre.
+    """
+    cache = trie.__dict__.setdefault("_pattern_indexes", {})
+    index = cache.get(length)
+    if index is None:
+        by_length = trie.__dict__.get("_words_by_length")
+        if by_length is None:
+            by_length = {}
+            for word in trie.words:
+                by_length.setdefault(len(word), []).append(word)
+            for words in by_length.values():
+                words.sort()
+            trie._words_by_length = by_length
+        index = cache[length] = PatternIndex(by_length.get(length, []))
+    return index
+
 
 class WordRepository:
     """
-    Charge et indexe tous les mots du dictionnaire pour une recherche efficace.
+    Mots valides, mots encore disponibles et candidats d'un motif pour une grille.
+
+    Les candidats sont calculés par ET binaire sur l'index (position, lettre) du Trie (#20) : pas de parcours
+    du Trie ni de cache à invalider. Les mots consommés sont retirés de l'ensemble des disponibles.
     """
     def __init__(self, dela_file_path: str):
-        self.trie = DictionnaireTrie()
-        self._load_and_index(dela_file_path)
-        
-        # OPTIMISATION : Indexer par longueur avec des SETS pour O(1) add/remove
-        self.words_by_len = {}
-        for word in self.get_all_words():
-            length = len(word)
-            if length not in self.words_by_len:
-                self.words_by_len[length] = set()
-            self.words_by_len[length].add(word)
-        
-        # OPTIMISATION : Cache pour get_candidates
-        self._candidate_cache = {}  # pattern -> list[str]
-        self._cache_stats = {'hits': 0, 'misses': 0}  # Statistiques
-            
-        logging.info(f"{len(self.get_all_words())} mots uniques indexés par longueur.")
-
-    def _load_and_index(self, file_path):
-        """Charge les mots en utilisant le Trie."""
-        logging.info(f"Chargement et indexation du dictionnaire depuis : {file_path}")
+        trie = DictionnaireTrie()
+        logging.info(f"Chargement et indexation du dictionnaire depuis : {dela_file_path}")
         try:
-            self.trie.load_dela_csv(file_path)
+            trie.load_dela_csv(dela_file_path)
         except Exception as e:
             logging.error(f"Échec du chargement du dictionnaire pour le WordRepository: {e}")
             raise
+        self._setup(trie, trie.get_all_words())
+        logging.info(f"{len(trie.words)} mots uniques indexés par longueur.")
+
+    @classmethod
+    def from_words(cls, trie: DictionnaireTrie, valid_words: list[str]) -> "WordRepository":
+        """Dépôt d'une grille : réutilise un Trie déjà chargé (et ses index) avec les mots autorisés."""
+        repository = object.__new__(cls)
+        repository._setup(trie, valid_words)
+        return repository
+
+    def _setup(self, trie: DictionnaireTrie, valid_words: list[str]) -> None:
+        self.trie = trie
+        # Mots disponibles par longueur (sets : O(1) pour retirer ou remettre un mot)
+        self.words_by_len: dict[int, set[str]] = {}
+        for word in valid_words:
+            self.words_by_len.setdefault(len(word), set()).add(word)
+        # Même information sous forme d'ensembles de bits, pour l'index
+        self.indexes: dict[int, PatternIndex] = {}
+        self.available: dict[int, int] = {}
+        for length, words in self.words_by_len.items():
+            index = self.indexes[length] = _shared_index(trie, length)
+            self.available[length] = index.mask_of(words)
 
     def get_all_words(self) -> list[str]:
         """Récupère tous les mots valides depuis le Trie."""
@@ -45,71 +78,37 @@ class WordRepository:
     def is_word_valid(self, word: str) -> bool:
         """Vérifie si un mot existe dans notre dictionnaire."""
         return word in self.trie.words
-    
+
+    def _candidate_mask(self, pattern: str) -> tuple[PatternIndex | None, int]:
+        index = self.indexes.get(len(pattern))
+        if index is None:
+            return None, 0
+        return index, index.mask(pattern) & self.available[len(pattern)]
+
     def get_candidates(self, pattern: str) -> list[str]:
-        """
-        Retourne les mots qui correspondent au pattern et qui sont encore disponibles.
-        OPTIMISATION : Utilise un cache basé sur (pattern, nb_mots_disponibles).
-        """
-        # Clé de cache : (pattern, nombre de mots disponibles pour cette longueur)
-        length = len(pattern)
-        available_count = len(self.words_by_len.get(length, set()))
-        cache_key = (pattern, available_count)
-        
-        # Vérifier le cache
-        if cache_key in self._candidate_cache:
-            self._cache_stats['hits'] += 1
-            return self._candidate_cache[cache_key]
-        
-        # 1. Utilise le Trie pour la recherche par motif (rapide)
-        all_matching_words = self.trie.search_pattern(pattern)
-        
-        # 2. Utilise la longueur du pattern pour trouver le SET des mots disponibles
-        available_set = self.words_by_len.get(length, set())
-        
-        # 3. Intersection: retourne uniquement les mots correspondants ET disponibles
-        
-        candidates = [word for word in all_matching_words if word in available_set]
-        
-        # Mettre en cache
-        self._cache_stats['misses'] += 1
-        self._candidate_cache[cache_key] = candidates
-        
-        return candidates
-        
+        """Mots encore disponibles qui correspondent au motif, dans l'ordre alphabétique."""
+        index, mask = self._candidate_mask(pattern)
+        return index.words_in(mask) if index else []
+
+    def count_candidates(self, pattern: str) -> int:
+        """Nombre de candidats du motif, sans construire la liste (choix du slot, forward checking)."""
+        return self._candidate_mask(pattern)[1].bit_count()
+
     # ------------------------------------------------------------------
-    # NOUVELLES MÉTHODES POUR LA CONSOMMATION DE MOTS (Backtracking)
+    # CONSOMMATION DES MOTS (Backtracking)
     # ------------------------------------------------------------------
 
     def remove_word_from_available(self, word: str, length: int):
-        """
-        Retire un mot du pool disponible pour la longueur spécifiée.
-        Utilisé pour simuler la 'consommation' du mot dans la branche de l'arbre.
-        OPTIMISATION : O(1) grâce aux sets.
-        """
+        """Retire un mot des disponibles (mot placé dans la branche en cours)."""
         if length in self.words_by_len:
             self.words_by_len[length].discard(word)  # discard ne lève pas d'erreur si absent
-            # OPTIMISATION : Invalider le cache quand la disponibilité change
-            self._invalidate_cache_for_length(length)
-            
+        if length in self.available:
+            self.available[length] &= ~self.indexes[length].bit(word)
+
     def add_word_to_available(self, word: str, length: int):
-        """
-        Remet un mot dans le pool disponible. Utilisé lors du backtrack.
-        OPTIMISATION : O(1) grâce aux sets.
-        """
-        if length in self.words_by_len:
-            self.words_by_len[length].add(word)
-        else:
-            # Cas rare si la longueur n'existait pas, mais on la crée par précaution.
-            self.words_by_len[length] = {word}
-        
-        # OPTIMISATION : Invalider le cache quand la disponibilité change
-        self._invalidate_cache_for_length(length)
-    
-    def _invalidate_cache_for_length(self, length: int):
-        """
-        Invalide les entrées du cache pour un pattern de longueur donnée.
-        """
-        keys_to_remove = [key for key in self._candidate_cache.keys() if len(key[0]) == length]
-        for key in keys_to_remove:
-            del self._candidate_cache[key]
+        """Remet un mot dans les disponibles (retour arrière)."""
+        self.words_by_len.setdefault(length, set()).add(word)
+        if length not in self.available:
+            self.indexes[length] = _shared_index(self.trie, length)
+            self.available[length] = 0
+        self.available[length] |= self.indexes[length].bit(word)
