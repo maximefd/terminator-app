@@ -1,6 +1,7 @@
 """Application Flask de la mini-app de curation."""
 
 import hmac
+import os
 import secrets
 import threading
 import time
@@ -11,7 +12,9 @@ from flask import Flask, jsonify, redirect, request, send_from_directory, sessio
 
 from tools.lexicon.decisions import DELETE, KEEP, NORMALIZED_WORD
 
+from .exporter import DEFAULT_EXPORT_EVERY, LexiconExporter
 from .gamification import DEFAULT_DAILY_GOAL
+from .lookup import LookupService
 from .repository import QUEUE_SUGGESTIONS, LexiconRepository
 from .stats import curation_stats
 from .store import DecisionStore
@@ -87,7 +90,10 @@ def _word_list(value) -> list[str] | None:
 
 
 def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None, testing: bool = False,
-               daily_goal: int = DEFAULT_DAILY_GOAL) -> Flask:
+               daily_goal: int = DEFAULT_DAILY_GOAL, lookup: LookupService | None = None,
+               exporter: LexiconExporter | None = None, terminator_url: str | None = None) -> Flask:
+    """`lookup`, `exporter` et `terminator_url` se configurent par défaut depuis l'environnement
+    (SERPER_API_KEY, CURATOR_EXPORT_EVERY, TERMINATOR_URL) ; les tests les fournissent."""
     if not isinstance(pin, str) or len(pin) < MIN_PIN_LENGTH:
         raise ValueError(f"CURATOR_PIN doit contenir au moins {MIN_PIN_LENGTH} caractères (à définir dans .env).")
     if not isinstance(daily_goal, int) or not 1 <= daily_goal <= 5000:
@@ -107,6 +113,14 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
     repository = LexiconRepository(db_path)
     store = DecisionStore(decisions_path)
     guard = PinGuard()
+    build_dir = Path(db_path).parent
+    lookup = lookup or LookupService.from_environment(build_dir / "lookup-cache.json")
+    exporter = exporter or LexiconExporter(
+        db_path, decisions_path, build_dir / "lexique_cure.csv",
+        every=int(os.environ.get("CURATOR_EXPORT_EVERY") or DEFAULT_EXPORT_EVERY),
+    )
+    exporter.prime(len(store.state()))
+    terminator_url = terminator_url or os.environ.get("TERMINATOR_URL") or "http://localhost:3000/grid"
 
     @app.before_request
     def require_authentication():
@@ -208,7 +222,11 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
         if repository.existing(words) != set(words):
             return _error("Mot inconnu du lexique.", 400)
         store.append(words, body["decision"])
-        return jsonify({"words": words})
+        return jsonify({"words": words, "lexicon_export": _export_if_milestone()})
+
+    def _export_if_milestone() -> dict | None:
+        """Tous les N mots triés, exporte le lexique curé en arrière-plan (l'API le recharge seule)."""
+        return exporter.snapshot() if exporter.observe(len(store.state())) else None
 
     def _family_to_delete(word: str, state: dict[str, str]) -> list[str]:
         """Le mot et ses formes, sauf les mots courants et ceux gardés ou déjà supprimés."""
@@ -224,7 +242,7 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
         if not words:
             return _error("Aucun mot à supprimer dans cette famille.", 400)
         store.append(words, DELETE)
-        return jsonify({"words": words})
+        return jsonify({"words": words, "lexicon_export": _export_if_milestone()})
 
     @app.post("/api/undo")
     def undo():
@@ -234,5 +252,25 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
     @app.get("/api/stats")
     def stats():
         return jsonify(curation_stats(repository, store, daily_goal=daily_goal))
+
+    @app.get("/api/lookup")
+    def lookup_word():
+        word = request.args.get("word", "")
+        if not NORMALIZED_WORD.fullmatch(word):
+            return _error("Mot invalide.", 400)
+        found = repository.cards([word])
+        if not found:
+            return _error("Mot inconnu du lexique.", 404)
+        display = found[0]["forms"][0] if found[0]["forms"] else word.lower()
+        return jsonify({"word": display, **lookup.lookup(display)})
+
+    @app.get("/api/lexicon")
+    def lexicon_status():
+        return jsonify({**exporter.snapshot(), "terminator_url": terminator_url})
+
+    @app.post("/api/lexicon/export")
+    def export_lexicon():
+        started = exporter.start(len(store.state()))
+        return jsonify({**exporter.snapshot(), "started": started, "terminator_url": terminator_url}), 202 if started else 200
 
     return app

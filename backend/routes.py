@@ -41,7 +41,9 @@ def get_owned_dictionary(user, dict_id):
 def status_check():
     dela_trie = current_app.dela_trie
     word_count = len(dela_trie.words) if dela_trie and hasattr(dela_trie, 'words') else 0
-    return jsonify({"status": "ok", "trie_loaded": dela_trie is not None, "word_count": word_count}), 200
+    manager = getattr(current_app, 'lexicon', None)
+    lexicon = manager.info.as_dict() if manager and manager.info else None
+    return jsonify({"status": "ok", "trie_loaded": dela_trie is not None, "word_count": word_count, "lexicon": lexicon}), 200
 
 @main_bp.route('/dictionaries', methods=['GET'])
 @jwt_required()

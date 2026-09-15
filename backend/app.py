@@ -10,7 +10,7 @@ from auth import bcrypt, auth_bp
 from routes import main_bp
 from extensions import jwt
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
-from trie_engine import DictionnaireTrie
+from lexicon_loader import LexiconManager
 
 DEV_SECRET = 'default-secret-for-dev'
 DEFAULT_CORS_ORIGINS = 'http://localhost:3000'
@@ -30,6 +30,8 @@ DEFAULT_SETTINGS = dict(
     RATELIMIT_REFRESH='30 per minute',
     RATELIMIT_SEARCH='120 per minute',
     RATELIMIT_GENERATE='10 per minute',
+    LEXICON_PATH=None,  # Lexique curé ; à défaut, le DELA complet (backend/dela_clean.csv)
+    LEXICON_RELOAD_INTERVAL_S=30,  # Vérification des changements du lexique (0 : pas de rechargement à chaud)
 )
 
 
@@ -76,6 +78,8 @@ def _load_config_from_env() -> dict:
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
         RATELIMIT_STORAGE_URI=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
+        LEXICON_PATH=os.environ.get('LEXICON_PATH') or None,
+        LEXICON_RELOAD_INTERVAL_S=float(os.environ.get('LEXICON_RELOAD_INTERVAL_S', 30)),
     )
 
 
@@ -116,19 +120,23 @@ def create_app(test_config=None):
     app.register_blueprint(main_bp)
     init_rate_limiting(app)
 
-    # MODIFICATION ICI : On ne charge le Trie que si on n'est pas en mode test
+    # Le lexique n'est pas chargé en mode test (les tests fournissent un petit Trie)
+    app.dela_trie = None
+    app.lexicon = None
     if not app.config.get("TESTING", False):
-        DELA_FILE_FULL = 'dela_clean.csv'
+        manager = LexiconManager(app.config['LEXICON_PATH'])
         try:
-            app.dela_trie = DictionnaireTrie()
-            app.dela_trie.load_dela_csv(DELA_FILE_FULL)
-            logging.info("Trie chargé avec succès.")
+            manager.check()
         except Exception as e:
-            logging.critical(f"Erreur critique lors de l'initialisation du Trie: {e}", exc_info=True)
-            app.dela_trie = None
-    else:
-        # En mode test, on met un placeholder pour éviter les erreurs
-        app.dela_trie = None
+            logging.critical(f"Erreur critique lors du chargement du lexique : {e}", exc_info=True)
+        app.dela_trie = manager.trie
+        app.lexicon = manager
+        # Rechargement à chaud : le curateur réexporte le lexique tous les 500 mots triés
+        if app.config['LEXICON_RELOAD_INTERVAL_S'] > 0:
+            manager.start_watching(
+                app.config['LEXICON_RELOAD_INTERVAL_S'],
+                on_reload=lambda m: setattr(app, 'dela_trie', m.trie),
+            )
 
     with app.app_context():
         try:

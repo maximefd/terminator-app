@@ -31,6 +31,9 @@
     actionsSinceStats: 0,
     session: 0,
     stats: null,
+    lookup: { word: null, results: new Map() },
+    lexicon: null,
+    exportPoll: null,
   };
   let serverChain = Promise.resolve();
 
@@ -129,8 +132,12 @@
   const post = (path, body) => api(path, { method: "POST", headers: API_HEADERS, body: JSON.stringify(body || {}) });
 
   // Les écritures partent dans l'ordre : une annulation ne passe jamais avant la décision qu'elle annule.
+  let pendingWrites = 0;
+  let writeVersion = 0; // incrémenté à chaque écriture : détecte les statistiques en retard
   function enqueue(task) {
-    const run = serverChain.then(task);
+    pendingWrites += 1;
+    writeVersion += 1;
+    const run = serverChain.then(task).finally(() => { pendingWrites -= 1; });
     serverChain = run.catch(() => {});
     return run;
   }
@@ -198,6 +205,8 @@
       return;
     }
 
+    if (state.lookup.word !== card.norm) closeLookup();
+    $("btn-lookup").classList.toggle("prominent", !card.definition);
     $("card-word").textContent = display(card);
     $("card-forms").textContent = card.forms.length > 1 ? `Aussi : ${card.forms.slice(1).join(", ")}` : "";
     $("card-length").textContent = `${card.length} lettres · ${card.norm}`;
@@ -225,6 +234,134 @@
     $("btn-family").disabled = familySize <= 1;
 
     if (state.buffer.length < BUFFER_MIN) fillBuffer();
+  }
+
+  // --- Recherche du mot (bulle dans la carte) ---
+
+  function closeLookup() {
+    state.lookup.word = null;
+    $("lookup-panel").hidden = true;
+    $("lookup-panel").replaceChildren();
+    $("btn-lookup").setAttribute("aria-expanded", "false");
+  }
+
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function externalLink(href, text) {
+    const link = element("a", "", text);
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    return link;
+  }
+
+  function renderLookup(data) {
+    const panel = $("lookup-panel");
+    const nodes = [];
+    nodes.push(element("p", "lookup-provider",
+      data.provider === "google" ? "Résultats Google" : "Wikipédia et Wiktionnaire (ajoutez une clé Serper pour Google)"));
+
+    if (data.answer) {
+      const box = element("div", "lookup-answer");
+      box.append(element("strong", "", data.answer.title || data.word), element("p", "", data.answer.text));
+      if (data.answer.link) box.append(externalLink(data.answer.link, `Source : ${data.answer.source}`));
+      nodes.push(box);
+    }
+
+    if (data.results.length) {
+      const list = element("ul", "lookup-results");
+      for (const result of data.results) {
+        const item = element("li");
+        item.append(externalLink(result.link, result.title));
+        if (result.snippet) item.append(element("p", "", result.snippet));
+        item.append(element("small", "", result.source));
+        list.append(item);
+      }
+      nodes.push(list);
+    }
+
+    if (!data.answer && !data.results.length) nodes.push(element("p", "", "Aucun résultat trouvé pour ce mot."));
+
+    const links = element("p", "lookup-links");
+    links.append(element("span", "muted", "Ouvrir :"));
+    for (const [name, href] of Object.entries(data.links || {})) links.append(externalLink(href, name));
+    nodes.push(links);
+    panel.replaceChildren(...nodes);
+  }
+
+  function toggleLookup() {
+    const card = state.buffer[0];
+    if (!card) return;
+    if (state.lookup.word === card.norm) {
+      closeLookup();
+      return;
+    }
+    state.lookup.word = card.norm;
+    const panel = $("lookup-panel");
+    panel.hidden = false;
+    $("btn-lookup").setAttribute("aria-expanded", "true");
+
+    const known = state.lookup.results.get(card.norm);
+    if (known) {
+      renderLookup(known);
+      return;
+    }
+    panel.replaceChildren(element("p", "muted", "Recherche en cours…"));
+    api(`/api/lookup?${new URLSearchParams({ word: card.norm })}`)
+      .then((data) => {
+        state.lookup.results.set(card.norm, data);
+        if (state.lookup.word === card.norm) renderLookup(data); // la carte a pu changer entre-temps
+      })
+      .catch((error) => {
+        if (state.lookup.word === card.norm) panel.replaceChildren(element("p", "error", error.message));
+      });
+  }
+
+  // --- Lexique de Terminator (export tous les N mots, rechargé par l'API) ---
+
+  function renderLexicon() {
+    const lexicon = state.lexicon;
+    if (!lexicon) return;
+    for (const id of ["link-grid", "lexicon-banner-link"]) $(id).href = lexicon.terminator_url;
+    const next = `Prochaine mise à jour automatique à ${plural(lexicon.next_at, "mot")} triés.`;
+    let text;
+    if (lexicon.state === "running") text = "Mise à jour du lexique en cours…";
+    else if (lexicon.state === "error") text = `${lexicon.error} ${next}`;
+    else if (lexicon.state === "done") {
+      const when = new Date(lexicon.exported_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
+      text = `Mis à jour le ${when} : ${plural(lexicon.words, "mot")} (${plural(lexicon.deleted, "mot")} retirés). ${next}`;
+    } else text = `Le lexique n'a pas encore été mis à jour depuis le lancement du curateur. ${next}`;
+    $("lexicon-status").textContent = text;
+    $("btn-export").disabled = lexicon.state === "running";
+  }
+
+  function watchExport() {
+    if (state.exportPoll) return;
+    const poll = () => api("/api/lexicon")
+      .then((lexicon) => {
+        state.lexicon = lexicon;
+        renderLexicon();
+        if (lexicon.state === "running") {
+          state.exportPoll = setTimeout(poll, 3000);
+          return;
+        }
+        state.exportPoll = null;
+        if (lexicon.state === "done") {
+          $("lexicon-banner-text").textContent =
+            `${plural(lexicon.words, "mot")}, ${plural(lexicon.deleted, "mot")} retirés. Terminator l'utilisera d'ici une minute.`;
+          $("lexicon-banner").hidden = false;
+          announce("🧪 Lexique mis à jour : testez vos grilles !");
+        } else if (lexicon.state === "error") {
+          toast(lexicon.error, true);
+        }
+      })
+      .catch(() => { state.exportPoll = null; });
+    poll();
   }
 
   // --- Progression ---
@@ -327,8 +464,14 @@
 
   function refreshStats() {
     state.actionsSinceStats = 0;
+    // Les compteurs à l'écran sont déjà à jour : on n'interroge le serveur qu'une fois
+    // toutes les décisions enregistrées, sinon il renverrait des chiffres en retard.
+    if (pendingWrites > 0) return serverChain.then(refreshStats);
+    const version = writeVersion;
     return api("/api/stats")
       .then((stats) => {
+        // Une décision est partie pendant la requête : ces chiffres sont déjà dépassés
+        if (writeVersion !== version) return serverChain.then(refreshStats);
         const previous = state.stats;
         state.stats = stats;
         if (previous && stats.level.number > previous.level.number) {
@@ -386,7 +529,10 @@
     counted([card.norm], 1);
     render();
     enqueue(() => post("/api/decisions", { words: [card.norm], decision }))
-      .then(() => toast(decision === "delete" ? `« ${display(card)} » supprimé` : `« ${display(card)} » gardé`))
+      .then((data) => {
+        toast(decision === "delete" ? `« ${display(card)} » supprimé` : `« ${display(card)} » gardé`);
+        if (data.lexicon_export) watchExport();
+      })
       .catch((error) => {
         state.handled.delete(card.norm);
         state.buffer.unshift(card);
@@ -414,6 +560,7 @@
         counted(data.words, 1, true);
         render();
         toast(`${data.words.length} mots de la famille « ${card.lemma || display(card)} » supprimés · ↓ pour annuler`);
+        if (data.lexicon_export) watchExport();
       })
       .catch((error) => toast(error.message, true));
   }
@@ -438,13 +585,15 @@
   // --- Clavier (AZERTY : flèches, Retour arrière, Maj) ---
 
   document.addEventListener("keydown", (event) => {
-    if ($("profile-dialog").open || event.target.closest("select, input, textarea")) return;
+    if ($("profile-dialog").open || event.target.closest("select, input, textarea, a")) return;
     const handlers = {
       ArrowLeft: () => (event.shiftKey ? deleteFamily() : decide("delete")),
       ArrowRight: () => decide("keep"),
       ArrowDown: undo,
       Backspace: undo,
       ArrowUp: skip,
+      " ": toggleLookup,
+      Escape: closeLookup,
     };
     const handler = handlers[event.key];
     if (!handler) return;
@@ -460,6 +609,8 @@
 
   cardNode.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // Boutons, liens et bulle de recherche restent utilisables (pas de glissement ni de capture du pointeur)
+    if (event.target.closest("button, a, .lookup-panel")) return;
     drag = { x: event.clientX, id: event.pointerId };
     cardNode.setPointerCapture(event.pointerId);
     cardNode.classList.add("dragging");
@@ -504,8 +655,26 @@
   });
   $("filter-length").addEventListener("change", onFiltersChange);
   $("filter-suggestion").addEventListener("change", onFiltersChange);
+  $("btn-lookup").addEventListener("click", toggleLookup);
+  $("btn-export").addEventListener("click", () => {
+    post("/api/lexicon/export")
+      .then((lexicon) => {
+        state.lexicon = lexicon;
+        renderLexicon();
+        watchExport();
+      })
+      .catch((error) => toast(error.message, true));
+  });
+  $("lexicon-banner-close").addEventListener("click", () => { $("lexicon-banner").hidden = true; });
 
   restoreFilters();
   render();
   refreshStats();
+  api("/api/lexicon")
+    .then((lexicon) => {
+      state.lexicon = lexicon;
+      renderLexicon();
+      if (lexicon.state === "running") watchExport();
+    })
+    .catch(() => {});
 })();

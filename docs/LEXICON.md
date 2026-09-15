@@ -128,6 +128,22 @@ Une carte par mot : le mot et ses graphies, la définition (signalée quand ce n
 - **Ordre de la file** : mots les plus courts d'abord ; dans une longueur, `likely_delete`, puis `review`, puis `likely_keep`, du moins fréquent au plus fréquent. Filtres par longueur et par suggestion.
 - **En haut de l'écran** : niveau, série de jours consécutifs, badges, mots restant à trier et objectif du jour.
 
+### Chercher un mot
+
+Un mot absent du dictionnaire peut rester pertinent. Le bouton **🔎 Chercher ce mot** (ou `Espace`) ouvre une bulle dans la carte, sans quitter le curateur. Il est mis en avant quand le mot n'a pas de définition.
+
+| Source | Contenu de la bulle | Condition |
+|--------|---------------------|-----------|
+| Google (via [Serper](https://serper.dev)) | Réponse mise en avant ou fiche, puis les 5 premiers résultats (titre, extrait, site) | Clé `SERPER_API_KEY` dans `.env` (2 500 recherches offertes, sans carte bancaire) |
+| Wikipédia et Wiktionnaire | Résumé Wikipédia, articles du Wiktionnaire proches | Sans clé, ou si Google ne répond pas |
+
+- Des liens Google, Larousse, CNRTL et Wiktionnaire restent disponibles en bas de la bulle.
+- **Cache :** chaque recherche est gardée dans `data/lexicon/build/lookup-cache.json`, pour ne pas dépenser deux fois une recherche Google.
+- **Clé côté serveur :** la recherche part du serveur du curateur ; la clé n'est jamais envoyée au navigateur.
+- **Texte seul :** les résultats sont affichés en texte, et seuls les liens `http(s)` sont conservés.
+
+Google n'autorise pas l'intégration directe de ses résultats ; Serper est un service payant à l'usage qui fournit ces résultats par une API officielle. Brave Search a supprimé son offre gratuite en 2026.
+
 ### Motivation
 
 Pour donner envie de revenir un peu chaque jour, sans gêner le tri :
@@ -171,6 +187,22 @@ Le Mac doit rester allumé et éveillé : Réglages Système → Énergie → «
 
 Un hébergement public (Vercel, serveur) a été écarté : la base de 140 Mo et l'écriture continue de `decisions.csv` ne conviennent pas à un hébergement sans disque, et le curateur serait exposé sur Internet (voir [ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
 
-## Prochaine étape (Phase 1c)
+## Le lexique curé dans Terminator (Phase 1c)
 
-L'API chargera le lexique curé (`make lexicon-export`) derrière un flag de configuration ; la recherche affichera les définitions ; le générateur utilisera la fréquence. Voir [ROADMAP.md](ROADMAP.md) et l'issue #11.
+La recherche par motif et la génération de grilles utilisent le **lexique curé** : le DELA moins les mots supprimés par l'auteur. Pour voir l'effet du tri sur les grilles, il suffit de continuer à trier :
+
+```mermaid
+flowchart LR
+    C[Curateur] -- tous les 500 mots triés --> E[Export<br/>data/lexicon/build/lexique_cure.csv]
+    E -- surveillé toutes les 30 s --> A[API Terminator<br/>rechargement à chaud]
+    A --> G[Page Générer<br/>grilles avec le lexique à jour]
+```
+
+1. **Export automatique :** tous les 500 mots triés (`CURATOR_EXPORT_EVERY`), le curateur exporte le lexique curé en arrière-plan. On peut aussi le faire à la main depuis la fenêtre de progression, bouton « Mettre à jour le lexique maintenant ».
+2. **Rechargement à chaud :** l'API surveille ce fichier (`LEXICON_PATH`, `LEXICON_RELOAD_INTERVAL_S`). Quand il change, elle construit le nouveau lexique à côté de l'ancien, puis bascule d'un coup, sans redémarrage.
+3. **Annonce :** le curateur affiche « 🧪 Lexique mis à jour » avec un lien **Tester mes grilles** (`TERMINATOR_URL`, par défaut http://localhost:3000/grid).
+
+- Tant qu'aucun export n'existe, l'API utilise le DELA complet.
+- `GET /api/status` indique le lexique chargé : fichier, curé ou non, nombre de mots, date.
+- Avec `docker compose`, le dossier `data/lexicon/build` est monté en lecture seule dans le conteneur de l'API.
+- Pendant un rechargement, les deux lexiques sont brièvement en mémoire.
