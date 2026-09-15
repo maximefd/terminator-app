@@ -11,8 +11,9 @@ def repo(tmp_path):
     return WordRepository(str(csv_file))
 
 
-def test_get_candidates_matches_pattern(repo):
-    assert sorted(repo.get_candidates("P?LE")) == ["PALE", "PILE", "POLE"]
+def test_get_candidates_matches_pattern_in_alphabetical_order(repo):
+    assert repo.get_candidates("P?LE") == ["PALE", "PILE", "POLE"]
+    assert repo.get_candidates("ZZZZZZZZ") == []
 
 
 def test_is_word_valid(repo):
@@ -28,10 +29,20 @@ def test_removed_word_is_not_a_candidate_until_restored(repo):
     assert "PALE" in repo.get_candidates("P?LE")
 
 
-def test_candidate_cache_is_used_for_repeated_patterns(repo):
-    repo.get_candidates("P?LE")
-    repo.get_candidates("P?LE")
-    assert repo._cache_stats == {"hits": 1, "misses": 1}
+def test_count_candidates_follows_the_available_words(repo):
+    assert repo.count_candidates("P?LE") == 3
+
+    repo.remove_word_from_available("PILE", 4)
+
+    assert repo.count_candidates("P?LE") == 2
+    assert repo.count_candidates("????????") == 0
+
+
+def test_from_words_limits_candidates_but_not_validity(repo):
+    grid_repo = WordRepository.from_words(repo.trie, ["PALE", "CHAT"])
+
+    assert grid_repo.get_candidates("P?LE") == ["PALE"]
+    assert grid_repo.is_word_valid("POLE")  # un croisement reste valide s'il est dans le lexique
 
 
 def test_get_words_by_length(repo):

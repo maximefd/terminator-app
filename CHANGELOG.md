@@ -35,6 +35,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - avertissements : grilles en double, proportion inhabituelle de cases définitions ;
   - statistiques : nombre de mots et mots par longueur.
 - `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
+- Index des candidats par (position, lettre) en ensembles de bits (Phase 3, #20) : remplace le parcours du Trie et le cache par motif du solveur ; mêmes candidats dans le même ordre, donc mêmes grilles pour un même seed, calculées 2 à 6 fois plus vite. Benchmark : 11x6-001 de 11/20 à 20/20 (p50 3,1 s), 6x7-001 p95 0,29 s.
 - Redémarrages du solveur (Phase 3, #19) : essais successifs de `300 × luby(i)` appels récursifs dans le budget temps, trajectoires dérivées du seed (même seed ⇒ même grille) ; benchmark `--restart-unit` et nombre d'essais par seed ([mesures](backend/benchmarks/README.md)).
 - Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
   - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;

@@ -117,31 +117,10 @@ class GridGenerator:
 
     def _create_repository(self, valid_words: list[str]) -> WordRepository:
         """
-        Crée un repository en RÉUTILISANT le Trie pré-construit
+        Crée un repository en RÉUTILISANT le Trie pré-construit (et ses index)
         et une liste de mots DÉJÀ FILTRÉS.
         """
-        repo = object.__new__(WordRepository)
-
-        # Réutilise le Trie au lieu d'en créer un
-        repo.trie = self.prebuilt_trie
-
-        # 'valid_words' est maintenant la liste passée à __init__
-        repo.word_set = set(valid_words)
-
-        # Ce dictionnaire est spécifique à cette grille (pour la consommation)
-        # OPTIMISATION : Utiliser des sets pour O(1) add/remove
-        repo.words_by_len = {}
-        for word in valid_words:
-            length = len(word)
-            if length not in repo.words_by_len:
-                repo.words_by_len[length] = set()
-            repo.words_by_len[length].add(word)
-            # PAS BESOIN DE repo.trie.insert(word), c'est déjà fait !
-
-        # Initialiser le cache vide pour get_candidates
-        repo._candidate_cache = {}
-        repo._cache_stats = {'hits': 0, 'misses': 0}
-
+        repo = WordRepository.from_words(self.prebuilt_trie, valid_words)
         logging.info(f"{len(valid_words)} mots pertinents indexés pour cette grille.")
         return repo
 
