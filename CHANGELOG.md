@@ -39,6 +39,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ### Modifié
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
 
+### Sécurité
+- Frontend : versions corrigées de postcss, nanoid et sharp imposées par des overrides pnpm (9 vulnérabilités transitives de next 15.5.25, #7).
+
 ## [0.1.0] — 2026-09-14
 
 Première version stabilisée (Phase 0a et 0b de la [roadmap](docs/ROADMAP.md)).
