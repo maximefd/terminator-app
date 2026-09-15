@@ -45,7 +45,8 @@ lexicon-stats: ## Avancement de la curation
 curator: ## Mini-app de curation (ordinateur et téléphone sur le même Wi-Fi)
 	@test -f data/lexicon/build/lexicon.sqlite || (echo "Base absente : lancez d'abord make lexicon-build" && exit 1)
 	@grep -q '^CURATOR_PIN=..' .env 2>/dev/null || (echo "Définissez CURATOR_PIN (6 caractères minimum) dans .env" && exit 1)
-	@echo "Curateur : http://localhost:8765  ·  téléphone : http://$$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | cut -d' ' -f1):8765"
+	@# Adresse de l'interface qui porte la route par défaut (Wi-Fi ou Ethernet selon la machine)
+	@echo "Curateur : http://localhost:8765  ·  téléphone (même Wi-Fi) : http://$$(ipconfig getifaddr $$(route -n get default 2>/dev/null | awk '/interface:/{print $$2}') 2>/dev/null || echo IP-du-Mac):8765"
 	docker run --rm -it -p 8765:8765 -v "$(CURDIR)":/repo -w /repo --env-file .env -e TZ=Europe/Paris \
 		-e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c "pip install -q -r tools/curator/requirements.txt && python -m tools.curator"
 
