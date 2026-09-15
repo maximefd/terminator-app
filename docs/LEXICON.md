@@ -94,7 +94,7 @@ AABAM;undo;2026-09-15T08:30:09+00:00;20260915083000-3f9a1c
 
 ## La mini-app de curation (Phase 1b)
 
-Code : `tools/curator/` (Flask + une page HTML/JS sans dépendance). Elle lit la base locale en **lecture seule** et n'écrit que dans `data/lexicon/decisions.csv`.
+Code : `tools/curator/` (Flask + une page HTML/JS sans dépendance). Elle lit la base locale en **lecture seule** et n'écrit que dans `data/lexicon/decisions.csv`, ainsi que dans `backend/layouts/` pour l'éditeur de layouts (onglet « Layouts », voir [LAYOUTS.md](LAYOUTS.md)).
 
 ### Lancer
 

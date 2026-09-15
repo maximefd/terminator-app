@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Layouts — Curateur Terminator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">🧩 Curateur</span>
+    <nav class="nav" aria-label="Sections">
+      <a href="/">Trier les mots</a>
+      <a href="/layouts" aria-current="page">Layouts</a>
+    </nav>
+  </header>
+
+  <main class="layout-page">
+    <section class="intro">
+      <h1>Recopier une grille</h1>
+      <p class="muted">Indiquez la taille de la grille, puis touchez chaque case définition. La grille est vérifiée à chaque changement ; « Enregistrer » l'ajoute au catalogue de Terminator.</p>
+    </section>
+
+    <section id="editor" class="editor" aria-label="Éditeur de layout">
+      <div class="size">
+        <label>Largeur
+          <input id="width" type="number" inputmode="numeric" min="2" max="30" value="11">
+        </label>
+        <span aria-hidden="true">×</span>
+        <label>Hauteur
+          <input id="height" type="number" inputmode="numeric" min="2" max="30" value="6">
+        </label>
+        <button id="btn-clear" type="button">Tout en cases lettres</button>
+      </div>
+      <p id="source" class="source" hidden></p>
+
+      <div class="grid-wrap">
+        <div id="grid" class="layout-grid" role="group" aria-label="Grille : touchez une case pour la changer"></div>
+      </div>
+      <p class="legend muted">
+        Clavier : <kbd>x</kbd> case définition · <kbd>-</kbd> case lettre (puis case suivante) ·
+        <kbd>Espace</kbd> changer la case · flèches pour se déplacer · <kbd>Entrée</kbd> rangée suivante ·
+        <kbd>⌫</kbd> case précédente.
+      </p>
+
+      <div class="check" aria-live="polite">
+        <p id="check-status" class="check-status">Vérification…</p>
+        <ul id="issues" class="issues"></ul>
+        <dl class="layout-stats">
+          <div><dt>Mots</dt><dd id="stat-words">—</dd></div>
+          <div><dt>Cases définitions</dt><dd id="stat-definitions">—</dd></div>
+          <div><dt>Mots par longueur</dt><dd id="stat-lengths">—</dd></div>
+        </dl>
+      </div>
+      <button id="btn-save" class="primary save" type="button" disabled>Enregistrer le layout</button>
+    </section>
+
+    <section class="catalog" aria-labelledby="catalog-title">
+      <h2 id="catalog-title">Catalogue <span id="catalog-count" class="muted"></span></h2>
+      <p class="muted">Touchez une grille pour la copier dans l'éditeur. L'original n'est jamais modifié : l'enregistrement crée un nouveau layout.</p>
+      <div id="catalog" class="catalog-formats"><p class="muted">Chargement…</p></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/layouts.js"></script>
+</body>
+</html>

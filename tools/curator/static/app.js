@@ -119,7 +119,13 @@
   // --- API ---
 
   async function api(path, options = {}) {
-    const response = await fetch(path, { credentials: "same-origin", ...options });
+    let response;
+    try {
+      response = await fetch(path, { credentials: "same-origin", ...options });
+    } catch {
+      // Erreur réseau (« Failed to fetch ») : curateur arrêté, redémarré ou Wi-Fi coupé
+      throw new Error("Curateur injoignable : vérifiez qu'il tourne (make curator-bg) et la connexion, puis réessayez.");
+    }
     if (response.status === 401) {
       window.location.href = "/login";
       throw new Error("Session expirée.");
