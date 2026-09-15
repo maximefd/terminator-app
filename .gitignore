@@ -27,5 +27,9 @@ backend/benchmarks/*.html
 frontend/test-results/
 frontend/playwright-report/
 
+# Lexique : sources téléchargées et base reconstruite (seuls decisions.csv et sources.lock.json sont versionnés)
+data/lexicon/raw/
+data/lexicon/build/
+
 # Le frontend utilise pnpm : pas de lockfile npm
 frontend/package-lock.json

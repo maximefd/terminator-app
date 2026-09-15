@@ -24,8 +24,10 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 |----------|-----------------|
 | `make test` | Tous les contrôles rapides (backend + frontend) |
 | `make test-backend` | Tests pytest (Python 3.11 dans Docker) |
+| `make test-tools` | Tests des outils (pipeline du lexique) |
 | `make lint-frontend` | ESLint + vérification TypeScript |
 | `make bench` | Benchmark du générateur (quelques minutes) |
+| `make lexicon-build`, `lexicon-stats`, `lexicon-export` | Pipeline du lexique (voir [LEXICON.md](docs/LEXICON.md)) |
 
 Tests end-to-end (API démarrée) : `cd frontend && pnpm exec playwright test`.
 

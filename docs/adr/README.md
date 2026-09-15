@@ -8,6 +8,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0002](0002-moteur-pur-et-deterministe.md) | Moteur de génération pur, déterministe et borné dans le temps | Acceptée |
 | [0003](0003-jwt-en-en-tete.md) | Authentification par JWT dans l'en-tête `Authorization` | Acceptée (à revoir en Phase 6) |
 | [0004](0004-pas-de-deploiement-en-ligne.md) | Pas de déploiement en ligne avant un serveur de production | Acceptée |
+| [0005](0005-pipeline-du-lexique-et-decisions.md) | Pipeline du lexique et fichier de décisions versionné | Acceptée |
 
 ## Modèle
 

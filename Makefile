@@ -3,8 +3,11 @@
 PY_IMAGE := python:3.11-slim
 # Le backend requiert Python 3.11 : on l'exécute dans Docker pour ne pas dépendre de la machine
 BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
+# Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
+TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend lint-frontend bench
+.PHONY: help setup dev-api dev-front test test-backend test-tools lint-frontend bench \
+	lexicon-download lexicon-build lexicon-export lexicon-stats
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -19,10 +22,25 @@ dev-api: ## Lance l'API (http://localhost:5001) et PostgreSQL
 dev-front: ## Lance le frontend (http://localhost:3000)
 	cd frontend && pnpm dev
 
-test: test-backend lint-frontend ## Tous les contrôles rapides
+test: test-backend test-tools lint-frontend ## Tous les contrôles rapides
 
 test-backend: ## Tests backend (pytest, Python 3.11 dans Docker)
 	$(BACKEND_RUN) "pip install -q -r requirements.txt && pytest -q -p no:cacheprovider"
+
+test-tools: ## Tests des outils (pipeline du lexique)
+	$(TOOLS_RUN) "pip install -q pytest && pytest -q -p no:cacheprovider tools"
+
+lexicon-download: ## Télécharge et vérifie les sources du lexique (~411 Mo)
+	$(TOOLS_RUN) "python -m tools.lexicon download"
+
+lexicon-build: ## Construit data/lexicon/build/lexicon.sqlite (plusieurs minutes)
+	$(TOOLS_RUN) "python -m tools.lexicon build"
+
+lexicon-export: ## Exporte le lexique curé (data/lexicon/build/lexique_cure.csv)
+	$(TOOLS_RUN) "python -m tools.lexicon export"
+
+lexicon-stats: ## Avancement de la curation
+	$(TOOLS_RUN) "python -m tools.lexicon stats"
 
 lint-frontend: ## ESLint + vérification TypeScript
 	cd frontend && pnpm lint && pnpm exec tsc --noEmit
