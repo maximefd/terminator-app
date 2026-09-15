@@ -14,7 +14,7 @@
   },
   "layouts": [
     {
-      "layout": "6x7/template_01.txt",
+      "layout": "6x7-001",
       "width": 6,
       "height": 7,
       "summary": {
@@ -231,7 +231,7 @@
       ]
     },
     {
-      "layout": "11x6/template_01.txt",
+      "layout": "11x6-001",
       "width": 11,
       "height": 6,
       "summary": {

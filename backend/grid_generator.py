@@ -13,21 +13,27 @@ from trie_engine import DictionnaireTrie # NÉCESSAIRE
 logger = logging.getLogger(__name__)
 
 # Dossier des layouts, résolu depuis ce fichier (indépendant du répertoire courant)
-DEFAULT_TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+DEFAULT_LAYOUTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "layouts")
 
 
 class LayoutNotFoundError(RuntimeError):
     """Aucun layout n'existe pour le format demandé."""
 
 
-def available_formats(templates_dir: str | None = None) -> list[dict]:
+def layout_id(layout_path: str) -> str:
+    """Identifiant d'un layout, déduit de son chemin : `<L>x<H>/001.txt` → `<L>x<H>-001`."""
+    format_name = os.path.basename(os.path.dirname(layout_path))
+    return f"{format_name}-{os.path.splitext(os.path.basename(layout_path))[0]}"
+
+
+def available_formats(layouts_dir: str | None = None) -> list[dict]:
     """Liste les formats disponibles (ex: [{'width': 6, 'height': 7, 'layouts': 1}]), triés."""
-    templates_dir = templates_dir or DEFAULT_TEMPLATES_DIR
+    layouts_dir = layouts_dir or DEFAULT_LAYOUTS_DIR
     formats = []
-    if not os.path.isdir(templates_dir):
+    if not os.path.isdir(layouts_dir):
         return formats
-    for name in os.listdir(templates_dir):
-        path = os.path.join(templates_dir, name)
+    for name in os.listdir(layouts_dir):
+        path = os.path.join(layouts_dir, name)
         width, sep, height = name.partition("x")
         if not (os.path.isdir(path) and sep and width.isdigit() and height.isdigit()):
             continue
@@ -49,7 +55,7 @@ class GridGenerator:
         valid_words: list[str],
         prebuilt_trie: DictionnaireTrie,
         seed: int | float | None = None,
-        templates_dir: str | None = None,
+        layouts_dir: str | None = None,
         layout_path: str | None = None,
         time_budget_s: float | None = None,
     ):
@@ -62,7 +68,7 @@ class GridGenerator:
             valid_words (list[str]): Liste de mots DÉJÀ FILTRÉS pour la taille de la grille.
             prebuilt_trie (DictionnaireTrie): Un Trie DÉJÀ CONSTRUIT avec les valid_words.
             seed (int, optional): Seed pour la reproductibilité.
-            templates_dir (str, optional): Dossier des layouts (défaut : backend/templates).
+            layouts_dir (str, optional): Dossier des layouts (défaut : backend/layouts).
             layout_path (str, optional): Layout précis à utiliser (sinon tirage aléatoire dans le format).
             time_budget_s (float, optional): Temps maximum accordé au solveur.
         """
@@ -74,12 +80,12 @@ class GridGenerator:
         self.rng = random.Random(seed)
 
         self.prebuilt_trie = prebuilt_trie
-        self.templates_dir = templates_dir or DEFAULT_TEMPLATES_DIR
+        self.layouts_dir = layouts_dir or DEFAULT_LAYOUTS_DIR
 
-        # 1. Charger le template
-        self.layout_path = layout_path or self._find_template_path(width, height)
+        # 1. Charger le layout
+        self.layout_path = layout_path or self._find_layout_path(width, height)
         if not self.layout_path:
-            raise LayoutNotFoundError(f"Aucun template trouvé pour la taille {width}x{height}.")
+            raise LayoutNotFoundError(f"Aucun layout trouvé pour la taille {width}x{height}.")
         self.template = GridTemplate(width, height, self.layout_path)
 
         # 2. Préparer le dictionnaire (utilise le Trie et les mots pré-filtrés)
@@ -98,14 +104,14 @@ class GridGenerator:
     def budget_exceeded(self) -> bool:
         return self.solver.budget_exceeded
 
-    def _find_template_path(self, width: int, height: int) -> str | None:
-        """Trouve un fichier template au hasard pour la taille donnée."""
-        template_dir = os.path.join(self.templates_dir, f"{width}x{height}")
-        if not os.path.isdir(template_dir):
+    def _find_layout_path(self, width: int, height: int) -> str | None:
+        """Trouve un fichier de layout au hasard pour la taille donnée."""
+        format_dir = os.path.join(self.layouts_dir, f"{width}x{height}")
+        if not os.path.isdir(format_dir):
             return None
         # Tri pour que le tirage dépende uniquement du seed, pas de l'ordre du système de fichiers
-        templates = sorted(f for f in os.listdir(template_dir) if f.endswith('.txt'))
-        return os.path.join(template_dir, self.rng.choice(templates)) if templates else None
+        layouts = sorted(f for f in os.listdir(format_dir) if f.endswith('.txt'))
+        return os.path.join(format_dir, self.rng.choice(layouts)) if layouts else None
 
     def _create_repository(self, valid_words: list[str]) -> WordRepository:
         """
@@ -187,7 +193,7 @@ class GridGenerator:
             "seed": getattr(self, "seed", None),
             "width": self.width,
             "height": self.height,
-            "layout": os.path.relpath(self.layout_path, self.templates_dir),
+            "layout": layout_id(self.layout_path),
             "fill_ratio": round(fill_ratio, 3),
             "cells": cells,
             "words": self.placed_words,
