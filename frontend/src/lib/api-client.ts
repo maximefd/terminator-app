@@ -92,11 +92,17 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, 
 
   const body = options.body ? JSON.stringify(options.body) : undefined;
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+      body,
+    });
+  } catch {
+    // Erreur réseau (« Failed to fetch ») : API arrêtée, en cours de redémarrage ou injoignable
+    throw new Error("Impossible de joindre le serveur de Terminator. Vérifiez qu'il est lancé (make dev-api), puis réessayez.");
+  }
 
   // Jeton expiré ou refusé : une seule tentative de renouvellement, puis déconnexion.
   // Les routes d'authentification sont exclues (un 401 y signifie « identifiants invalides »).

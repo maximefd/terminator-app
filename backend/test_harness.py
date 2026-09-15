@@ -25,7 +25,8 @@ import subprocess
 import time
 from datetime import datetime, timezone
 
-from grid_generator import DEFAULT_TEMPLATES_DIR, GridGenerator, available_formats
+from grid_generator import GridGenerator
+from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from trie_engine import DictionnaireTrie
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -51,7 +52,7 @@ def list_layouts(formats_filter):
         name = f"{fmt['width']}x{fmt['height']}"
         if formats_filter and name not in formats_filter:
             continue
-        format_dir = os.path.join(DEFAULT_TEMPLATES_DIR, name)
+        format_dir = os.path.join(DEFAULT_LAYOUTS_DIR, name)
         for file_name in sorted(os.listdir(format_dir)):
             if file_name.endswith(".txt"):
                 layouts.append((fmt["width"], fmt["height"], os.path.join(format_dir, file_name)))
@@ -70,7 +71,7 @@ def percentile(values, pct):
 def run_layout(width, height, layout_path, words, trie, seeds, time_budget):
     """Génère une grille par seed pour un layout et collecte les mesures."""
     runs, grids = [], []
-    layout_name = os.path.relpath(layout_path, DEFAULT_TEMPLATES_DIR)
+    layout_name = layout_id(layout_path)
     for seed in range(seeds):
         print(f"  {layout_name} seed={seed}...", end="", flush=True)
         start = time.perf_counter()

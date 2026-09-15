@@ -13,7 +13,7 @@
 | 1a — Pipeline du lexique | ✅ PR #42 |
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
 | 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
-| 2 — Catalogue de layouts | ⏳ prochaine étape, en parallèle du tri |
+| 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
@@ -122,10 +122,13 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 ---
 
 ## Phase 2 — Catalogue de layouts
-1. **Format v1** adapté à l'AZERTY : `x` = case définition, `-` = case lettre (l'ancien `#`/`.` reste accepté ; script de conversion). En-tête de métadonnées (id, format, source, notes). Un dossier par format : `backend/layouts/<L>x<H>/`. Flèches non encodées (déduites de la géométrie en Phase 5). ADR.
-2. **Validateur** (CLI + tests + CI) : chaque case lettre appartient à un mot de ≥ 2 lettres ; chaque début de mot est adjacent à une case définition ou au bord ; taille conforme ; statistiques des slots.
-3. **Éditeur de layouts** dans la mini-app : choisir L×H, cliquer/toucher les cases, validation en direct ; « Enregistrer » **écrit directement dans `backend/layouts/<L>x<H>/`** après validation serveur, sans jamais écraser. Duplication/édition d'un layout existant.
+Objectif : recopier vite et sans erreur les grilles trouvées dans des magazines et des cahiers, dans de nombreux formats.
+
+1. **Format v1** adapté à l'AZERTY : `x` = case définition, `-` = case lettre (l'ancien `#`/`.` reste accepté ; script de conversion). Aucune métadonnée : le format se déduit de la grille, l'identifiant du chemin. `backend/layouts/<L>x<H>/<NNN>.txt`, numéro attribué automatiquement. Flèches non encodées (déduites de la géométrie en Phase 5). [ADR 0006](adr/0006-format-des-layouts.md).
+2. **Validateur** (CLI + tests + CI) : taille conforme au dossier ; chaque case lettre appartient à un mot de ≥ 2 lettres ; grilles en double signalées ; statistiques des slots. Un mot peut commencer au bord.
+3. **Éditeur de layouts** dans la mini-app : choisir L×H (n'importe quel format), cliquer/toucher les cases, validation en direct ; « Enregistrer » **écrit directement dans `backend/layouts/<L>x<H>/`** après validation serveur, sans jamais écraser. Duplication/édition d'un layout existant.
 4. `GET /api/layouts` (formats + aperçus) ; les nouveaux layouts rejoignent automatiquement le benchmark.
+5. **Plus tard (non planifié)** : prendre en photo une grille ; le logiciel reconnaît les cases et propose la grille dans l'éditeur, où l'auteur corrige et valide ([#47](https://github.com/maximefd/terminator-app/issues/47)).
 
 ---
 

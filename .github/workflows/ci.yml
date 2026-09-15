@@ -31,6 +31,11 @@ jobs:
           source .venv/bin/activate
           pytest -vv --showlocals backend/tests/
 
+      - name: Check layouts catalog
+        run: |
+          source .venv/bin/activate
+          python backend/check_layouts.py
+
       - name: Run tools tests (lexicon pipeline)
         run: |
           source .venv/bin/activate

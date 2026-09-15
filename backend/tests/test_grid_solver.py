@@ -8,8 +8,8 @@ from tests.paths import FIXTURE_LAYOUTS_DIR
 from trie_engine import DictionnaireTrie
 
 
-def make_generator(words, trie, templates_dir=FIXTURE_LAYOUTS_DIR, width=5, height=5, **kwargs):
-    return GridGenerator(width, height, words, prebuilt_trie=trie, templates_dir=templates_dir, **kwargs)
+def make_generator(words, trie, layouts_dir=FIXTURE_LAYOUTS_DIR, width=5, height=5, **kwargs):
+    return GridGenerator(width, height, words, prebuilt_trie=trie, layouts_dir=layouts_dir, **kwargs)
 
 
 def test_generates_a_complete_and_consistent_grid(small_words, small_trie):
@@ -51,12 +51,12 @@ def test_exceeded_time_budget_is_reported(small_words, small_trie):
 
 def test_unsolvable_grid_returns_false_without_budget_flag(tmp_path):
     (tmp_path / "3x2").mkdir()
-    (tmp_path / "3x2" / "open.txt").write_text("...\n...\n")
+    (tmp_path / "3x2" / "001.txt").write_text("---\n---\n")
     trie = DictionnaireTrie()
     for word in ["ABC", "DEF"]:
         trie.insert(word)
 
-    generator = make_generator(["ABC", "DEF"], trie, templates_dir=str(tmp_path), width=3, height=2, seed=1)
+    generator = make_generator(["ABC", "DEF"], trie, layouts_dir=str(tmp_path), width=3, height=2, seed=1)
 
     assert not generator.generate()
     assert not generator.budget_exceeded

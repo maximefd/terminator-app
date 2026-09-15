@@ -11,7 +11,7 @@ FIXTURE_FORMATS = [{"width": 5, "height": 5, "layouts": 1}]
 def grid_app(test_app, small_trie, monkeypatch):
     """Application avec un petit dictionnaire et les layouts de test."""
     monkeypatch.setattr(test_app, "dela_trie", small_trie)
-    monkeypatch.setitem(test_app.config, "TEMPLATES_DIR", FIXTURE_LAYOUTS_DIR)
+    monkeypatch.setitem(test_app.config, "LAYOUTS_DIR", FIXTURE_LAYOUTS_DIR)
     return test_app
 
 
@@ -24,6 +24,17 @@ def test_formats_endpoint_lists_available_formats(grid_app, client):
 
     assert response.status_code == 200
     assert response.get_json()["formats"] == FIXTURE_FORMATS
+
+
+def test_layouts_endpoint_lists_the_catalog(grid_app, client):
+    response = client.get("/api/layouts")
+
+    assert response.status_code == 200
+    formats = response.get_json()["formats"]
+    assert [(f["width"], f["height"]) for f in formats] == [(5, 5)]
+    layout = formats[0]["layouts"][0]
+    assert (layout["id"], layout["rows"][0]) == ("5x5-001", "x-x-x")
+    assert layout["stats"]["words"] > 0
 
 
 def test_generate_returns_a_filled_grid(grid_app, client):
