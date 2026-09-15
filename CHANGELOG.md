@@ -16,6 +16,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - une touche par décision (← supprimer, → garder, ↓ annuler, ↑ passer, Maj + ← toute la famille) ;
   - glisser sur téléphone ;
   - accès par code PIN ; statistiques du jour et série.
+- Curateur :
+  - motivation : objectif du jour, série, niveaux, 14 badges, combos, fenêtre de progression avec les 7 derniers jours ;
+  - `make curator-bg`, `curator-stop` et `curator-logs` pour le lancer en arrière-plan ;
+  - accès hors du Wi-Fi documenté avec Tailscale.
 - Documentation de relecture :
   - README réécrit ;
   - `docs/ARCHITECTURE.md`, `docs/ENGINE.md`, `docs/LAYOUTS.md`, `docs/LEXICON.md` ;

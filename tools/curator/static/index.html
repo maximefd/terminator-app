@@ -12,12 +12,25 @@
 <body>
   <header class="topbar">
     <span class="brand">🧩 Curateur</span>
+    <button id="btn-profile" class="profile" type="button" aria-haspopup="dialog" aria-controls="profile-dialog">
+      <span class="level">Niv. <strong id="level-number">1</strong> · <span id="level-title">Apprenti</span></span>
+      <span class="xp" aria-hidden="true"><span id="xp-bar"></span></span>
+    </button>
     <p class="stats" aria-live="polite">
-      <span><strong id="stat-today">0</strong> aujourd'hui</span>
-      <span>série <strong id="stat-streak">0</strong> j</span>
+      <span class="streak" title="Série de jours consécutifs">🔥 <strong id="stat-streak">0</strong> j</span>
+      <span title="Badges obtenus">🏅 <strong id="stat-badges">0</strong></span>
       <span>reste <strong id="stat-remaining">…</strong></span>
     </p>
   </header>
+
+  <section id="goal-section" class="goal" aria-label="Objectif du jour">
+    <div class="goal-text">
+      <span>Objectif du jour</span>
+      <span><strong id="stat-today">0</strong> / <span id="goal">100</span> mots</span>
+    </div>
+    <div class="goal-bar" aria-hidden="true"><span id="goal-bar"></span></div>
+    <p id="streak-risk" class="streak-risk" hidden></p>
+  </section>
 
   <section class="filters" aria-label="Filtres">
     <label>Longueur
@@ -76,6 +89,24 @@
     </p>
   </main>
 
+  <dialog id="profile-dialog" class="profile-dialog" aria-labelledby="profile-title">
+    <form method="dialog" class="dialog-close">
+      <button type="submit" aria-label="Fermer">✕</button>
+    </form>
+    <h2 id="profile-title">Votre progression</h2>
+    <p class="profile-level"><strong id="profile-level"></strong><br><span id="profile-xp" class="muted"></span></p>
+    <dl class="records">
+      <div><dt>Série record</dt><dd id="best-streak">0 j</dd></div>
+      <div><dt>Meilleure journée</dt><dd id="best-day">0</dd></div>
+      <div><dt>Mots triés</dt><dd id="total-decided">0</dd></div>
+    </dl>
+    <h3>7 derniers jours</h3>
+    <div id="week" class="week" role="img" aria-label="Mots triés ces 7 derniers jours"></div>
+    <h3>Badges <span id="badge-count" class="muted"></span></h3>
+    <ul id="badges" class="badges"></ul>
+  </dialog>
+
+  <div id="celebration" class="celebration" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/static/app.js"></script>
 </body>
