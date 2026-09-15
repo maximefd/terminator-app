@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class SolverBudgetExceeded(Exception):
-    """Levée quand le solveur dépasse son budget de temps ou d'appels récursifs."""
+    """Levée quand le solveur dépasse son budget de temps (`reason="time"`) ou d'appels récursifs (`"calls"`)."""
+
+    def __init__(self, message: str, reason: str):
+        super().__init__(message)
+        self.reason = reason
 
 
 class GridSolver:
@@ -52,6 +56,9 @@ class GridSolver:
         self.time_budget_s = time_budget_s
         self.max_recursive_calls = max_recursive_calls
         self.budget_exceeded = False
+        self.stop_reason = None  # "time" ou "calls" si la résolution a été interrompue
+        # Mots retirés du dépôt par la branche en cours : rendus si la résolution est interrompue
+        self._consumed: list[tuple[str, int]] = []
 
         self.template = template
         self.repository = repository
@@ -96,9 +103,15 @@ class GridSolver:
         try:
             return self._solve_recursive()
         except SolverBudgetExceeded as e:
-            logging.warning(f"Résolution interrompue : {e}")
+            # Un seuil d'appels atteint est un redémarrage prévu, pas une anomalie
+            (logging.warning if e.reason == "time" else logging.info)(f"Résolution interrompue : {e}")
             self.budget_exceeded = True
+            self.stop_reason = e.reason
             self.placed_words = []
+            # Le dépôt redevient intact : un nouvel essai peut repartir de zéro avec les mêmes mots
+            for word, length in reversed(self._consumed):
+                self.repository.add_word_to_available(word, length)
+            self._consumed.clear()
             return False
         finally:
             # Afficher les métriques dans TOUS les cas (succès, échec, timeout)
@@ -248,7 +261,8 @@ class GridSolver:
             # Si on arrive ici, le mot est valide ET passe le forward checking
             # --- CONSOMMATION ---
             slot['is_filled'] = True # Marque le slot comme rempli
-            self.repository.remove_word_from_available(word, slot['length']) 
+            self.repository.remove_word_from_available(word, slot['length'])
+            self._consumed.append((word, slot['length']))
             logging.debug(f"  → Place '{word}'")
 
             if self._solve_recursive(): # Appel récursif SANS INDEX
@@ -266,8 +280,9 @@ class GridSolver:
                 self._invalidate_dependent_nogoods(slot)
                 
                 # Annule la consommation du mot et marque le slot comme vide
-                self.repository.add_word_to_available(word, slot['length']) 
-                slot['is_filled'] = False 
+                self.repository.add_word_to_available(word, slot['length'])
+                self._consumed.pop()
+                slot['is_filled'] = False
                 logging.debug(f"      <- Retour arrière (Backtrack) pour '{word}'.")
                 
                 # --- REVERT DE LA GRILLE ---
@@ -282,9 +297,9 @@ class GridSolver:
     def _check_budget(self) -> None:
         """Interrompt la résolution si le budget de temps ou d'appels est dépassé."""
         if self.time_budget_s is not None and time.time() - self.start_time > self.time_budget_s:
-            raise SolverBudgetExceeded(f"budget de temps dépassé ({self.time_budget_s}s)")
+            raise SolverBudgetExceeded(f"budget de temps dépassé ({self.time_budget_s}s)", "time")
         if self.max_recursive_calls is not None and self.metrics['recursive_calls'] > self.max_recursive_calls:
-            raise SolverBudgetExceeded(f"budget d'appels récursifs dépassé ({self.max_recursive_calls})")
+            raise SolverBudgetExceeded(f"budget d'appels récursifs dépassé ({self.max_recursive_calls})", "calls")
 
     def _check_grid_integrity(self):
         """

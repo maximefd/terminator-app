@@ -57,7 +57,7 @@ Ce n'est **pas un jeu**, c'est un **outil de création**.
 | Critère | Mesure | Aujourd'hui |
 |---------|--------|-------------|
 | Recherche rapide | Réponse `/api/search` < 200 ms (P95) | ✅ (arrêt du parcours à la limite) |
-| Génération fiable | ≥ 95 % de succès en 20 s pour chaque layout du catalogue (benchmark, 20 seeds) | 6×7 : 100 % · 11×6 : 15 % |
+| Génération fiable | ≥ 95 % de succès en 20 s pour chaque layout du catalogue (benchmark, 20 seeds) | 6×7 : 100 % · 11×6 : 55 % (15 % avant les redémarrages) |
 | Qualité des mots | Grilles sans formes fléchies rares, jugées publiables par l'auteur | ❌ avant la Phase 1 |
 | Mots imposés | Mots obligatoires toujours placés, ou échec expliqué | Phase 3 |
 | Qualité technique | CI verte ; couverture ≥ 70 % sur le moteur et le pipeline du lexique | Tests en place, couverture non mesurée |

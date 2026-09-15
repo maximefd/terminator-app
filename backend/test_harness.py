@@ -42,6 +42,8 @@ def parse_args():
     parser.add_argument("--dictionary", default=DEFAULT_DICTIONARY, help="Fichier dictionnaire (CSV DELA).")
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Fichier JSON de résultats.")
     parser.add_argument("--html", help="Chemin d'un rapport HTML visuel (optionnel).")
+    parser.add_argument("--restart-unit", type=int, default=None,
+                        help="Unité des redémarrages en appels récursifs (0 : un seul essai ; défaut : réglage du générateur).")
     return parser.parse_args()
 
 
@@ -68,15 +70,16 @@ def percentile(values, pct):
     return ordered[index]
 
 
-def run_layout(width, height, layout_path, words, trie, seeds, time_budget):
+def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None):
     """Génère une grille par seed pour un layout et collecte les mesures."""
     runs, grids = [], []
     layout_name = layout_id(layout_path)
+    restart = {} if restart_unit is None else {"restart_unit_calls": restart_unit or None}
     for seed in range(seeds):
         print(f"  {layout_name} seed={seed}...", end="", flush=True)
         start = time.perf_counter()
         generator = GridGenerator(width, height, words, prebuilt_trie=trie, seed=seed,
-                                  layout_path=layout_path, time_budget_s=time_budget)
+                                  layout_path=layout_path, time_budget_s=time_budget, **restart)
         success = generator.generate()
         elapsed = time.perf_counter() - start
 
@@ -91,6 +94,7 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget):
             "recursive_calls": metrics["recursive_calls"],
             "backtracks": metrics["backtracks"],
             "candidates_tested": metrics["candidates_tested"],
+            "attempts": grid_data["statistics"].get("attempts", 1),
         })
         if success:
             grid_data["generation_time"] = elapsed
@@ -231,7 +235,8 @@ def main():
         "environment": {"python": platform.python_version(), "platform": platform.platform(),
                         "cpu_count": os.cpu_count()},
         "config": {"seeds": args.seeds, "time_budget_s": args.time_budget,
-                   "dictionary": os.path.basename(args.dictionary), "dictionary_words": len(all_words)},
+                   "dictionary": os.path.basename(args.dictionary), "dictionary_words": len(all_words),
+                   "restart_unit_calls": args.restart_unit},
         "layouts": [],
     }
     grids_by_layout = {}
@@ -249,7 +254,7 @@ def main():
             if (w, h) != (width, height):
                 continue
             result, grids = run_layout(width, height, layout_path, format_words, format_trie,
-                                       args.seeds, args.time_budget)
+                                       args.seeds, args.time_budget, args.restart_unit)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 

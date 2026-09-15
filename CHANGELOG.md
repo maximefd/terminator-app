@@ -35,6 +35,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - avertissements : grilles en double, proportion inhabituelle de cases définitions ;
   - statistiques : nombre de mots et mots par longueur.
 - `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
+- Redémarrages du solveur (Phase 3, #19) : essais successifs de `300 × luby(i)` appels récursifs dans le budget temps, trajectoires dérivées du seed (même seed ⇒ même grille) ; benchmark `--restart-unit` et nombre d'essais par seed ([mesures](backend/benchmarks/README.md)).
 - Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
   - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;
   - vérification en direct par le serveur, cases fautives en rouge, statistiques ;
