@@ -18,7 +18,7 @@ flowchart LR
     A -->|par requête| G[GridGenerator]
     G --> E[Moteur<br/>backend/engine/]
     E --> T
-    G -->|lit| L[Layouts<br/>backend/templates/]
+    G -->|lit| L[Layouts<br/>backend/layouts/]
 ```
 
 Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local (voir [ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
@@ -41,7 +41,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | `trie_engine.py` | `DictionnaireTrie` : normalisation des mots et recherche par motif (`P??LE`) |
 | `grid_generator.py` | Chef d'orchestre de la génération (choix du layout, dépôt de mots, solveur) |
 | `engine/` | Moteur de génération, sans dépendance Flask (voir [ENGINE.md](ENGINE.md)) |
-| `templates/<L>x<H>/*.txt` | Layouts de grilles (voir [LAYOUTS.md](LAYOUTS.md)) |
+| `layouts/<L>x<H>/<NNN>.txt` + `convert_layouts.py` | Layouts de grilles et conversion de l'ancien format (voir [LAYOUTS.md](LAYOUTS.md)) |
 | `test_harness.py` + `benchmarks/` | Benchmark reproductible du générateur |
 | `tests/` | Tests pytest (API, sécurité, moteur) |
 
@@ -104,7 +104,7 @@ sequenceDiagram
     F->>A: POST {size, seed}
     A->>A: validation (schemas.py) + rate limit
     A->>G: mots du DELA de longueur utile + mots perso actifs
-    G->>G: choix du layout (backend/templates/LxH)
+    G->>G: choix du layout (backend/layouts/LxH)
     G->>S: slots + dépôt de mots + budget temps
     S-->>G: grille remplie, ou échec / timeout
     G-->>A: cellules, mots placés, statistiques

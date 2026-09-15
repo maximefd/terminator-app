@@ -24,6 +24,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - l'API charge le lexique curé s'il existe et le recharge à chaud quand il change ;
   - le curateur l'exporte tous les 500 mots triés et propose de tester les grilles ;
   - `GET /api/status` indique le lexique chargé.
+- Format de layout v1 (Phase 2, #12, ADR 0006) :
+  - `x` = case définition, `-` = case lettre ; l'ancien format `#` / `.` reste lu ;
+  - caractère inconnu, lignes de longueurs différentes ou taille différente du dossier : erreur qui indique la ligne et la colonne ;
+  - `convert_layouts.py` convertit les anciens fichiers ;
+  - identifiant déduit du chemin (`11x6-001`).
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
@@ -38,6 +43,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 
 ### Modifié
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
+- Layouts déplacés de `backend/templates/<L>x<H>/template_01.txt` vers `backend/layouts/<L>x<H>/001.txt` ; le champ `layout` de la grille générée et les clés du benchmark deviennent `6x7-001`. Variable de configuration `TEMPLATES_DIR` renommée `LAYOUTS_DIR`.
+- Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.
 
 ## [0.1.0] — 2026-09-14
 

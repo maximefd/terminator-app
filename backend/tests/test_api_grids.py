@@ -11,7 +11,7 @@ FIXTURE_FORMATS = [{"width": 5, "height": 5, "layouts": 1}]
 def grid_app(test_app, small_trie, monkeypatch):
     """Application avec un petit dictionnaire et les layouts de test."""
     monkeypatch.setattr(test_app, "dela_trie", small_trie)
-    monkeypatch.setitem(test_app.config, "TEMPLATES_DIR", FIXTURE_LAYOUTS_DIR)
+    monkeypatch.setitem(test_app.config, "LAYOUTS_DIR", FIXTURE_LAYOUTS_DIR)
     return test_app
 
 
