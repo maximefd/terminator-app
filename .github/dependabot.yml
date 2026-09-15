@@ -7,6 +7,13 @@ updates:
     open-pull-requests-limit: 5
     labels: [ci, backend]
 
+  - package-ecosystem: pip
+    directory: /tools/curator
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    labels: [ci, lexique]
+
   - package-ecosystem: npm
     directory: /frontend
     schedule:

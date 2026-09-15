@@ -24,7 +24,13 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           pip install -r backend/requirements.txt
-        
+
+      - name: Audit Python dependencies (pip-audit)
+        run: |
+          source .venv/bin/activate
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt -r tools/curator/requirements.txt
+
       # MODIFICATION ICI : On rend la commande de test plus "bavarde"
       - name: Run backend tests with pytest
         run: |
