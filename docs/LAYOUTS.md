@@ -98,9 +98,33 @@ Les règles sont écrites une seule fois : `backend/engine/layout_validator.py` 
 
 `GET /api/grids/formats` (utilisé par la page Générer) ne change pas.
 
-## Prévu (Phase 2 de la roadmap)
+## Éditeur de layouts (curateur)
 
-- **Éditeur de layouts** dans la mini-app : dessiner la grille au clic ou au toucher, validation en direct, enregistrement direct dans `backend/layouts/<L>x<H>/` avec un numéro attribué automatiquement.
-- **Plus tard** : prendre en photo une grille, la faire reconnaître, puis la corriger et la valider dans l'éditeur ([#47](https://github.com/maximefd/terminator-app/issues/47)).
+C'est la façon la plus rapide de recopier une grille trouvée dans un magazine, sur ordinateur ou sur téléphone.
+
+1. Lancer le curateur : `make curator` (ou `make curator-bg`), puis ouvrir http://localhost:8765/layouts (onglet **Layouts**). Depuis le téléphone, utiliser l'adresse affichée par la commande. Le curateur démarre même sans la base du lexique : seul l'éditeur est alors disponible.
+2. Indiquer la **largeur** et la **hauteur**. Changer la taille en cours de route garde les cases déjà dessinées.
+3. Toucher chaque **case définition**. Au clavier, recopier rangée par rangée :
+
+   | Touche | Action |
+   |--------|--------|
+   | `x` | case définition, puis case suivante |
+   | `-` | case lettre, puis case suivante |
+   | `Espace` | changer la case |
+   | flèches | se déplacer |
+   | `Entrée` | début de la rangée suivante |
+   | `⌫` | case précédente |
+
+4. La grille est **vérifiée à chaque changement** par le serveur, avec les mêmes règles que `make layouts-check` : les cases fautives passent en rouge, les erreurs et les statistiques s'affichent, ainsi que l'identifiant que recevra le layout.
+5. **Enregistrer le layout** écrit `backend/layouts/<L>x<H>/<NNN>.txt` sous le prochain numéro libre. Le bouton reste inactif tant que la grille est invalide ou déjà présente dans le catalogue. Un fichier existant n'est jamais écrasé.
+6. Vérifier le résultat (`git status`), lancer `make bench` si besoin, puis ouvrir une PR.
+
+Le **catalogue**, sous l'éditeur, montre tous les layouts. Toucher une grille la copie dans l'éditeur pour en faire une variante : l'original n'est jamais modifié. Le brouillon en cours est gardé sur l'appareil (rechargement de la page, appel reçu sur le téléphone…).
+
+Sécurité : l'éditeur est protégé par le code PIN et l'en-tête anti-CSRF du curateur. Le serveur construit lui-même le chemin du fichier à partir de la taille de la grille ; il ne reçoit jamais de nom de fichier.
+
+## Plus tard
+
+- **Reconnaissance photo** : prendre en photo une grille, la faire reconnaître, puis la corriger et la valider dans l'éditeur ([#47](https://github.com/maximefd/terminator-app/issues/47)).
 
 Voir [ROADMAP.md](ROADMAP.md).
