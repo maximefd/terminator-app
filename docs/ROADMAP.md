@@ -9,8 +9,12 @@
 |-------|------|
 | 0a — Stabilisation | ✅ PR #2 (génération réparée, tests, benchmark) |
 | 0b — Sécurité | ✅ PR #3 |
-| 0c — Documentation et GitHub | 🚧 en cours |
-| 1 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
+| 0c — Documentation et GitHub | ✅ PR #31 (restent #5 à #8 : ruff et couverture en CI, dépendances figées, vulnérabilités transitives de Next.js, captures d'écran) |
+| 1a — Pipeline du lexique | ✅ PR #42 |
+| 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
+| 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
+| 2 — Catalogue de layouts | ⏳ prochaine étape, en parallèle du tri |
+| 3 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
 
