@@ -106,7 +106,10 @@ Code : `tools/curator/` (Flask + une page HTML/JS sans dépendance). Elle lit la
    ```
 4. Ouvrir l'adresse affichée :
    - sur l'ordinateur : http://localhost:8765 ;
-   - sur le téléphone, connecté au même Wi-Fi : http://<IP du Mac>:8765 (ajoutable à l'écran d'accueil).
+   - sur le téléphone, connecté au même Wi-Fi : http://<IP du Mac>:8765 (ajoutable à l'écran d'accueil) ;
+   - partout, avec Tailscale : voir plus bas.
+
+Pour ne pas garder un terminal ouvert : `make curator-bg` lance le curateur en arrière-plan. Docker le relance tout seul (après un redémarrage du Mac, si Docker Desktop démarre à l'ouverture de session). `make curator-stop` l'arrête, `make curator-logs` affiche son journal.
 
 ### Trier
 
@@ -123,7 +126,24 @@ Une carte par mot : le mot et ses graphies, la définition (signalée quand ce n
 - **Une touche maintenue ne décide qu'une fois.** Pas de confirmation : l'annulation est toujours possible, y compris pour une famille entière.
 - **Suppression par famille** : le mot, son lemme et toutes les formes du même lemme. Les mots gardés et les mots très courants (`keep`) ne sont jamais supprimés de cette façon.
 - **Ordre de la file** : mots les plus courts d'abord ; dans une longueur, `likely_delete`, puis `review`, puis `likely_keep`, du moins fréquent au plus fréquent. Filtres par longueur et par suggestion.
-- **En haut de l'écran** : décisions du jour, série de jours consécutifs, mots restant à trier.
+- **En haut de l'écran** : niveau, série de jours consécutifs, badges, mots restant à trier et objectif du jour.
+
+### Motivation
+
+Pour donner envie de revenir un peu chaque jour, sans gêner le tri :
+
+| Élément | Fonctionnement |
+|---------|----------------|
+| Objectif du jour | Barre de progression (100 mots par défaut, `CURATOR_DAILY_GOAL` dans `.env`) ; petite célébration quand il est atteint, une fois par jour |
+| Série 🔥 | Jours consécutifs avec au moins un mot trié. Si rien n'est encore trié aujourd'hui, un rappel propose de prolonger la série |
+| Niveaux | Selon le nombre de mots triés : Apprenti, Cruciverbiste (niv. 3), Verbicruciste (6), Maître des cases (10), Lexicographe (15), Gardien du dictionnaire (25), Grand Terminator (40). Paliers : 50, 150, 300, 500, 750… mots |
+| Badges 🏅 | 14 badges : premier mot, séries de 3, 7 et 30 jours, 100 et 500 mots dans la journée, 1 000 suppressions, 500 mots gardés, première suppression par famille, lève-tôt, oiseau de nuit, mots de 2 à 5 puis de 6 à 8 lettres terminés, 10 000 mots |
+| Combos | Annonce à 10, 25, 50, 100… mots d'affilée pendant une session |
+| Progression | Un appui sur le niveau ouvre les records, le graphique des 7 derniers jours et tous les badges |
+
+- **Recalculé à partir de `decisions.csv`** : rien d'autre n'est stocké, la progression est la même sur l'ordinateur et le téléphone.
+- **Un mot compte une fois**, même en changeant d'avis.
+- **Animations désactivées** si le système demande de réduire les animations.
 
 Les décisions sont écrites immédiatement. Pensez à commiter `data/lexicon/decisions.csv` de temps en temps.
 
@@ -137,6 +157,19 @@ Le curateur est accessible depuis le réseau local : il ne démarre pas sans `CU
 - CSP stricte (aucun script externe ou inline).
 - Base ouverte en lecture seule ; seules des décisions valides sur des mots connus sont acceptées.
 - À ne lancer que sur un réseau de confiance (Wi-Fi domestique) : la connexion n'est pas chiffrée (HTTP).
+
+### Hors de chez soi : Tailscale
+
+Pour trier depuis le téléphone hors du Wi-Fi, sans rendre le curateur public : [Tailscale](https://tailscale.com) relie vos appareils par un réseau privé chiffré (WireGuard), gratuit pour un usage personnel.
+
+1. Installer Tailscale sur le Mac (Mac App Store, ou `brew install --cask tailscale`) et s'y connecter.
+2. Installer Tailscale sur le téléphone, **avec le même compte**.
+3. Lancer le curateur (`make curator-bg`) : l'adresse Tailscale s'affiche (`http://100.x.y.z:8765`).
+4. Sur le téléphone, Tailscale activé, ouvrir cette adresse ou `http://<nom-du-mac>:8765`.
+
+Le Mac doit rester allumé et éveillé : Réglages Système → Énergie → « Empêcher la mise en veille automatique lorsque l'écran est éteint ». Seuls vos appareils connectés à votre compte Tailscale peuvent joindre le curateur, et le code PIN reste demandé.
+
+Un hébergement public (Vercel, serveur) a été écarté : la base de 140 Mo et l'écriture continue de `decisions.csv` ne conviennent pas à un hébergement sans disque, et le curateur serait exposé sur Internet (voir [ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
 
 ## Prochaine étape (Phase 1c)
 

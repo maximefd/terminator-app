@@ -11,6 +11,7 @@ from flask import Flask, jsonify, redirect, request, send_from_directory, sessio
 
 from tools.lexicon.decisions import DELETE, KEEP, NORMALIZED_WORD
 
+from .gamification import DEFAULT_DAILY_GOAL
 from .repository import QUEUE_SUGGESTIONS, LexiconRepository
 from .stats import curation_stats
 from .store import DecisionStore
@@ -85,9 +86,12 @@ def _word_list(value) -> list[str] | None:
     return value
 
 
-def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None, testing: bool = False) -> Flask:
+def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None, testing: bool = False,
+               daily_goal: int = DEFAULT_DAILY_GOAL) -> Flask:
     if not isinstance(pin, str) or len(pin) < MIN_PIN_LENGTH:
         raise ValueError(f"CURATOR_PIN doit contenir au moins {MIN_PIN_LENGTH} caractères (à définir dans .env).")
+    if not isinstance(daily_goal, int) or not 1 <= daily_goal <= 5000:
+        raise ValueError("CURATOR_DAILY_GOAL doit être un nombre entier entre 1 et 5000.")
     if not Path(db_path).exists():
         raise FileNotFoundError(f"Base du lexique absente ({db_path}) : lancez d'abord `make lexicon-build`.")
 
@@ -229,6 +233,6 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
 
     @app.get("/api/stats")
     def stats():
-        return jsonify(curation_stats(repository, store))
+        return jsonify(curation_stats(repository, store, daily_goal=daily_goal))
 
     return app

@@ -8,6 +8,7 @@
   --success: #16a34a;
   --accent: #2563eb;
   --warning: #d97706;
+  --gold: #f59e0b;
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
@@ -95,7 +96,7 @@ button.success { background: var(--success); color: #fff; border-color: var(--su
 }
 .error { color: var(--danger); min-height: 1.25rem; margin: 0; }
 
-/* --- Barre du haut et filtres --- */
+/* --- Barre du haut --- */
 
 .topbar {
   display: flex;
@@ -103,14 +104,62 @@ button.success { background: var(--success); color: #fff; border-color: var(--su
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem 1rem;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
 .brand { font-weight: 700; }
-.stats { display: flex; gap: 0.9rem; margin: 0; font-size: 0.9rem; color: var(--muted); }
+
+.profile {
+  display: grid;
+  gap: 0.25rem;
+  min-height: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 0.8rem;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.xp {
+  display: block;
+  width: 9rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.xp span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), #a855f7); transition: width 0.3s ease; }
+
+.stats { display: flex; gap: 0.8rem; margin: 0; font-size: 0.9rem; color: var(--muted); }
 .stats strong { color: var(--text); }
+
+/* --- Objectif du jour --- */
+
+.goal {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 0;
+}
+
+.goal-text { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); }
+.goal-text strong { color: var(--text); }
+
+.goal-bar {
+  margin-top: 0.35rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.goal-bar span { display: block; height: 100%; background: var(--success); transition: width 0.3s ease; }
+.goal.reached .goal-bar span { background: linear-gradient(90deg, var(--gold), #fbbf24); }
+.goal.reached .goal-text strong { color: var(--gold); }
+
+.streak-risk { margin: 0.4rem 0 0; font-size: 0.85rem; color: var(--warning); }
+
+/* --- Filtres --- */
 
 .filters {
   display: flex;
@@ -241,7 +290,70 @@ kbd {
 }
 @media (hover: none) { .legend { display: none; } }
 
-/* --- Notifications --- */
+/* --- Progression (fenêtre) --- */
+
+.profile-dialog {
+  width: min(32rem, calc(100% - 2rem));
+  max-height: calc(100dvh - 2rem);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  background: var(--surface);
+  color: var(--text);
+}
+.profile-dialog::backdrop { background: rgb(0 0 0 / 0.55); }
+.profile-dialog h2 { margin: 0 2.5rem 0.75rem 0; font-size: 1.3rem; }
+.profile-dialog h3 { margin: 1.25rem 0 0.6rem; font-size: 1rem; }
+
+.dialog-close { position: absolute; top: 0.75rem; right: 0.75rem; }
+.dialog-close button { min-height: 2.5rem; width: 2.5rem; border-radius: 999px; }
+
+.profile-level { margin: 0; line-height: 1.5; }
+
+.records {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+.records div { padding: 0.6rem; border: 1px solid var(--border); border-radius: 0.8rem; text-align: center; }
+.records dt { font-size: 0.75rem; color: var(--muted); }
+.records dd { margin: 0.2rem 0 0; font-weight: 700; }
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+  height: 6rem;
+}
+.week .day { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 0.25rem; }
+.week .bar { width: 100%; min-height: 2px; border-radius: 0.35rem 0.35rem 0.15rem 0.15rem; background: var(--accent); }
+.week .bar.goal-met { background: var(--gold); }
+.week small { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.5rem;
+}
+.badges li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+}
+.badges li.locked { opacity: 0.5; }
+.badges li.unlocked { border-color: color-mix(in srgb, var(--gold) 60%, var(--border)); }
+.badge-icon { font-size: 1.5rem; }
+.badges strong { display: block; font-size: 0.85rem; }
+.badges small { display: block; font-size: 0.75rem; color: var(--muted); }
+
+/* --- Notifications et célébrations --- */
 
 .toast {
   position: fixed;
@@ -257,6 +369,33 @@ kbd {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 60;
 }
 .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--danger); color: #fff; }
+.toast.announce { background: linear-gradient(90deg, var(--gold), #fbbf24); color: #1f2937; font-weight: 700; font-size: 1rem; }
+
+.celebration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+.celebration span {
+  position: absolute;
+  top: -1rem;
+  width: 0.5rem;
+  height: 0.9rem;
+  border-radius: 2px;
+  animation: confetti-fall 2.1s ease-in forwards;
+}
+
+@keyframes confetti-fall {
+  to { transform: translate(var(--drift, 0), 105vh) rotate(720deg); opacity: 0.7; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .xp span, .goal-bar span, .toast { transition: none; }
+  .celebration { display: none; }
+}

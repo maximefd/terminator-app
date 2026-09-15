@@ -205,6 +205,35 @@ def test_stats_count_today_and_remaining_words(logged):
     assert stats["remaining_by_length"] == {"2-5": 0, "6-8": 2, "9-11": 1, "12+": 0}
 
 
+def test_stats_include_progression(logged, paths):
+    logged.post("/api/decisions", json={"words": ["OUVRAGE"], "decision": "keep"}, headers=API)
+    logged.post("/api/decisions", json={"words": ["OUVRAGE"], "decision": "delete"}, headers=API)
+    logged.post("/api/decisions/family", json={"word": "OUVRAGEAMES"}, headers=API)
+    logged.post("/api/decisions", json={"words": ["AABAM"], "decision": "delete"}, headers=API)
+
+    stats = logged.get("/api/stats").get_json()
+
+    assert stats["daily_goal"] == 100
+    assert stats["today"] == 4  # OUVRAGE ne compte qu'une fois malgré le changement d'avis
+    assert stats["total_decided"] == 4
+    assert (stats["level"]["number"], stats["level"]["title"]) == (1, "Apprenti")
+    assert len(stats["week"]) == 7
+    assert stats["week"][-1]["count"] == 4
+    badges = {a["id"] for a in stats["achievements"] if a["unlocked"]}
+    # AABAM était le seul mot de 2 à 5 lettres à trier
+    assert {"first_word", "family", "band_2_5"} <= badges
+    assert "hundred_day" not in badges
+
+
+def test_daily_goal_is_configurable(paths):
+    client = create_app(*paths, pin=PIN, secret_key="x", testing=True, daily_goal=30).test_client()
+    client.post("/login", json={"pin": PIN})
+
+    assert client.get("/api/stats").get_json()["daily_goal"] == 30
+    with pytest.raises(ValueError, match="CURATOR_DAILY_GOAL"):
+        create_app(*paths, pin=PIN, daily_goal=0)
+
+
 def test_streak_days():
     today = date(2026, 9, 15)
     days = {date(2026, 9, 13), date(2026, 9, 14)}
