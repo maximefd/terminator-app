@@ -32,6 +32,12 @@
     <p id="streak-risk" class="streak-risk" hidden></p>
   </section>
 
+  <section id="lexicon-banner" class="lexicon-banner" hidden role="status">
+    <p><strong>🧪 Lexique mis à jour</strong> <span id="lexicon-banner-text"></span></p>
+    <a id="lexicon-banner-link" class="button-link" target="_blank" rel="noopener noreferrer" href="http://localhost:3000/grid">Tester mes grilles</a>
+    <button id="lexicon-banner-close" type="button" aria-label="Masquer">✕</button>
+  </section>
+
   <section class="filters" aria-label="Filtres">
     <label>Longueur
       <select id="filter-length">
@@ -61,6 +67,12 @@
       <h1 id="card-word" class="word"></h1>
       <p id="card-forms" class="forms muted"></p>
       <p id="card-definition" class="definition"></p>
+      <div class="lookup">
+        <button id="btn-lookup" class="lookup-button" type="button" aria-expanded="false" aria-controls="lookup-panel">
+          🔎 Chercher ce mot <span class="key">Espace</span>
+        </button>
+        <div id="lookup-panel" class="lookup-panel" hidden aria-live="polite"></div>
+      </div>
       <dl class="meta">
         <div><dt>Fréquence</dt><dd><span class="freq" aria-hidden="true"><span id="card-freq-bar"></span></span> <span id="card-freq-label"></span></dd></div>
         <div><dt>Catégorie</dt><dd id="card-pos"></dd></div>
@@ -84,7 +96,7 @@
 
     <p class="legend muted">
       Clavier : <kbd>←</kbd> supprimer · <kbd>→</kbd> garder · <kbd>↓</kbd> ou <kbd>⌫</kbd> annuler ·
-      <kbd>↑</kbd> passer · <kbd>Maj</kbd> + <kbd>←</kbd> toute la famille.
+      <kbd>↑</kbd> passer · <kbd>Maj</kbd> + <kbd>←</kbd> toute la famille · <kbd>Espace</kbd> chercher le mot.
       Les mots gardés ou très courants ne sont jamais supprimés avec la famille.
     </p>
   </main>
@@ -104,6 +116,12 @@
     <div id="week" class="week" role="img" aria-label="Mots triés ces 7 derniers jours"></div>
     <h3>Badges <span id="badge-count" class="muted"></span></h3>
     <ul id="badges" class="badges"></ul>
+    <h3>Lexique de Terminator</h3>
+    <p id="lexicon-status" class="muted">Chargement…</p>
+    <div class="lexicon-actions">
+      <button id="btn-export" type="button">Mettre à jour le lexique maintenant</button>
+      <a id="link-grid" class="button-link" target="_blank" rel="noopener noreferrer" href="http://localhost:3000/grid">Tester mes grilles</a>
+    </div>
   </dialog>
 
   <div id="celebration" class="celebration" aria-hidden="true"></div>

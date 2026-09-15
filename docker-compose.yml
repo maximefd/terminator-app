@@ -25,6 +25,8 @@ services:
       - "5001:5000"
     volumes:
       - ./backend:/app
+      # Lexique curé exporté par le curateur (lecture seule), rechargé à chaud par l'API
+      - ./data/lexicon/build:/lexicon:ro
     environment:
       - APP_ENV=${APP_ENV:-development}
       - FLASK_DEBUG=1
@@ -34,6 +36,9 @@ services:
       # Origines autorisées, séparées par des virgules
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - GENERATION_TIME_BUDGET_S=${GENERATION_TIME_BUDGET_S:-20}
+      # Lexique curé s'il a été exporté, sinon repli automatique sur le DELA complet
+      - LEXICON_PATH=${LEXICON_PATH:-/lexicon/lexique_cure.csv}
+      - LEXICON_RELOAD_INTERVAL_S=${LEXICON_RELOAD_INTERVAL_S:-30}
     depends_on:
       db:
         condition: service_healthy

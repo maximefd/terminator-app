@@ -20,6 +20,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - motivation : objectif du jour, série, niveaux, 14 badges, combos, fenêtre de progression avec les 7 derniers jours ;
   - `make curator-bg`, `curator-stop` et `curator-logs` pour le lancer en arrière-plan ;
   - accès hors du Wi-Fi documenté avec Tailscale.
+- Lexique curé dans Terminator (Phase 1c) :
+  - l'API charge le lexique curé s'il existe et le recharge à chaud quand il change ;
+  - le curateur l'exporte tous les 500 mots triés et propose de tester les grilles ;
+  - `GET /api/status` indique le lexique chargé.
+- Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
   - `docs/ARCHITECTURE.md`, `docs/ENGINE.md`, `docs/LAYOUTS.md`, `docs/LEXICON.md` ;

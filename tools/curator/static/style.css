@@ -395,6 +395,82 @@ kbd {
   to { transform: translate(var(--drift, 0), 105vh) rotate(720deg); opacity: 0.7; }
 }
 
+/* --- Recherche du mot --- */
+
+.lookup { margin: -0.4rem 0 1rem; }
+
+.lookup-button {
+  min-height: 2.4rem;
+  padding: 0 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.lookup-button.prominent { border-color: var(--accent); color: var(--accent); }
+
+.lookup-panel {
+  margin-top: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: var(--bg);
+  font-size: 0.9rem;
+  max-height: 22rem;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.lookup-provider { margin: 0 0 0.5rem; font-size: 0.75rem; color: var(--muted); }
+
+.lookup-answer {
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.lookup-answer p { margin: 0.25rem 0; line-height: 1.4; }
+
+.lookup-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.lookup-results p { margin: 0.15rem 0 0; line-height: 1.35; }
+.lookup-results small { color: var(--muted); font-size: 0.75rem; }
+
+.lookup-panel a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.lookup-panel a:hover { text-decoration: underline; }
+
+.lookup-links { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin: 0.8rem 0 0; font-size: 0.8rem; }
+
+/* --- Lexique de Terminator --- */
+
+.lexicon-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  width: calc(100% - 2rem);
+  max-width: 38rem;
+  margin: 0.75rem auto 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--success) 50%, var(--border));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+}
+.lexicon-banner p { margin: 0; flex: 1 1 14rem; font-size: 0.9rem; }
+.lexicon-banner button { min-height: 2.2rem; width: 2.2rem; border-radius: 999px; }
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.6rem;
+  padding: 0 0.9rem;
+  border-radius: 0.8rem;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lexicon-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lexicon-actions button { min-height: 2.6rem; padding: 0 0.9rem; }
+
 @media (prefers-reduced-motion: reduce) {
   .card, .xp span, .goal-bar span, .toast { transition: none; }
   .celebration { display: none; }
