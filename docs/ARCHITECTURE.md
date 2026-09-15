@@ -42,6 +42,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | `grid_generator.py` | Chef d'orchestre de la génération (choix du layout, dépôt de mots, solveur) |
 | `engine/` | Moteur de génération, sans dépendance Flask (voir [ENGINE.md](ENGINE.md)) |
 | `layouts/<L>x<H>/<NNN>.txt` + `convert_layouts.py` | Layouts de grilles et conversion de l'ancien format (voir [LAYOUTS.md](LAYOUTS.md)) |
+| `layout_catalog.py` + `check_layouts.py` | Catalogue des layouts (lecture, vérification, enregistrement sans écrasement) et sa vérification en ligne de commande |
 | `test_harness.py` + `benchmarks/` | Benchmark reproductible du générateur |
 | `tests/` | Tests pytest (API, sécurité, moteur) |
 
@@ -59,6 +60,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | DELETE | `/api/dictionaries/<id>/words/<word_id>` | ✅ | Supprimer un mot |
 | POST | `/api/search` | optionnelle | Recherche par motif (DELA + dictionnaire personnel actif) |
 | GET | `/api/grids/formats` | — | Formats de grille disponibles |
+| GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
 | POST | `/api/grids/generate` | optionnelle | Génère une grille remplie |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 

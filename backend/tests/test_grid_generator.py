@@ -4,7 +4,8 @@ import pytest
 
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
-from grid_generator import DEFAULT_LAYOUTS_DIR, GridGenerator, LayoutNotFoundError, available_formats, layout_id
+from grid_generator import GridGenerator, LayoutNotFoundError
+from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
 
 

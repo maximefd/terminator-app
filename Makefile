@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools lint-frontend bench \
+.PHONY: help setup dev-api dev-front test test-backend test-tools lint-frontend bench layouts-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls
 
@@ -27,6 +27,9 @@ test: test-backend test-tools lint-frontend ## Tous les contrôles rapides
 
 test-backend: ## Tests backend (pytest, Python 3.11 dans Docker)
 	$(BACKEND_RUN) "pip install -q -r requirements.txt && pytest -q -p no:cacheprovider"
+
+layouts-check: ## Vérifie tous les layouts du catalogue (backend/layouts)
+	$(BACKEND_RUN) "python check_layouts.py"
 
 test-tools: ## Tests des outils (pipeline du lexique)
 	$(TOOLS_RUN) "pip install -q pytest -r tools/curator/requirements.txt && pytest -q -p no:cacheprovider tools"

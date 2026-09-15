@@ -8,39 +8,14 @@ from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
 from engine.word_repository import WordRepository
 from engine.grid_solver import GridSolver
+from layout_catalog import DEFAULT_LAYOUTS_DIR, layout_id
 from trie_engine import DictionnaireTrie # NÉCESSAIRE
 
 logger = logging.getLogger(__name__)
 
-# Dossier des layouts, résolu depuis ce fichier (indépendant du répertoire courant)
-DEFAULT_LAYOUTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "layouts")
-
 
 class LayoutNotFoundError(RuntimeError):
     """Aucun layout n'existe pour le format demandé."""
-
-
-def layout_id(layout_path: str) -> str:
-    """Identifiant d'un layout, déduit de son chemin : `<L>x<H>/001.txt` → `<L>x<H>-001`."""
-    format_name = os.path.basename(os.path.dirname(layout_path))
-    return f"{format_name}-{os.path.splitext(os.path.basename(layout_path))[0]}"
-
-
-def available_formats(layouts_dir: str | None = None) -> list[dict]:
-    """Liste les formats disponibles (ex: [{'width': 6, 'height': 7, 'layouts': 1}]), triés."""
-    layouts_dir = layouts_dir or DEFAULT_LAYOUTS_DIR
-    formats = []
-    if not os.path.isdir(layouts_dir):
-        return formats
-    for name in os.listdir(layouts_dir):
-        path = os.path.join(layouts_dir, name)
-        width, sep, height = name.partition("x")
-        if not (os.path.isdir(path) and sep and width.isdigit() and height.isdigit()):
-            continue
-        layouts = [f for f in os.listdir(path) if f.endswith(".txt")]
-        if layouts:
-            formats.append({"width": int(width), "height": int(height), "layouts": len(layouts)})
-    return sorted(formats, key=lambda f: (f["width"] * f["height"], f["width"]))
 
 
 class GridGenerator:

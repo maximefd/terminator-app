@@ -14,7 +14,7 @@ import os
 import sys
 
 from engine.layout_format import LayoutFormatError, format_layout, parse_layout
-from grid_generator import DEFAULT_LAYOUTS_DIR
+from layout_catalog import DEFAULT_LAYOUTS_DIR
 
 
 def convert_file(path: str) -> bool:

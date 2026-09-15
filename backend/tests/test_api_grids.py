@@ -26,6 +26,17 @@ def test_formats_endpoint_lists_available_formats(grid_app, client):
     assert response.get_json()["formats"] == FIXTURE_FORMATS
 
 
+def test_layouts_endpoint_lists_the_catalog(grid_app, client):
+    response = client.get("/api/layouts")
+
+    assert response.status_code == 200
+    formats = response.get_json()["formats"]
+    assert [(f["width"], f["height"]) for f in formats] == [(5, 5)]
+    layout = formats[0]["layouts"][0]
+    assert (layout["id"], layout["rows"][0]) == ("5x5-001", "x-x-x")
+    assert layout["stats"]["words"] > 0
+
+
 def test_generate_returns_a_filled_grid(grid_app, client):
     response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42})
 
