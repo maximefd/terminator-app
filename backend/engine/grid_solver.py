@@ -344,7 +344,7 @@ class GridSolver:
         pour chaque case modifiée (coordonnées + ancienne valeur).
         """
         original_state = []
-        x, y, length, direction = slot['x'], slot['y'], slot['length'], slot['direction']
+        x, y, direction = slot['x'], slot['y'], slot['direction']
 
         for i, char in enumerate(word):
             px = x + i if direction == 'across' else x
