@@ -24,6 +24,12 @@ jobs:
           python -m venv .venv
           source .venv/bin/activate
           pip install -r backend/requirements.txt
+          pip install ruff==0.16.7 pytest-cov==7.1.0
+
+      - name: Lint Python (ruff)
+        run: |
+          source .venv/bin/activate
+          ruff check backend tools
 
       - name: Audit Python dependencies (pip-audit)
         run: |
@@ -31,11 +37,11 @@ jobs:
           pip install pip-audit
           pip-audit -r backend/requirements.txt -r tools/curator/requirements.txt
 
-      # MODIFICATION ICI : On rend la commande de test plus "bavarde"
+      # Couverture minimale : 80 % sur le moteur, 70 % sur les outils (voir docs/ROADMAP.md)
       - name: Run backend tests with pytest
         run: |
           source .venv/bin/activate
-          pytest -vv --showlocals backend/tests/
+          pytest -vv --showlocals backend/tests/ --cov=backend/engine --cov-report=term --cov-fail-under=80
 
       - name: Check layouts catalog
         run: |
@@ -45,7 +51,7 @@ jobs:
       - name: Run tools tests (lexicon pipeline)
         run: |
           source .venv/bin/activate
-          pytest -v tools/
+          pytest -v tools/ --cov=tools --cov-report=term --cov-fail-under=70
 
   frontend-ci:
     runs-on: ubuntu-latest

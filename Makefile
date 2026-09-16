@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools lint-frontend bench layouts-check \
+.PHONY: help setup dev-api dev-front test test-backend test-tools lint-backend lint-frontend bench layouts-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls
 
@@ -23,7 +23,10 @@ dev-api: ## Lance l'API (http://localhost:5001) et PostgreSQL
 dev-front: ## Lance le frontend (http://localhost:3000)
 	cd frontend && pnpm dev
 
-test: test-backend test-tools lint-frontend ## Tous les contrôles rapides
+test: lint-backend test-backend test-tools lint-frontend ## Tous les contrôles rapides
+
+lint-backend: ## Lint Python du backend et des outils (ruff, règles dans ruff.toml)
+	$(TOOLS_RUN) "pip install -q ruff==0.16.7 && ruff check backend tools"
 
 test-backend: ## Tests backend (pytest, Python 3.11 dans Docker)
 	$(BACKEND_RUN) "pip install -q -r requirements.txt && pytest -q -p no:cacheprovider"

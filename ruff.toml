@@ -1,0 +1,11 @@
+# Lint Python (backend et outils) : `make lint-backend`, vérifié en CI.
+# Jeu de règles volontairement tolérant pour le code existant (#5) : erreurs réelles d'abord
+# (syntaxe, noms indéfinis, imports et variables inutilisés), à élargir progressivement.
+target-version = "py311"
+line-length = 120
+extend-exclude = ["frontend", "data", "docs"]
+
+[lint]
+select = ["E9", "F"]
+# f-strings sans variable : sans effet, corrigées lors d'un prochain passage sur ces fichiers
+ignore = ["F541"]
