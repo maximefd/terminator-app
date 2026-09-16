@@ -1,7 +1,7 @@
 # 0007 — Contrat de génération : mots obligatoires, souhaités et thématiques
 
-- Statut : proposée
-- Date : 2026-09-15
+- Statut : acceptée
+- Date : 2026-09-15 (acceptée le 2026-09-16)
 
 ## Contexte
 
