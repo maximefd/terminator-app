@@ -75,6 +75,8 @@ L'essai n°i s'arrête après `unité × luby(i)` appels récursifs. Le seuil es
 | 100 | 20/20, 2,5 s | 2/20 | 6 à 26 |
 | 50 | 20/20, 2,8 s | 2/20 | 4 à 31 |
 
+⚠️ Ces mesures ne portent que sur **deux layouts**. Rien ne dit que 300 appels conviendra à un 15×8 ou à un 7×4 : la valeur sera réexaminée quand le catalogue s'étoffera (#57), en comparant plusieurs unités avec `--restart-unit` sur les nouveaux formats.
+
 - Trop long (1 000) : trop peu d'essais tiennent dans le budget.
 - Trop court (100, 50) : les essais s'arrêtent avant d'aboutir ; le 6×7, qui réussit souvent en quelques centaines d'appels, ralentit.
 - Lancé seul (baseline ci-dessus), le réglage de 300 appels atteint 11/20 sur le 11×6 : le budget est en secondes, deux exécutions simultanées font donc moins d'essais. Ne comparer que des exécutions faites dans les mêmes conditions.
