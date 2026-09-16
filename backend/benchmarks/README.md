@@ -27,16 +27,31 @@ Pour chaque layout : taux de succès dans le budget, temps p50 / p95 / max, nomb
 - Le **taux de succès sur beaucoup de seeds** est l'indicateur principal. Pour un layout difficile, le résultat d'une seed isolée ne veut presque rien dire (voir ci-dessous) : utiliser au moins 20 seeds.
 - L'exécution est **reproductible** : même code + même dictionnaire + même seed ⇒ même grille.
 
-## Baseline actuelle (septembre 2026, redémarrages de 300 appels)
+## Baseline actuelle (septembre 2026, redémarrages de 300 appels et index des candidats)
 
 Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` complet, 20 seeds, budget 20 s, exécution seule.
 
-| Layout | Succès | p50 | p95 | Backtracks moyens | Essais par seed |
-|--------|--------|-----|-----|-------------------|-----------------|
-| 6x7-001 | 20/20 | 0,46 s | 1,1 s | 285 | 1 à 3 |
-| 11x6-001 | 11/20 | 17,4 s | timeout | 6 449 | 2 à 18 |
+| Layout | Succès | p50 | p95 |
+|--------|--------|-----|-----|
+| 6x7-001 | 20/20 | 0,12 s | 0,29 s |
+| 11x6-001 | **20/20** | 3,1 s | 15,6 s |
 
-Avant les redémarrages : 6x7-001 20/20 (p95 5,4 s), 11x6-001 3/20.
+Historique :
+
+| Étape | 6x7-001 | 11x6-001 |
+|-------|---------|----------|
+| Première baseline | 20/20, p95 5,4 s | 3/20 |
+| Redémarrages (#19) | 20/20, p95 1,1 s | 11/20, p50 17,4 s |
+| Index des candidats (#20) | 20/20, p95 0,29 s | 20/20, p50 3,1 s |
+
+## Index des candidats (#20, septembre 2026)
+
+Le profil d'une génération 11×6 montrait 94 % du temps dans `get_candidates` : parcours du Trie par motif (5,9 millions de nœuds visités pour 1 295 recherches), puis filtrage des mots disponibles, avec un cache vidé à chaque placement. L'index par (position, lettre) en ensembles de bits (`engine/pattern_index.py`) calcule les mêmes candidats, **dans le même ordre**, par ET binaire ; le solveur ne fait que les compter pour choisir le slot et pour le forward checking.
+
+- **Mêmes grilles** : chaque seed réussie de la baseline précédente suit exactement la même trajectoire (mêmes appels récursifs, mêmes essais), 2 à 6 fois plus vite (ex. 11x6-001 seed 0 : 8,0 s → 3,1 s).
+- **Plus de réussites** : les essais plus rapides tiennent dans le budget ; le 11×6 passe de 11/20 à 20/20.
+- Coût : construction de l'index au premier usage d'un lexique (1,4 s sur le DELA complet), puis 0,3 s par génération pour marquer les mots disponibles.
+- Prochains points chauds du profil : `_get_slot_pattern`, `words_in` et les appels `logging.debug` formatés même quand ils ne s'affichent pas.
 
 ## Ce qu'on a appris en établissant la première baseline
 
@@ -59,6 +74,8 @@ L'essai n°i s'arrête après `unité × luby(i)` appels récursifs. Le seuil es
 | **300 (retenu)** | **20/20, 1,3 s** | **7/20** | 2 à 15 |
 | 100 | 20/20, 2,5 s | 2/20 | 6 à 26 |
 | 50 | 20/20, 2,8 s | 2/20 | 4 à 31 |
+
+⚠️ Ces mesures ne portent que sur **deux layouts**. Rien ne dit que 300 appels conviendra à un 15×8 ou à un 7×4 : la valeur sera réexaminée quand le catalogue s'étoffera (#57), en comparant plusieurs unités avec `--restart-unit` sur les nouveaux formats.
 
 - Trop long (1 000) : trop peu d'essais tiennent dans le budget.
 - Trop court (100, 50) : les essais s'arrêtent avant d'aboutir ; le 6×7, qui réussit souvent en quelques centaines d'appels, ralentit.

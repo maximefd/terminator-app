@@ -144,9 +144,8 @@ class GridSolver:
             if nb_unknowns == 0:
                 continue
 
-            # Récupérer le nombre de candidats pour ce pattern
-            candidates = self.repository.get_candidates(pattern)
-            nb_candidates = len(candidates) if candidates else 0
+            # Nombre de candidats pour ce pattern (compté sans construire la liste)
+            nb_candidates = self.repository.count_candidates(pattern)
             
             # Si aucun candidat, ce slot est un dead-end immédiat
             # (sera géré par _solve_recursive qui fera backtrack)
@@ -643,8 +642,7 @@ class GridSolver:
             future_pattern = self._get_slot_pattern(intersected_slot)
             
             # Vérifier s'il reste assez de candidats pour ce pattern
-            candidates = self.repository.get_candidates(future_pattern)
-            nb_candidates = len(candidates) if candidates else 0
+            nb_candidates = self.repository.count_candidates(future_pattern)
             
             if nb_candidates < self.min_safe_candidates:
                 # DEAD-END détecté : ce placement laisse trop peu de candidats
