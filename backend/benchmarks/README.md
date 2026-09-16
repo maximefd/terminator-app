@@ -62,6 +62,8 @@ Ces grilles comptent 42 à 43 mots, contre 21 pour le 11×6. Diagnostic sur 10x1
 | 1 500 | 3 échecs (~26 essais) |
 | 5 000 | 3 échecs (~12 essais) |
 
+Avec un **budget de 120 s** (six fois le budget de l'API), les trois grilles difficiles échouent encore : 10x13-001 après 333 essais et 373 000 appels, 10x13-002 après 255 essais, 10x13-003 après 319 essais. Ce n'est donc pas non plus une question de temps.
+
 Le réglage des redémarrages n'est donc pas le levier ici. Le dictionnaire contient 67 000 mots de 13 lettres et 92 000 de 10, et le moteur tient environ 3 700 appels par seconde sur ce format : ni le vocabulaire ni la vitesse n'expliquent l'échec. La difficulté tient à la structure de chaque grille — 10x13-004 réussit 17/20 avec le même réglage.
 
 ## Index des candidats (#20, septembre 2026)

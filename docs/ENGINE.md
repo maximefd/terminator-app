@@ -89,7 +89,7 @@ Les **10×13** (42 à 43 mots) résistent, et le réglage n'y change rien : sans
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
 | **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
-| Grandes grilles denses (10×13, 42 à 43 mots) rarement remplies dans le budget de 20 s | Ces formats ne sont pas utilisables depuis l'interface | Heuristiques de choix des mots, lexique curé (moins d'impasses), budget par format (#57) |
+| Grandes grilles denses (10×13 : 41 à 43 mots ; 13×16 : 61) rarement ou jamais remplies. Ni un budget de 120 s, ni un autre réglage de redémarrage n'y changent quoi que ce soit | Ces formats ne sont pas utilisables depuis l'interface | Heuristiques de choix des mots et d'ordre des emplacements ; lexique curé (moins d'impasses) ; mesurer à nouveau après la Phase 1 (#57) |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |

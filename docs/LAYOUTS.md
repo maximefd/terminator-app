@@ -48,7 +48,7 @@ python convert_layouts.py
 - L'identifiant du layout se déduit du chemin : `11x6-001`. C'est lui que renvoient l'API (champ `layout` de la grille générée) et le benchmark.
 - Aucune métadonnée (source, notes) dans le fichier.
 
-Formats disponibles aujourd'hui : **6×7** (1 layout), **7×9** (1), **11×6** (1) et **10×13** (4). L'API les liste via `GET /api/grids/formats`, et le frontend ne propose que ceux-là.
+Formats disponibles aujourd'hui : **6×7** (5 layouts), **7×9** (1), **11×6** (1), **10×13** (6) et **13×16** (1). L'API les liste via `GET /api/grids/formats`, et le frontend ne propose que ceux-là. Attention : les grands formats sont enregistrés et valides, mais le moteur ne les remplit pas encore dans le budget (voir [ENGINE.md](ENGINE.md)).
 
 ## Vérifier les layouts
 
