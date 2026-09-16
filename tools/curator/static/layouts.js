@@ -358,14 +358,11 @@
 
   // D'une grille de magazine à l'autre, la première ligne et la première colonne portent souvent le même motif
   $("btn-clear-inside").addEventListener("click", () => {
-    const hasDefinitionInside = state.cells.some(
-      (row, y) => y > 0 && row.some((cell, x) => x > 0 && cell === DEFINITION));
-    if (hasDefinitionInside
-      && !window.confirm("Remettre l'intérieur en cases lettres ? La première ligne et la première colonne ne changent pas.")) return;
     for (let y = 1; y < state.height; y += 1) {
       for (let x = 1; x < state.width; x += 1) state.cells[y][x] = LETTER;
     }
     changed();
+    toast("Intérieur effacé · première ligne et première colonne gardées");
   });
 
   $("btn-save").addEventListener("click", save);
