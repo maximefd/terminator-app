@@ -374,41 +374,53 @@ class GridSolver:
         for (x, y, old_char) in original_state:
             self.grid[y][x] = old_char
 
-    # --- MODIFICATION 2 : MÉTHODE _is_placement_valid ENTIÈREMENT REMPLACÉE ---
     def _is_placement_valid(self, word: str, slot: dict, original_state: list[tuple[int, int, str]]) -> bool:
         """
-        Vérifie si le mot crée des fragments valides dans l'autre sens,
-        en se basant sur les lettres qui ont réellement changé.
+        Vérifie les mots créés dans l'autre sens par les lettres qui ont réellement changé.
+
+        On ne vérifie qu'un mot **terminé** : une suite de lettres bordée des deux côtés par une
+        case définition ou par le bord de la grille. Une suite encore ouverte (« AB » au milieu
+        d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : exiger qu'elle existe
+        au dictionnaire rejetait des placements parfaitement valides et empêchait toute grille de
+        plus d'une trentaine de mots d'aboutir. Le forward checking garantit par ailleurs qu'un
+        emplacement encore ouvert conserve des candidats.
         """
-        
-        # On itère sur le mot zippé avec l'état original
-        # (px, py, old_char) vient de original_state
-        for i, (char, (px, py, old_char)) in enumerate(zip(word, original_state)):
-            
-            # Si la lettre n'a pas changé (ex: la case contenait déjà 'A'
-            # et on place un mot avec 'A' au même endroit),
-            # alors le fragment croisé est déjà valide. On ignore.
+        for char, (px, py, old_char) in zip(word, original_state):
+            # Si la lettre n'a pas changé, le mot croisé l'a déjà été
             if old_char == char:
                 continue
 
-            # Si la lettre a changé (ex: '?' -> 'A', ou 'B' -> 'A'),
-            # on doit impérativement valider le fragment créé dans l'autre sens.
-            
-            fragment = ""
             if slot['direction'] == 'across':
-                # Le mot est 'across', on vérifie le fragment 'down' (vertical)
                 fragment = self._get_vertical_fragment(px, py)
+                finished = self._is_run_finished(px, py, 'down')
             else:
-                # Le mot est 'down', on vérifie le fragment 'across' (horizontal)
                 fragment = self._get_horizontal_fragment(px, py)
+                finished = self._is_run_finished(px, py, 'across')
 
-            # Si le fragment a plus d'une lettre et n'est pas un mot valide...
-            if len(fragment) > 1 and not self.repository.is_word_valid(fragment):
-                logging.debug(f"      -> REJETÉ : Le mot '{word}' crée un fragment invalide : '{fragment}'")
-                return False # Rejeter ce candidat
-                
-        return True # Toutes les lettres ont créé des fragments valides
-    # --- FIN DE LA MÉTHODE REMPLACÉE ---
+            if finished and len(fragment) > 1 and not self.repository.is_word_valid(fragment):
+                logging.debug(f"      -> REJETÉ : Le mot '{word}' crée un mot invalide : '{fragment}'")
+                return False
+
+        return True
+
+    def _is_run_finished(self, x: int, y: int, direction: str) -> bool:
+        """La suite de lettres qui contient (x, y) est-elle terminée dans cette direction ?
+
+        Terminée = bordée des deux côtés par une case définition ou par le bord de la grille.
+        Si une case lettre vide la prolonge, le mot s'écrit encore.
+        """
+        empty = (self.template.BLACK_SQUARE, self.template.EMPTY_CELL, ' ', '', None)
+        dx, dy = (0, 1) if direction == 'down' else (1, 0)
+
+        for step in (1, -1):
+            cx, cy = x, y
+            while (0 <= cx + dx * step < self.width and 0 <= cy + dy * step < self.height
+                   and self.grid[cy + dy * step][cx + dx * step] not in empty):
+                cx, cy = cx + dx * step, cy + dy * step
+            nx, ny = cx + dx * step, cy + dy * step
+            if 0 <= nx < self.width and 0 <= ny < self.height and self.grid[ny][nx] == self.template.EMPTY_CELL:
+                return False  # une case vide prolonge la suite : le mot n'est pas fini
+        return True
 
     def _get_vertical_fragment(self, x: int, y: int) -> str:
         """Construit le mot vertical complet passant par (x,y)."""

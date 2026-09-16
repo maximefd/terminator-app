@@ -47,7 +47,7 @@ flowchart TD
 | **Score des mots** | Préférer les mots faits de lettres fréquentes (E, A, S, R…), qui laissent plus de possibilités aux croisements | `LETTER_SCORES` |
 | **Limite de candidats** | N'essayer que les 100 meilleurs candidats d'un slot | `MAX_CANDIDATES_PER_SLOT = 100` |
 | **Variété** | Mélanger aléatoirement le top 20 % des candidats, pour ne pas produire toujours la même grille | générateur aléatoire seedé |
-| **Validation croisée** | Un mot est refusé s'il forme un mot invalide dans l'autre sens | `_is_placement_valid` |
+| **Validation croisée** | Un mot est refusé s'il forme, dans l'autre sens, un mot **terminé** qui n'existe pas. Une suite de lettres encore ouverte (« AB » au milieu d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : elle n'est pas vérifiée | `_is_placement_valid` |
 | **Forward checking strict** | Refuser un mot qui laisserait un slot croisé avec moins de 3 candidats | `MIN_SAFE_CANDIDATES = 3` (doit rester ≥ 2) |
 | **Nogoods** | Mémoriser les motifs sans aucun mot pour ne pas les recréer | invalidés au retour arrière |
 | **Redémarrages** | Plusieurs essais courts plutôt qu'un long : l'essai n°i s'arrête après `unité × luby(i)` appels récursifs (1, 1, 2, 1, 1, 2, 4…), puis repart avec une nouvelle trajectoire dérivée du seed, tant que le budget temps le permet. Les mots consommés par un essai interrompu sont rendus au dépôt | `DEFAULT_RESTART_UNIT_CALLS = 300` (`grid_generator.py`) |
@@ -70,12 +70,19 @@ Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/
 
 **Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-| Layout | Succès | Première baseline |
-|--------|--------|-------------------|
-| 6×7 | 20/20 (p95 0,29 s) | 20/20 (p95 5,4 s) |
-| 11×6 | 20/20 (p50 3,1 s, p95 15,6 s) | 3/20 |
+Les **16 layouts du catalogue réussissent 20 fois sur 20**, du 6×7 (13 mots) au 13×16 (61 mots) :
 
-Le 11×6 était « vite ou jamais » : les grilles réussies l'étaient en 3,6 à 15,7 s, les autres s'enlisaient. Les redémarrages exploitent ce profil (#19) et l'index des candidats rend chaque essai 2 à 6 fois plus rapide (#20).
+| Format | Mots | p50 | p95 |
+|--------|------|-----|-----|
+| 6×7 | 12-13 | 0,04 à 0,08 s | 0,13 à 0,32 s |
+| 7×9 | 20 | 0,18 s | 0,55 s |
+| 11×6 | 21 | 0,45 s | 1,10 s |
+| 11×9 | 33 | 0,70 s | 4,21 s |
+| 14×9 | 38 | 1,39 s | 9,58 s |
+| 10×13 | 41-43 | 0,60 à 2,42 s | 1,94 à 13,50 s |
+| 13×16 | 61 | 1,90 s | 6,74 s |
+
+Trois changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`).
 
 ## Limites connues
 

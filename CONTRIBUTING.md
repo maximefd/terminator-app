@@ -32,6 +32,8 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 
 Tests end-to-end (API démarrée) : `cd frontend && pnpm exec playwright test`.
 
+Captures d'écran du README (API et frontend démarrés) : `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`. Playwright utilise le **Google Chrome installé** sur la machine (`channel: 'chrome'` dans `playwright.config.ts`) : inutile de lancer `playwright install chromium`, dont le téléchargement se fige sur la machine de l'auteur.
+
 **Règle du moteur** : toute modification de `backend/engine/`, `grid_generator.py` ou `trie_engine.py` doit être accompagnée d'un benchmark comparé à `backend/benchmarks/baseline.json`. Voir [ENGINE.md](docs/ENGINE.md).
 
 ## 3. Processus Git

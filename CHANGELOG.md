@@ -44,6 +44,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - enregistrement dans `backend/layouts/` sous le prochain numéro, sans écrasement ni doublon ;
   - catalogue avec aperçus, copie d'un layout existant, brouillon conservé sur l'appareil ;
   - le curateur démarre sans la base du lexique (éditeur seul).
+- Captures d'écran dans le README (#8) : recherche par motif et grille générée, régénérables par `frontend/tests/screenshots.spec.ts` (Playwright utilise le Chrome installé).
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
@@ -60,6 +61,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
 - Layouts déplacés de `backend/templates/<L>x<H>/template_01.txt` vers `backend/layouts/<L>x<H>/001.txt` ; le champ `layout` de la grille générée et les clés du benchmark deviennent `6x7-001`. Variable de configuration `TEMPLATES_DIR` renommée `LAYOUTS_DIR`.
 - Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.
+
+### Corrigé
+- Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ## [0.1.0] — 2026-09-14
 
