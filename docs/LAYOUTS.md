@@ -103,7 +103,7 @@ Les règles sont écrites une seule fois : `backend/engine/layout_validator.py` 
 C'est la façon la plus rapide de recopier une grille trouvée dans un magazine, sur ordinateur ou sur téléphone.
 
 1. Lancer le curateur : `make curator` (ou `make curator-bg`), puis ouvrir http://localhost:8765/layouts (onglet **Layouts**). Depuis le téléphone, utiliser l'adresse affichée par la commande. Le curateur démarre même sans la base du lexique : seul l'éditeur est alors disponible.
-2. Indiquer la **largeur** et la **hauteur**. Changer la taille en cours de route garde les cases déjà dessinées.
+2. Indiquer la **largeur** et la **hauteur**. Changer la taille en cours de route garde les cases déjà dessinées. Deux boutons remettent la grille à blanc : « Tout en cases lettres » efface tout, « Intérieur en cases lettres » garde le motif de la **première ligne et de la première colonne**, souvent identique d'une grille de magazine à l'autre.
 3. Toucher chaque **case définition**. Au clavier, recopier rangée par rangée :
 
    | Touche | Action |
