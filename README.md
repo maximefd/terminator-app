@@ -16,7 +16,7 @@ Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet e
 | Recherche par motif (`?` = lettre inconnue) dans le dictionnaire commun | ✅ |
 | Dictionnaires personnels (plusieurs, avec définitions) mêlés à la recherche | ✅ |
 | Comptes utilisateurs (inscription, connexion, suppression des données) | ✅ |
-| Génération automatique d'une grille à partir d'un layout | ✅ fiable en 6×7, fragile en 11×6 ([détails](docs/ENGINE.md)) |
+| Génération automatique d'une grille à partir d'un layout | ✅ fiable en 6×7, 55 % en 11×6 ([détails](docs/ENGINE.md)) |
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
 | Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
 | Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |

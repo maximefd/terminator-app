@@ -50,6 +50,7 @@ flowchart TD
 | **Validation croisée** | Un mot est refusé s'il forme un mot invalide dans l'autre sens | `_is_placement_valid` |
 | **Forward checking strict** | Refuser un mot qui laisserait un slot croisé avec moins de 3 candidats | `MIN_SAFE_CANDIDATES = 3` (doit rester ≥ 2) |
 | **Nogoods** | Mémoriser les motifs sans aucun mot pour ne pas les recréer | invalidés au retour arrière |
+| **Redémarrages** | Plusieurs essais courts plutôt qu'un long : l'essai n°i s'arrête après `unité × luby(i)` appels récursifs (1, 1, 2, 1, 1, 2, 4…), puis repart avec une nouvelle trajectoire dérivée du seed, tant que le budget temps le permet. Les mots consommés par un essai interrompu sont rendus au dépôt | `DEFAULT_RESTART_UNIT_CALLS = 300` (`grid_generator.py`) |
 
 ## Garanties
 
@@ -67,20 +68,20 @@ make bench
 
 Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/README.md).
 
-**Baseline actuelle** (20 seeds, budget 20 s) :
+**Baseline actuelle** (20 seeds, budget 20 s, redémarrages de 300 appels) :
 
-| Layout | Succès |
-|--------|--------|
-| 6×7 | 20/20 (médiane 0,3 s) |
-| 11×6 | 3/20 |
+| Layout | Succès | Avant les redémarrages |
+|--------|--------|------------------------|
+| 6×7 | 20/20 (p95 1,1 s) | 20/20 (p95 5,4 s) |
+| 11×6 | 11/20 | 3/20 |
 
-Le 11×6 est « vite ou jamais » : les grilles réussies le sont en 3,6 à 15,7 s, les autres s'enlisent.
+Le 11×6 était « vite ou jamais » : les grilles réussies l'étaient en 3,6 à 15,7 s, les autres s'enlisaient. Plusieurs essais courts exploitent ce profil ; il reste limité par la lenteur de chaque appel (#20).
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| Taux de succès faible sur les layouts difficiles (11×6 : 3/20) | Beaucoup de timeouts | Phase 3 : redémarrages aléatoires, index des candidats par (position, lettre) |
+| Taux de succès faible sur les layouts difficiles (11×6) | Beaucoup de timeouts | Redémarrages faits (#19) ; Phase 3 : index des candidats par (position, lettre), qui accélère chaque appel (#20) |
 | **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
