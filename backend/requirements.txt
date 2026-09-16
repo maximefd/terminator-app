@@ -1,11 +1,12 @@
-Flask
-Flask-SQLAlchemy
-psycopg2-binary
-Flask-Cors
-Flask-Login
-Flask-Bcrypt
-Flask-JWT-Extended
-Flask-Limiter
-pydantic>=2
-email-validator
-pytest
+# Versions figées : mises à jour par Dependabot (PR hebdomadaires), auditées par pip-audit en CI
+Flask==3.1.3
+Flask-SQLAlchemy==3.1.1
+psycopg2-binary==2.9.13
+Flask-Cors==6.0.5
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-JWT-Extended==4.7.4
+Flask-Limiter==4.1.1
+pydantic==2.13.5
+email-validator==2.3.0
+pytest==9.1.1
