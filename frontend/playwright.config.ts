@@ -31,7 +31,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // channel 'chrome' : on utilise le Google Chrome installé sur la machine, ce qui évite
+      // `playwright install chromium` (son téléchargement se fige sur la machine de l'auteur,
+      // alors que le même fichier se télécharge normalement avec curl).
+      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     },
   ],
 });

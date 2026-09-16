@@ -9,6 +9,14 @@
 
 Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet est aujourd'hui un outil personnel, pensé dès le départ pour pouvoir servir un jour à des créateurs professionnels.
 
+## Aperçu
+
+| Recherche par motif | Génération automatique |
+|---------------------|------------------------|
+| ![Recherche du motif P??LE : onze résultats, dont PERLE, POELE et POULE](docs/images/recherche.png) | ![Grille 6×7 générée et remplie à 100 % de mots qui se croisent](docs/images/generation.png) |
+
+Captures régénérées par `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`, avec l'API et le frontend démarrés.
+
 ## Fonctionnalités
 
 | Fonctionnalité | État |
@@ -16,9 +24,9 @@ Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet e
 | Recherche par motif (`?` = lettre inconnue) dans le dictionnaire commun | ✅ |
 | Dictionnaires personnels (plusieurs, avec définitions) mêlés à la recherche | ✅ |
 | Comptes utilisateurs (inscription, connexion, suppression des données) | ✅ |
-| Génération automatique d'une grille à partir d'un layout | ✅ fiable en 6×7, fragile en 11×6 ([détails](docs/ENGINE.md)) |
+| Génération automatique d'une grille à partir d'un layout | ✅ 20/20 sur les 16 layouts, du 6×7 au 13×16 ([détails](docs/ENGINE.md)) |
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
-| Nombreux layouts recopiés de vrais livres | 🚧 Phase 2 |
+| Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
 | Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |
 | Flèches, définitions, export PDF | 🔜 Phase 5 |
 
@@ -67,7 +75,7 @@ terminator-app/
 │   ├── schemas.py, security.py      Validation des entrées, sécurité transverse
 │   ├── trie_engine.py               Dictionnaire en mémoire et recherche par motif
 │   ├── grid_generator.py, engine/   Moteur de génération de grilles
-│   ├── templates/                   Layouts de grilles (<largeur>x<hauteur>/*.txt)
+│   ├── layouts/                     Layouts de grilles (<largeur>x<hauteur>/<NNN>.txt)
 │   ├── benchmarks/, test_harness.py Benchmark reproductible du moteur
 │   └── tests/                       Tests pytest
 ├── frontend/                Application Next.js 15 (React, Tailwind, shadcn/ui)

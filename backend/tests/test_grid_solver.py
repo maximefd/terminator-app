@@ -3,13 +3,14 @@ import pytest
 from engine.grid_solver import GridSolver
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
+from engine.word_repository import WordRepository
 from grid_generator import GridGenerator
 from tests.paths import FIXTURE_LAYOUTS_DIR
 from trie_engine import DictionnaireTrie
 
 
-def make_generator(words, trie, templates_dir=FIXTURE_LAYOUTS_DIR, width=5, height=5, **kwargs):
-    return GridGenerator(width, height, words, prebuilt_trie=trie, templates_dir=templates_dir, **kwargs)
+def make_generator(words, trie, layouts_dir=FIXTURE_LAYOUTS_DIR, width=5, height=5, **kwargs):
+    return GridGenerator(width, height, words, prebuilt_trie=trie, layouts_dir=layouts_dir, **kwargs)
 
 
 def test_generates_a_complete_and_consistent_grid(small_words, small_trie):
@@ -51,15 +52,53 @@ def test_exceeded_time_budget_is_reported(small_words, small_trie):
 
 def test_unsolvable_grid_returns_false_without_budget_flag(tmp_path):
     (tmp_path / "3x2").mkdir()
-    (tmp_path / "3x2" / "open.txt").write_text("...\n...\n")
+    (tmp_path / "3x2" / "001.txt").write_text("---\n---\n")
     trie = DictionnaireTrie()
     for word in ["ABC", "DEF"]:
         trie.insert(word)
 
-    generator = make_generator(["ABC", "DEF"], trie, templates_dir=str(tmp_path), width=3, height=2, seed=1)
+    generator = make_generator(["ABC", "DEF"], trie, layouts_dir=str(tmp_path), width=3, height=2, seed=1)
 
     assert not generator.generate()
     assert not generator.budget_exceeded
+
+
+def make_solver(rows, words):
+    """Solveur sur une petite grille et un dictionnaire minimal, pour tester une règle isolée."""
+    template = GridTemplate.from_rows(rows)
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    trie = DictionnaireTrie()
+    for word in words:
+        trie.insert(word)
+    return GridSolver(template, WordRepository.from_words(trie, words), finder)
+
+
+def across_slot(solver, y):
+    return next(slot for slot in solver.slots if slot["direction"] == "across" and slot["y"] == y)
+
+
+def test_a_word_still_being_written_is_not_required_to_exist():
+    # Colonnes de 4 cases : après deux rangées, « AB » n'est qu'un début de mot vertical
+    solver = make_solver(["---", "---", "---", "---"], ["BOA", "ABLE"])
+    solver.grid[0][0] = "A"
+    slot = across_slot(solver, 1)
+
+    state = solver._place_word_on_grid("BOA", slot)
+
+    assert not solver.repository.is_word_valid("AB")
+    assert solver._is_placement_valid("BOA", slot, state)
+
+
+def test_a_finished_crossing_word_must_exist():
+    # Colonnes de 2 cases (la 3e rangée est en cases définitions) : le mot vertical est terminé
+    solver = make_solver(["---", "---", "xxx"], ["BOA", "ABC"])
+    solver.grid[0][0] = "A"
+    slot = across_slot(solver, 1)
+
+    state = solver._place_word_on_grid("BOA", slot)
+
+    assert not solver._is_placement_valid("BOA", slot, state)
 
 
 def test_forward_checking_threshold_below_two_is_rejected():
