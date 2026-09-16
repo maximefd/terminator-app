@@ -50,16 +50,56 @@ python convert_layouts.py
 
 Formats disponibles aujourd'hui : **6×7** et **11×6** (un layout chacun). L'API les liste via `GET /api/grids/formats`, et le frontend ne propose que ceux-là.
 
-## Ajouter un layout (aujourd'hui)
+## Vérifier les layouts
+
+`make layouts-check` (ou `python backend/check_layouts.py`) vérifie tout le catalogue. La CI le lance à chaque PR et échoue si un layout est invalide.
+
+| Règle | Niveau |
+|-------|--------|
+| Uniquement `x` et `-`, lignes de même longueur | erreur (ligne et colonne indiquées) |
+| Largeur et hauteur de 2 à 30 cases | erreur |
+| Taille de la grille conforme au dossier, fichier nommé `NNN.txt` | erreur |
+| Chaque case lettre appartient à un mot de 2 lettres ou plus | erreur (case indiquée) |
+| Au moins un mot | erreur |
+| Grille identique à un autre layout | avertissement |
+| Moins de 10 % ou plus de 45 % de cases définitions | avertissement (recopie à vérifier) |
+
+Un mot peut commencer au bord de la grille. Pour chaque layout, la commande affiche aussi le nombre de mots, la proportion de cases définitions et le nombre de mots par longueur :
+
+```text
+✓ 6x7-001 : 13 mots, 19 % de cases définitions (mots par longueur : 2 de 2, 1 de 3, 3 de 4, 2 de 5, 3 de 6, 2 de 7 lettres)
+```
+
+Les règles sont écrites une seule fois : `backend/engine/layout_validator.py` (pur) et `backend/layout_catalog.py` (fichiers). La CLI, l'API et l'éditeur utilisent ce même code.
+
+## Ajouter un layout à la main
 
 1. Créer le fichier `backend/layouts/<L>x<H>/<NNN>.txt` (créer le dossier si le format est nouveau).
-2. Lancer les tests : `make test-backend`. Le test `test_shipped_layouts_load_regardless_of_working_directory` vérifie que chaque layout se lit, a la taille de son dossier et contient des slots.
+2. Vérifier : `make layouts-check`.
 3. Mesurer le layout : `make bench`. Il est ajouté automatiquement au benchmark.
 4. Ouvrir une PR (modèle d'issue « Nouveau layout » disponible sur GitHub).
 
+## API
+
+`GET /api/layouts` renvoie les layouts valides, regroupés par format :
+
+```json
+{
+  "formats": [
+    {
+      "width": 6, "height": 7,
+      "layouts": [
+        {"id": "6x7-001", "rows": ["x-x-x-", "------", "…"], "stats": {"words": 13, "definition_ratio": 0.19, "…": "…"}}
+      ]
+    }
+  ]
+}
+```
+
+`GET /api/grids/formats` (utilisé par la page Générer) ne change pas.
+
 ## Prévu (Phase 2 de la roadmap)
 
-- **Validateur** (CLI, tests, CI) : taille conforme au dossier, chaque case lettre appartient à un mot de 2 lettres ou plus, identifiants uniques, grilles en double signalées, statistiques des slots.
 - **Éditeur de layouts** dans la mini-app : dessiner la grille au clic ou au toucher, validation en direct, enregistrement direct dans `backend/layouts/<L>x<H>/` avec un numéro attribué automatiquement.
 - **Plus tard** : prendre en photo une grille, la faire reconnaître, puis la corriger et la valider dans l'éditeur ([#47](https://github.com/maximefd/terminator-app/issues/47)).
 

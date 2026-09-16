@@ -25,7 +25,8 @@ import subprocess
 import time
 from datetime import datetime, timezone
 
-from grid_generator import DEFAULT_LAYOUTS_DIR, GridGenerator, available_formats, layout_id
+from grid_generator import GridGenerator
+from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from trie_engine import DictionnaireTrie
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))

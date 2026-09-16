@@ -29,6 +29,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - caractère inconnu, lignes de longueurs différentes ou taille différente du dossier : erreur qui indique la ligne et la colonne ;
   - `convert_layouts.py` convertit les anciens fichiers ;
   - identifiant déduit du chemin (`11x6-001`).
+- Validateur de layouts (Phase 2, #13) :
+  - `make layouts-check` et étape de CI ;
+  - erreurs : case lettre isolée, taille ou nom de fichier non conformes, grille sans mot ;
+  - avertissements : grilles en double, proportion inhabituelle de cases définitions ;
+  - statistiques : nombre de mots et mots par longueur.
+- `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
