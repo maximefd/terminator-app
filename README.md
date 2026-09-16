@@ -9,6 +9,14 @@
 
 Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet est aujourd'hui un outil personnel, pensé dès le départ pour pouvoir servir un jour à des créateurs professionnels.
 
+## Aperçu
+
+| Recherche par motif | Génération automatique |
+|---------------------|------------------------|
+| ![Recherche du motif P??LE : onze résultats, dont PERLE, POELE et POULE](docs/images/recherche.png) | ![Grille 6×7 générée et remplie à 100 % de mots qui se croisent](docs/images/generation.png) |
+
+Captures régénérées par `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`, avec l'API et le frontend démarrés.
+
 ## Fonctionnalités
 
 | Fonctionnalité | État |

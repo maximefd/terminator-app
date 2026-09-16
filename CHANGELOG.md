@@ -44,6 +44,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - enregistrement dans `backend/layouts/` sous le prochain numéro, sans écrasement ni doublon ;
   - catalogue avec aperçus, copie d'un layout existant, brouillon conservé sur l'appareil ;
   - le curateur démarre sans la base du lexique (éditeur seul).
+- Captures d'écran dans le README (#8) : recherche par motif et grille générée, régénérables par `frontend/tests/screenshots.spec.ts` (Playwright utilise le Chrome installé).
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
