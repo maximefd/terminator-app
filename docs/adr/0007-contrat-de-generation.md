@@ -18,14 +18,16 @@
 | `layout_id` | texte | — | ex. `11x6-001` ; 404 si inconnu |
 | `size` | `{width, height}` | — | tirage d'un layout du format ; **exactement un** de `layout_id` et `size` |
 | `seed` | entier ≥ 0 | tiré par le serveur | toujours renvoyé, pour rejouer une grille |
-| `must_words` | liste de mots | `[]` | 10 au plus ; chaque mot doit être placé |
-| `wish_words` | liste de mots | `[]` | 200 au plus |
+| `must_words` | liste de mots | `[]` | **au plus un par emplacement du layout**, longueurs vérifiées avant de résoudre ; plafond de garde : 50 |
+| `wish_words` | liste de mots | `[]` | 500 au plus (plafond de garde) |
 | `wish_dictionary_ids` | liste d'identifiants | `[]` | 10 au plus ; dictionnaires de l'utilisateur connecté uniquement (`get_owned_dictionary`, 404 sinon) |
 | `target_wish_ratio` | nombre de 0 à 1 | `0.3` | part visée de mots souhaités parmi les mots de la grille ; objectif souple |
 | `use_global` | booléen | `true` | lexique commun pour compléter la grille |
 | `time_budget_ms` | entier | budget du serveur | de 1 000 au budget du serveur (`GENERATION_TIME_BUDGET_S`) |
 
 Les mots sont normalisés comme dans la recherche (majuscules, sans accents ni espaces). Un mot obligatoire est aussi souhaité : inutile de le répéter. Le corps est validé par un schéma pydantic (`parse_body`) ; les erreurs sont en français.
+
+**La vraie limite est le layout, pas un nombre fixe.** Dix mots obligatoires sont impossibles sur un 6×7 (13 emplacements, dont peu de longs) et raisonnables sur un grand format. Le serveur refuse donc avant de résoudre : plus de mots obligatoires que d'emplacements, plus de mots d'une longueur donnée que d'emplacements de cette longueur, ou un mot trop long pour le layout. Les plafonds chiffrés (50 et 500) ne servent qu'à protéger le serveur. Ces valeurs, et le ratio visé par défaut, seront confirmées **quand le catalogue comptera plus de formats** (#15) : c'est là seulement qu'on saura ce qui est réaliste sur un 15×8 comme sur un 7×4.
 
 La requête actuelle (`size`, `seed`, `use_global`) reste valide : le frontend continue de fonctionner sans changement.
 
@@ -73,4 +75,5 @@ Une grille est renvoyée **uniquement si tous les mots obligatoires sont placés
 - Le frontend peut évoluer par étapes : la Phase 4 ajoutera la saisie des mots, le choix du layout et l'affichage de la source des mots.
 - Les pools et le placement des mots obligatoires se développent dans le moteur pur ; l'API ne fait que valider, résoudre les dictionnaires de l'utilisateur et traduire les échecs.
 - Un layout sans emplacement assez long pour un mot obligatoire est refusé avant tout calcul, avec des layouts suggérés : l'auteur sait tout de suite quoi changer.
+- Le taux de succès de la génération dépendra du nombre de mots imposés : la baseline du benchmark devra inclure des cas avec mots obligatoires, et l'unité des redémarrages sera réexaminée en même temps (#57).
 - Tests exigés : mot obligatoire placé, impossibilité expliquée (`must_words`, `must_words_unplaced`), ratio rapporté, dictionnaire d'un autre utilisateur refusé (404), même seed ⇒ même grille.
