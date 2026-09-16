@@ -75,6 +75,40 @@ def test_the_active_personal_dictionary_feeds_the_wished_pool(grid_app, client, 
     assert "wish_ratio" in response.get_json()["grid"]
 
 
+def test_a_must_word_too_long_is_refused_before_solving(grid_app, client):
+    """#18 : un mot de 9 lettres n'entre dans aucun emplacement d'un 5x5, inutile de chercher 20 s."""
+    response = post_generate(client, {"size": {"width": 5, "height": 5}, "must_words": ["Zorglubes"]})
+
+    assert response.status_code == 422
+    body = response.get_json()
+    assert body["reason"] == "must_words"
+    assert body["details"][0]["word"] == "ZORGLUBES"
+    assert "9 lettres" in body["details"][0]["problem"]
+    assert body["suggested_layouts"] == []  # aucun layout du catalogue de test n'a d'emplacement si long
+
+
+def test_a_must_word_that_cannot_cross_is_named_in_the_failure(grid_app, client):
+    """Sans lexique commun, le mot imposé est seul : les emplacements existent mais rien ne peut le croiser.
+
+    La vérification préalable passe donc (la longueur convient), et c'est la résolution qui échoue :
+    le cas ne dépend d'aucun hasard du lexique.
+    """
+    response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 1,
+                                      "use_global": False, "must_words": ["Zzzzz"]})
+
+    assert response.status_code == 422
+    body = response.get_json()
+    assert body["reason"] == "must_words_unplaced"
+    assert body["unplaced"] == ["ZZZZZ"]
+
+
+def test_a_must_word_is_validated_like_any_other_input(grid_app, client):
+    assert post_generate(client, {"size": {"width": 5, "height": 5}, "must_words": ["A"]}).status_code == 400
+    assert post_generate(client, {"size": {"width": 5, "height": 5}, "must_words": "PORTE"}).status_code == 400
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "must_words": ["MOT"] * 51}).status_code == 400
+
+
 def test_generate_unknown_format_returns_available_formats(grid_app, client):
     response = post_generate(client, {"size": {"width": 9, "height": 9}})
 

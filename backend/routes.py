@@ -6,8 +6,9 @@ from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord
+from engine.must_words import check_must_words
 from grid_generator import GridGenerator, LayoutNotFoundError
-from layout_catalog import available_formats, catalog
+from layout_catalog import available_formats, catalog, suggest_layouts_for
 from schemas import (
     DictionaryCreateRequest,
     DictionaryUpdateRequest,
@@ -207,13 +208,16 @@ def generate_grid():
     # Mots du dictionnaire personnel actif : pool « souhaité ». Ils sont essayés avant le lexique
     # commun et restent valides aux croisements même s'ils n'y figurent pas (#17) ; auparavant ils
     # étaient mélangés au lexique et simplement ignorés à l'indexation.
-    wish_words = []
+    wish_words = [normalize_pattern(word) for word in payload.wish_words]
     if user:
         active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
         if active_dict:
             wish_words.extend(word.mot for word in active_dict.words if 2 <= len(word.mot) <= longest)
 
-    if not common_words and not wish_words:
+    # Un mot obligatoire est aussi souhaité : inutile de le répéter dans les deux listes (ADR 0007)
+    must_words = sorted({normalize_pattern(word) for word in payload.must_words})
+
+    if not common_words and not wish_words and not must_words:
         return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
     # Tri : ordre stable des mots
@@ -227,6 +231,7 @@ def generate_grid():
             layouts_dir=layouts_dir,
             time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
             wish_words=sorted(set(wish_words)),
+            must_words=must_words,
         )
     except LayoutNotFoundError:
         formats = available_formats(layouts_dir)
@@ -235,7 +240,23 @@ def generate_grid():
             "available_formats": formats,
         }), 400
 
+    # Refus AVANT toute résolution : inutile de chercher pendant 20 s un mot qui n'entre nulle part
+    problems = check_must_words(generator.finder.slots, must_words)
+    if problems:
+        return jsonify({
+            "error": "Ces mots obligatoires n'entrent pas dans ce layout.",
+            "reason": "must_words",
+            "details": problems,
+            "suggested_layouts": suggest_layouts_for(must_words, layouts_dir),
+        }), 422
+
     if not generator.generate():
+        if generator.unplaced_must_words:
+            return jsonify({
+                "error": "Impossible de placer tous les mots obligatoires dans le temps imparti.",
+                "reason": "must_words_unplaced",
+                "unplaced": generator.unplaced_must_words,
+            }), 422
         if generator.budget_exceeded:
             return jsonify({
                 "error": "La génération a dépassé le temps imparti. Réessayez (nouveau tirage) ou choisissez un autre format.",

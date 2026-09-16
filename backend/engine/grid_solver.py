@@ -43,6 +43,7 @@ class GridSolver:
         max_recursive_calls: int | None = None,
         min_safe_candidates: int = MIN_SAFE_CANDIDATES,
         rng: random.Random | None = None,
+        must_words=(),
     ):
         # Générateur aléatoire propre à cette résolution : reproductible et sans état global partagé
         self.rng = rng or random.Random()
@@ -74,6 +75,13 @@ class GridSolver:
         self.height = template.height
         self.width = template.width
         self.placed_words = []
+
+        # Mots obligatoires : placés AVANT les autres, du plus contraint au moins contraint (ADR 0007).
+        # `unplaced_must` garde le meilleur résultat atteint, pour expliquer un échec plutôt que
+        # de renvoyer une erreur générique.
+        self.must_words = list(must_words)
+        self._pending_must = list(self.must_words)
+        self.unplaced_must = list(self.must_words)
         
         # NOUVEAU : Système de nogoods pour éviter les boucles
         # Format: {slot_id: {pattern1, pattern2, ...}}
@@ -99,6 +107,8 @@ class GridSolver:
         logging.info("Début de la résolution de la grille (Heuristique MRV)...")
         self.start_time = time.time()
         self.budget_exceeded = False
+        self._pending_must = list(self.must_words)
+        self.unplaced_must = list(self.must_words)
 
         try:
             return self._solve_recursive()
@@ -185,6 +195,10 @@ class GridSolver:
         """
         self.metrics['recursive_calls'] += 1
         self._check_budget()
+
+        # 0. Les mots obligatoires d'abord : tant qu'il en reste, la grille ne peut pas être une solution
+        if self._pending_must:
+            return self._place_a_must_word()
 
         # 1. Choix dynamique du slot le plus contraint
         slot = self._choose_next_slot()
@@ -295,6 +309,67 @@ class GridSolver:
         logging.debug(f"  ÉCHEC : Tous les candidats ont échoué pour ce slot.")
         # NE PAS enregistrer comme nogood ici : l'échec est contextuel, pas absolu
         # Le pattern pourrait fonctionner avec un autre contexte (autres mots placés)
+        return False
+
+    def _slots_open_to(self, word: str) -> list[dict]:
+        """Emplacements libres de la bonne longueur dont le motif accepte encore ce mot."""
+        open_slots = []
+        for slot in self.slots:
+            if slot.get('is_filled', False) or slot['length'] != len(word):
+                continue
+            pattern = self._get_slot_pattern(slot)
+            if all(expected == '?' or expected == char for expected, char in zip(pattern, word)):
+                open_slots.append(slot)
+        return open_slots
+
+    def _place_a_must_word(self) -> bool:
+        """Place le mot obligatoire le plus contraint (le moins d'emplacements possibles), avec retour arrière.
+
+        Choisir d'abord le mot qui a le moins de choix fait échouer vite les demandes impossibles,
+        au lieu de les découvrir après avoir rempli la moitié de la grille.
+        """
+        chosen, options = None, None
+        for word in self._pending_must:
+            open_slots = self._slots_open_to(word)
+            if options is None or len(open_slots) < len(options):
+                chosen, options = word, open_slots
+            if not open_slots:
+                break  # inutile de chercher mieux : aucun emplacement n'accepte ce mot
+
+        if not options:
+            logging.debug(f"  Aucun emplacement disponible pour le mot obligatoire '{chosen}'.")
+            return False
+
+        for slot in options:
+            original_state = self._place_word_on_grid(chosen, slot)
+            if (not self._is_placement_valid(chosen, slot, original_state)
+                    or not self._forward_check(chosen, slot, original_state)):
+                self._revert_grid_state(original_state)
+                continue
+
+            slot['is_filled'] = True
+            self.repository.remove_word_from_available(chosen, slot['length'])
+            self._consumed.append((chosen, slot['length']))
+            self._pending_must.remove(chosen)
+            if len(self._pending_must) < len(self.unplaced_must):
+                self.unplaced_must = list(self._pending_must)
+
+            if self._solve_recursive():
+                self.placed_words.insert(0, {
+                    "text": chosen, "x": slot['x'], "y": slot['y'],
+                    "direction": slot['direction'], "id": slot['id'],
+                    "score": self._score_word(chosen),
+                    "source": self.repository.source_of(chosen),
+                })
+                return True
+
+            self.metrics['backtracks'] += 1
+            self._pending_must.append(chosen)
+            self.repository.add_word_to_available(chosen, slot['length'])
+            self._consumed.pop()
+            slot['is_filled'] = False
+            self._revert_grid_state(original_state)
+
         return False
 
     def _check_budget(self) -> None:
