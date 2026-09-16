@@ -33,16 +33,36 @@ Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` compl
 
 | Layout | Succès | p50 | p95 |
 |--------|--------|-----|-----|
-| 6x7-001 | 20/20 | 0,12 s | 0,29 s |
-| 11x6-001 | **20/20** | 3,1 s | 15,6 s |
+| 6x7-001 | 20/20 | 0,11 s | 0,38 s |
+| 7x9-001 | 20/20 | 0,56 s | 1,46 s |
+| 11x6-001 | 20/20 | 3,0 s | 16,0 s |
+| 10x13-001 | 3/20 | dépassement | dépassement |
+| 10x13-002 | 0/20 | dépassement | dépassement |
+| 10x13-003 | 2/20 | dépassement | dépassement |
+| 10x13-004 | 17/20 | 9,6 s | dépassement |
 
-Historique :
+`10x13-005` et `10x13-006` ont été ajoutés après cette exécution : ils n'y figurent pas encore.
+
+Historique sur les deux layouts d'origine :
 
 | Étape | 6x7-001 | 11x6-001 |
 |-------|---------|----------|
 | Première baseline | 20/20, p95 5,4 s | 3/20 |
 | Redémarrages (#19) | 20/20, p95 1,1 s | 11/20, p50 17,4 s |
 | Index des candidats (#20) | 20/20, p95 0,29 s | 20/20, p50 3,1 s |
+
+## Ce que disent les 10×13 (#57)
+
+Ces grilles comptent 42 à 43 mots, contre 21 pour le 11×6. Diagnostic sur 10x13-002, 3 seeds, budget 30 s :
+
+| Unité de redémarrage | Résultat |
+|----------------------|----------|
+| sans redémarrage | 3 échecs (1 essai, ~105 000 appels) |
+| 300 | 3 échecs (~87 essais) |
+| 1 500 | 3 échecs (~26 essais) |
+| 5 000 | 3 échecs (~12 essais) |
+
+Le réglage des redémarrages n'est donc pas le levier ici. Le dictionnaire contient 67 000 mots de 13 lettres et 92 000 de 10, et le moteur tient environ 3 700 appels par seconde sur ce format : ni le vocabulaire ni la vitesse n'expliquent l'échec. La difficulté tient à la structure de chaque grille — 10x13-004 réussit 17/20 avec le même réglage.
 
 ## Index des candidats (#20, septembre 2026)
 

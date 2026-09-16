@@ -24,7 +24,7 @@ Captures régénérées par `cd frontend && pnpm exec playwright test tests/scre
 | Recherche par motif (`?` = lettre inconnue) dans le dictionnaire commun | ✅ |
 | Dictionnaires personnels (plusieurs, avec définitions) mêlés à la recherche | ✅ |
 | Comptes utilisateurs (inscription, connexion, suppression des données) | ✅ |
-| Génération automatique d'une grille à partir d'un layout | ✅ 20/20 sur chaque layout du benchmark ([détails](docs/ENGINE.md)) |
+| Génération automatique d'une grille à partir d'un layout | ✅ en 6×7, 7×9 et 11×6 ; rarement dans le budget en 10×13 ([détails](docs/ENGINE.md)) |
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
 | Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
 | Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |

@@ -70,18 +70,26 @@ Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/
 
 **Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-| Layout | Succès | Première baseline |
-|--------|--------|-------------------|
-| 6×7 | 20/20 (p95 0,29 s) | 20/20 (p95 5,4 s) |
-| 11×6 | 20/20 (p50 3,1 s, p95 15,6 s) | 3/20 |
+| Layout | Succès | p50 |
+|--------|--------|-----|
+| 6x7-001 | 20/20 | 0,11 s |
+| 7x9-001 | 20/20 | 0,56 s |
+| 11x6-001 | 20/20 | 3,0 s |
+| 10x13-001 | 3/20 | dépassement |
+| 10x13-002 | 0/20 | dépassement |
+| 10x13-003 | 2/20 | dépassement |
+| 10x13-004 | 17/20 | 9,6 s |
 
-Le 11×6 était « vite ou jamais » : les grilles réussies l'étaient en 3,6 à 15,7 s, les autres s'enlisaient. Les redémarrages exploitent ce profil (#19) et l'index des candidats rend chaque essai 2 à 6 fois plus rapide (#20).
+Le 11×6 était « vite ou jamais » : avant les redémarrages, il réussissait 3 fois sur 20. Les redémarrages exploitent ce profil (#19) et l'index des candidats rend chaque essai 2 à 6 fois plus rapide (#20) ; il passe à 20/20.
+
+Les **10×13** (42 à 43 mots) résistent, et le réglage n'y change rien : sans redémarrage, à 300, 1 500 ou 5 000 appels, aucune des trois seeds testées n'aboutit en 30 s. Le dictionnaire ne manque pourtant pas de mots longs (67 000 de 13 lettres) et le moteur tient environ 3 700 appels par seconde. La difficulté est **structurelle** et propre à chaque grille : 10x13-004 réussit 17 fois sur 20 avec le même réglage que 10x13-002, qui échoue toujours.
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
 | **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
+| Grandes grilles denses (10×13, 42 à 43 mots) rarement remplies dans le budget de 20 s | Ces formats ne sont pas utilisables depuis l'interface | Heuristiques de choix des mots, lexique curé (moins d'impasses), budget par format (#57) |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
