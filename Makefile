@@ -51,11 +51,12 @@ CURATOR_DOCKER_ARGS := -p 8765:8765 -v "$(CURDIR)":/repo -w /repo --env-file .en
 	-e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c "pip install -q -r tools/curator/requirements.txt && python -m tools.curator"
 
 curator-check:
-	@test -f data/lexicon/build/lexicon.sqlite || (echo "Base absente : lancez d'abord make lexicon-build" && exit 1)
+	@test -f data/lexicon/build/lexicon.sqlite || echo "Base du lexique absente : seul l'éditeur de layouts sera disponible (make lexicon-build pour trier les mots)."
 	@grep -q '^CURATOR_PIN=......' .env 2>/dev/null || (echo "Définissez CURATOR_PIN (6 caractères minimum) dans .env" && exit 1)
 
 curator-urls:
 	@echo "Curateur sur cet ordinateur : http://localhost:8765"
+	@echo "Éditeur de layouts          : http://localhost:8765/layouts"
 	@# Adresse de l'interface qui porte la route par défaut (Wi-Fi ou Ethernet selon la machine)
 	@echo "Téléphone sur le même Wi-Fi : http://$$(ipconfig getifaddr $$(route -n get default 2>/dev/null | awk '/interface:/{print $$2}') 2>/dev/null || echo IP-du-Mac):8765"
 	@TS=$$( (tailscale ip -4 || /Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4) 2>/dev/null | head -n 1 ); \

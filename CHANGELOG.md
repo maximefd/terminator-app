@@ -35,6 +35,13 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - avertissements : grilles en double, proportion inhabituelle de cases définitions ;
   - statistiques : nombre de mots et mots par longueur.
 - `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
+- Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
+  - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;
+  - remise à blanc de toute la grille, ou de son seul intérieur (première ligne et première colonne conservées) ;
+  - vérification en direct par le serveur, cases fautives en rouge, statistiques ;
+  - enregistrement dans `backend/layouts/` sous le prochain numéro, sans écrasement ni doublon ;
+  - catalogue avec aperçus, copie d'un layout existant, brouillon conservé sur l'appareil ;
+  - le curateur démarre sans la base du lexique (éditeur seul).
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;

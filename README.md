@@ -18,7 +18,7 @@ Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet e
 | Comptes utilisateurs (inscription, connexion, suppression des données) | ✅ |
 | Génération automatique d'une grille à partir d'un layout | ✅ fiable en 6×7, fragile en 11×6 ([détails](docs/ENGINE.md)) |
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
-| Nombreux layouts recopiés de vrais livres | 🚧 Phase 2 |
+| Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
 | Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |
 | Flèches, définitions, export PDF | 🔜 Phase 5 |
 

@@ -13,7 +13,7 @@
 | 1a — Pipeline du lexique | ✅ PR #42 |
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
 | 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
-| 2 — Catalogue de layouts | 🚧 format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13) ; éditeur (#14) en cours |
+| 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
