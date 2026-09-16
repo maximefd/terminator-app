@@ -41,6 +41,37 @@ class PatternIndex:
                     break
         return result
 
+    def extended(self, extra_words) -> "PatternIndex":
+        """Index contenant les mots de celui-ci, plus `extra_words` ajoutés à la fin.
+
+        Les mots déjà présents gardent leur position : leurs ensembles de bits restent valides et ne
+        sont pas reconstruits (l'index du lexique complet coûte plusieurs secondes à bâtir, il est
+        partagé par toutes les générations). Les mots ajoutés viennent après, dans l'ordre reçu :
+        l'ordre des candidats reste déterministe. Sert aux pools de mots hors lexique (#17).
+        """
+        seen = set()
+        extras = [word for word in extra_words
+                  if word not in self.position and not (word in seen or seen.add(word))]
+        if not extras:
+            return self
+
+        index = object.__new__(PatternIndex)
+        index.words = self.words + extras
+        index.length = len(index.words[0])
+        index.position = {**self.position,
+                          **{word: len(self.words) + i for i, word in enumerate(extras)}}
+        index.full_mask = (1 << len(index.words)) - 1
+        index._nbytes = (len(index.words) + 7) // 8
+        # Les entiers sont immuables : la copie du dictionnaire partage les ensembles inchangés,
+        # seules les clés (position, lettre) touchées par les ajouts donnent un nouvel entier.
+        masks = dict(self._masks)
+        for i, word in enumerate(extras, start=len(self.words)):
+            bit = 1 << i
+            for pos, char in enumerate(word):
+                masks[(pos, char)] = masks.get((pos, char), 0) | bit
+        index._masks = masks
+        return index
+
     def mask_of(self, words) -> int:
         """Ensemble des mots donnés (les mots absents de l'index sont ignorés)."""
         buffer = bytearray(self._nbytes)

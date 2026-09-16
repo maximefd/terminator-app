@@ -99,3 +99,15 @@ def test_grid_data_shape(small_words, small_trie):
     assert data["layout"] == "5x5-001"
     assert len(data["cells"]) == 25
     assert {"metrics", "cache_stats", "placement_history"} <= data["statistics"].keys()
+
+
+def test_each_placed_word_reports_its_pool(small_words, small_trie):
+    generator = GridGenerator(5, 5, small_words, prebuilt_trie=small_trie,
+                              layouts_dir=FIXTURE_LAYOUTS_DIR, seed=3)
+    assert generator.generate()
+
+    data = generator.get_grid_data()
+
+    # Sans mots de l'auteur, tout vient du lexique commun : la part souhaitée est nulle
+    assert {word["source"] for word in data["words"]} == {"common"}
+    assert data["wish_ratio"] == 0.0

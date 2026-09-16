@@ -101,6 +101,21 @@ def test_a_finished_crossing_word_must_exist():
     assert not solver._is_placement_valid("BOA", slot, state)
 
 
+def test_a_wish_word_absent_from_the_lexicon_is_placed_before_the_common_ones():
+    """#17 : un mot personnel n'entrait jamais dans la grille (ignoré à l'indexation)."""
+    template = GridTemplate.from_rows(["---"])  # une seule rangée : un unique emplacement
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    trie = DictionnaireTrie()
+    trie.insert("ABC")
+    repository = WordRepository.from_pools(trie, common_words=["ABC"], wish_words=["ZUT"])
+
+    solver = GridSolver(template, repository, finder)
+
+    assert solver.solve()
+    assert [(word["text"], word["source"]) for word in solver.placed_words] == [("ZUT", "wish")]
+
+
 def test_forward_checking_threshold_below_two_is_rejected():
     template = GridTemplate.from_rows(["..", ".."])
     finder = SlotFinder(template)

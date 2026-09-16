@@ -196,30 +196,37 @@ def generate_grid():
     payload = parse_body(GenerateRequest)
     width, height = payload.size.width, payload.size.height
 
-    word_list = []
+    longest = max(width, height)
+
+    common_words = []
     if payload.use_global:
         # Tous les mots de longueur utile : un échantillon (ex-30 000 mots, ~4 % du DELA)
         # rendait presque tous les croisements impossibles.
-        word_list.extend(w for w in dela_trie.words if 2 <= len(w) <= max(width, height))
+        common_words.extend(w for w in dela_trie.words if 2 <= len(w) <= longest)
 
+    # Mots du dictionnaire personnel actif : pool « souhaité ». Ils sont essayés avant le lexique
+    # commun et restent valides aux croisements même s'ils n'y figurent pas (#17) ; auparavant ils
+    # étaient mélangés au lexique et simplement ignorés à l'indexation.
+    wish_words = []
     if user:
-      active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
-      if active_dict:
-          word_list.extend([word.mot for word in active_dict.words if len(word.mot) >= 2 and len(word.mot) <= max(width, height)])
+        active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
+        if active_dict:
+            wish_words.extend(word.mot for word in active_dict.words if 2 <= len(word.mot) <= longest)
 
-    if not word_list: return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
+    if not common_words and not wish_words:
+        return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
     # Tri : ordre stable des mots
-    unique_words = sorted(set(word_list))
     layouts_dir = current_app.config.get('LAYOUTS_DIR')
 
     try:
         generator = GridGenerator(
-            width, height, unique_words,
+            width, height, sorted(set(common_words)),
             prebuilt_trie=dela_trie,
             seed=payload.seed,
             layouts_dir=layouts_dir,
             time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
+            wish_words=sorted(set(wish_words)),
         )
     except LayoutNotFoundError:
         formats = available_formats(layouts_dir)

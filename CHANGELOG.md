@@ -37,6 +37,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
 - Index des candidats par (position, lettre) en ensembles de bits (Phase 3, #20) : remplace le parcours du Trie et le cache par motif du solveur ; mêmes candidats dans le même ordre, donc mêmes grilles pour un même seed, calculées 2 à 6 fois plus vite. Benchmark : 11x6-001 de 11/20 à 20/20 (p50 3,1 s), 6x7-001 p95 0,29 s.
 - Redémarrages du solveur (Phase 3, #19) : essais successifs de `300 × luby(i)` appels récursifs dans le budget temps, trajectoires dérivées du seed (même seed ⇒ même grille) ; benchmark `--restart-unit` et nombre d'essais par seed ([mesures](backend/benchmarks/README.md)).
+- Pools de mots dans le moteur (Phase 3, #17, [ADR 0007](docs/adr/0007-contrat-de-generation.md)) : mots obligatoires, souhaités (dictionnaire personnel actif) et communs (lexique curé) ; chaque mot placé indique sa provenance (`source`) et la grille renvoie la part de mots de l'auteur (`wish_ratio`).
 - Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
   - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;
   - remise à blanc de toute la grille, ou de son seul intérieur (première ligne et première colonne conservées) ;
@@ -65,6 +66,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Les mots des dictionnaires personnels n'étaient **jamais placés** : l'index des candidats ne contenait que les mots du lexique, et les mots personnels transmis au générateur étaient silencieusement ignorés, à l'indexation comme aux croisements. Ils forment désormais le pool « souhaité » : ajoutés à l'index de leur longueur, essayés avant le lexique commun et acceptés comme mots croisés (#17).
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
