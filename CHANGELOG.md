@@ -62,6 +62,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Layouts déplacés de `backend/templates/<L>x<H>/template_01.txt` vers `backend/layouts/<L>x<H>/001.txt` ; le champ `layout` de la grille générée et les clés du benchmark deviennent `6x7-001`. Variable de configuration `TEMPLATES_DIR` renommée `LAYOUTS_DIR`.
 - Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.
 
+### Corrigé
+- Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57) : 11×9 (33 mots), 10×13 (43) et 13×16 (61) passent de 0/3 à 3/3, en 1 à 3 secondes.
+
 ## [0.1.0] — 2026-09-14
 
 Première version stabilisée (Phase 0a et 0b de la [roadmap](docs/ROADMAP.md)).
