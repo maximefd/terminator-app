@@ -67,7 +67,7 @@ terminator-app/
 │   ├── schemas.py, security.py      Validation des entrées, sécurité transverse
 │   ├── trie_engine.py               Dictionnaire en mémoire et recherche par motif
 │   ├── grid_generator.py, engine/   Moteur de génération de grilles
-│   ├── templates/                   Layouts de grilles (<largeur>x<hauteur>/*.txt)
+│   ├── layouts/                     Layouts de grilles (<largeur>x<hauteur>/<NNN>.txt)
 │   ├── benchmarks/, test_harness.py Benchmark reproductible du moteur
 │   └── tests/                       Tests pytest
 ├── frontend/                Application Next.js 15 (React, Tailwind, shadcn/ui)

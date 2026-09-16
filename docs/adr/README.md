@@ -9,6 +9,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0003](0003-jwt-en-en-tete.md) | Authentification par JWT dans l'en-tête `Authorization` | Acceptée (à revoir en Phase 6) |
 | [0004](0004-pas-de-deploiement-en-ligne.md) | Pas de déploiement en ligne avant un serveur de production | Acceptée |
 | [0005](0005-pipeline-du-lexique-et-decisions.md) | Pipeline du lexique et fichier de décisions versionné | Acceptée |
+| [0006](0006-format-des-layouts.md) | Format (`x` / `-`) et emplacement des fichiers de layout | Acceptée |
 
 ## Modèle
 

@@ -178,7 +178,7 @@ def search_words():
 @main_bp.route('/grids/formats', methods=['GET'])
 def list_grid_formats():
     """Liste les formats de grille pour lesquels au moins un layout existe."""
-    return jsonify({"formats": available_formats(current_app.config.get('TEMPLATES_DIR'))}), 200
+    return jsonify({"formats": available_formats(current_app.config.get('LAYOUTS_DIR'))}), 200
 
 @main_bp.route('/grids/generate', methods=['POST'])
 @jwt_required(optional=True)
@@ -205,18 +205,18 @@ def generate_grid():
 
     # Tri : ordre stable des mots
     unique_words = sorted(set(word_list))
-    templates_dir = current_app.config.get('TEMPLATES_DIR')
+    layouts_dir = current_app.config.get('LAYOUTS_DIR')
 
     try:
         generator = GridGenerator(
             width, height, unique_words,
             prebuilt_trie=dela_trie,
             seed=payload.seed,
-            templates_dir=templates_dir,
+            layouts_dir=layouts_dir,
             time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
         )
     except LayoutNotFoundError:
-        formats = available_formats(templates_dir)
+        formats = available_formats(layouts_dir)
         return jsonify({
             "error": f"Aucun layout disponible pour le format {width}x{height}.",
             "available_formats": formats,
