@@ -513,7 +513,8 @@ kbd {
   font-size: 1.1rem;
 }
 .size > span { padding-bottom: 0.7rem; color: var(--muted); }
-.size button { min-height: 2.75rem; padding: 0 0.9rem; margin-left: auto; font-weight: 500; }
+.size-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-left: auto; }
+.size-actions button { min-height: 2.75rem; padding: 0 0.9rem; font-weight: 500; }
 
 .source { margin: 0; font-size: 0.85rem; color: var(--accent); }
 

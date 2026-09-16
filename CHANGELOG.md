@@ -39,6 +39,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Redémarrages du solveur (Phase 3, #19) : essais successifs de `300 × luby(i)` appels récursifs dans le budget temps, trajectoires dérivées du seed (même seed ⇒ même grille) ; benchmark `--restart-unit` et nombre d'essais par seed ([mesures](backend/benchmarks/README.md)).
 - Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
   - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;
+  - remise à blanc de toute la grille, ou de son seul intérieur (première ligne et première colonne conservées) ;
   - vérification en direct par le serveur, cases fautives en rouge, statistiques ;
   - enregistrement dans `backend/layouts/` sous le prochain numéro, sans écrasement ni doublon ;
   - catalogue avec aperçus, copie d'un layout existant, brouillon conservé sur l'appareil ;
