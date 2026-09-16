@@ -70,26 +70,25 @@ Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/
 
 **Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-| Layout | Succès | p50 |
-|--------|--------|-----|
-| 6x7-001 | 20/20 | 0,11 s |
-| 7x9-001 | 20/20 | 0,56 s |
-| 11x6-001 | 20/20 | 3,0 s |
-| 10x13-001 | 3/20 | dépassement |
-| 10x13-002 | 0/20 | dépassement |
-| 10x13-003 | 2/20 | dépassement |
-| 10x13-004 | 17/20 | 9,6 s |
+Les **16 layouts du catalogue réussissent 20 fois sur 20**, du 6×7 (13 mots) au 13×16 (61 mots) :
 
-Le 11×6 était « vite ou jamais » : avant les redémarrages, il réussissait 3 fois sur 20. Les redémarrages exploitent ce profil (#19) et l'index des candidats rend chaque essai 2 à 6 fois plus rapide (#20) ; il passe à 20/20.
+| Format | Mots | p50 | p95 |
+|--------|------|-----|-----|
+| 6×7 | 12-13 | 0,04 à 0,08 s | 0,13 à 0,32 s |
+| 7×9 | 20 | 0,18 s | 0,55 s |
+| 11×6 | 21 | 0,45 s | 1,10 s |
+| 11×9 | 33 | 0,70 s | 4,21 s |
+| 14×9 | 38 | 1,39 s | 9,58 s |
+| 10×13 | 41-43 | 0,60 à 2,42 s | 1,94 à 13,50 s |
+| 13×16 | 61 | 1,90 s | 6,74 s |
 
-Les **10×13** (42 à 43 mots) résistent, et le réglage n'y change rien : sans redémarrage, à 300, 1 500 ou 5 000 appels, aucune des trois seeds testées n'aboutit en 30 s. Le dictionnaire ne manque pourtant pas de mots longs (67 000 de 13 lettres) et le moteur tient environ 3 700 appels par seconde. La difficulté est **structurelle** et propre à chaque grille : 10x13-004 réussit 17 fois sur 20 avec le même réglage que 10x13-002, qui échoue toujours.
+Trois changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`).
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
 | **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
-| Grandes grilles denses (10×13 : 41 à 43 mots ; 13×16 : 61) rarement ou jamais remplies. Ni un budget de 120 s, ni un autre réglage de redémarrage n'y changent quoi que ce soit | Ces formats ne sont pas utilisables depuis l'interface | Heuristiques de choix des mots et d'ordre des emplacements ; lexique curé (moins d'impasses) ; mesurer à nouveau après la Phase 1 (#57) |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |

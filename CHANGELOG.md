@@ -63,7 +63,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.
 
 ### Corrigé
-- Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57) : 11×9 (33 mots), 10×13 (43) et 13×16 (61) passent de 0/3 à 3/3, en 1 à 3 secondes.
+- Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ## [0.1.0] — 2026-09-14
 

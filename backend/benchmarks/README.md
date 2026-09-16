@@ -27,21 +27,21 @@ Pour chaque layout : taux de succès dans le budget, temps p50 / p95 / max, nomb
 - Le **taux de succès sur beaucoup de seeds** est l'indicateur principal. Pour un layout difficile, le résultat d'une seed isolée ne veut presque rien dire (voir ci-dessous) : utiliser au moins 20 seeds.
 - L'exécution est **reproductible** : même code + même dictionnaire + même seed ⇒ même grille.
 
-## Baseline actuelle (septembre 2026, redémarrages de 300 appels et index des candidats)
+## Baseline actuelle (septembre 2026 : redémarrages, index des candidats et validation croisée corrigée)
 
 Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` complet, 20 seeds, budget 20 s, exécution seule.
 
-| Layout | Succès | p50 | p95 |
-|--------|--------|-----|-----|
-| 6x7-001 | 20/20 | 0,11 s | 0,38 s |
-| 7x9-001 | 20/20 | 0,56 s | 1,46 s |
-| 11x6-001 | 20/20 | 3,0 s | 16,0 s |
-| 10x13-001 | 3/20 | dépassement | dépassement |
-| 10x13-002 | 0/20 | dépassement | dépassement |
-| 10x13-003 | 2/20 | dépassement | dépassement |
-| 10x13-004 | 17/20 | 9,6 s | dépassement |
+**Les 16 layouts du catalogue réussissent 20 fois sur 20** : 320 générations, 320 réussites.
 
-`10x13-005` et `10x13-006` ont été ajoutés après cette exécution : ils n'y figurent pas encore.
+| Layout | Mots | Succès | p50 | p95 |
+|--------|------|--------|-----|-----|
+| 6x7-001 à 005 | 12-13 | 20/20 | 0,04 à 0,08 s | 0,13 à 0,32 s |
+| 7x9-001 | 20 | 20/20 | 0,18 s | 0,55 s |
+| 11x6-001 | 21 | 20/20 | 0,45 s | 1,10 s |
+| 11x9-001 | 33 | 20/20 | 0,70 s | 4,21 s |
+| 14x9-001 | 38 | 20/20 | 1,39 s | 9,58 s |
+| 10x13-001 à 006 | 41-43 | 20/20 | 0,60 à 2,42 s | 1,94 à 13,50 s |
+| 13x16-001 | 61 | 20/20 | 1,90 s | 6,74 s |
 
 Historique sur les deux layouts d'origine :
 
@@ -51,7 +51,7 @@ Historique sur les deux layouts d'origine :
 | Redémarrages (#19) | 20/20, p95 1,1 s | 11/20, p50 17,4 s |
 | Index des candidats (#20) | 20/20, p95 0,29 s | 20/20, p50 3,1 s |
 
-## Ce que disent les 10×13 (#57)
+## Le mur des grandes grilles et sa cause (#57)
 
 Ces grilles comptent 42 à 43 mots, contre 21 pour le 11×6. Diagnostic sur 10x13-002, 3 seeds, budget 30 s :
 
@@ -64,7 +64,13 @@ Ces grilles comptent 42 à 43 mots, contre 21 pour le 11×6. Diagnostic sur 10x1
 
 Avec un **budget de 120 s** (six fois le budget de l'API), les trois grilles difficiles échouent encore : 10x13-001 après 333 essais et 373 000 appels, 10x13-002 après 255 essais, 10x13-003 après 319 essais. Ce n'est donc pas non plus une question de temps.
 
-Le réglage des redémarrages n'est donc pas le levier ici. Le dictionnaire contient 67 000 mots de 13 lettres et 92 000 de 10, et le moteur tient environ 3 700 appels par seconde sur ce format : ni le vocabulaire ni la vitesse n'expliquent l'échec. La difficulté tient à la structure de chaque grille — 10x13-004 réussit 17/20 avec le même réglage.
+Ni le réglage des redémarrages, ni le budget, ni le vocabulaire (67 000 mots de 13 lettres, 92 000 de 10), ni la vitesse (~3 700 appels par seconde) n'expliquaient l'échec.
+
+### La cause : les mots en cours d'écriture
+
+Un balayage du catalogue a montré un mur net **entre 21 et 33 mots** : 100 % de réussite en dessous, 0 % au-dessus. Trop tôt et trop brutal pour une limite naturelle. En cause, `_is_placement_valid` : il reconstruisait la suite de lettres perpendiculaire et exigeait qu'elle existe au dictionnaire dès deux lettres, sans distinguer un mot **terminé** d'un mot **en cours d'écriture**. Deux rangées voisines traversant un emplacement de 5 cases y laissent « AB » : le solveur refusait, alors que le mot final pouvait être « TABLE ».
+
+Les petites grilles referment leurs croisements tout de suite, ce qui masquait le défaut. Depuis la correction (seuls les mots terminés sont vérifiés), les 16 layouts passent à 20/20, 13×16 compris. Les optimisations envisagées avant d'avoir trouvé la cause — propagation des lettres possibles, tri anticipatif des candidats, retour arrière dirigé par le conflit — restent des pistes valables mais ne sont plus nécessaires.
 
 ## Index des candidats (#20, septembre 2026)
 
