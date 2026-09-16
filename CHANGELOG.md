@@ -24,6 +24,27 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - l'API charge le lexique curé s'il existe et le recharge à chaud quand il change ;
   - le curateur l'exporte tous les 500 mots triés et propose de tester les grilles ;
   - `GET /api/status` indique le lexique chargé.
+- Format de layout v1 (Phase 2, #12, ADR 0006) :
+  - `x` = case définition, `-` = case lettre ; l'ancien format `#` / `.` reste lu ;
+  - caractère inconnu, lignes de longueurs différentes ou taille différente du dossier : erreur qui indique la ligne et la colonne ;
+  - `convert_layouts.py` convertit les anciens fichiers ;
+  - identifiant déduit du chemin (`11x6-001`).
+- Validateur de layouts (Phase 2, #13) :
+  - `make layouts-check` et étape de CI ;
+  - erreurs : case lettre isolée, taille ou nom de fichier non conformes, grille sans mot ;
+  - avertissements : grilles en double, proportion inhabituelle de cases définitions ;
+  - statistiques : nombre de mots et mots par longueur.
+- `GET /api/layouts` : catalogue des layouts valides avec leurs grilles et statistiques.
+- Index des candidats par (position, lettre) en ensembles de bits (Phase 3, #20) : remplace le parcours du Trie et le cache par motif du solveur ; mêmes candidats dans le même ordre, donc mêmes grilles pour un même seed, calculées 2 à 6 fois plus vite. Benchmark : 11x6-001 de 11/20 à 20/20 (p50 3,1 s), 6x7-001 p95 0,29 s.
+- Redémarrages du solveur (Phase 3, #19) : essais successifs de `300 × luby(i)` appels récursifs dans le budget temps, trajectoires dérivées du seed (même seed ⇒ même grille) ; benchmark `--restart-unit` et nombre d'essais par seed ([mesures](backend/benchmarks/README.md)).
+- Éditeur de layouts dans le curateur (Phase 2, #14, onglet « Layouts ») :
+  - dessin au toucher ou au clavier (`x`, `-`, flèches, Entrée, Retour arrière) ;
+  - remise à blanc de toute la grille, ou de son seul intérieur (première ligne et première colonne conservées) ;
+  - vérification en direct par le serveur, cases fautives en rouge, statistiques ;
+  - enregistrement dans `backend/layouts/` sous le prochain numéro, sans écrasement ni doublon ;
+  - catalogue avec aperçus, copie d'un layout existant, brouillon conservé sur l'appareil ;
+  - le curateur démarre sans la base du lexique (éditeur seul).
+- Captures d'écran dans le README (#8) : recherche par motif et grille générée, régénérables par `frontend/tests/screenshots.spec.ts` (Playwright utilise le Chrome installé).
 - Curateur : bulle « Chercher ce mot » avec les résultats Google (Serper) ou, sans clé, Wikipédia et Wiktionnaire.
 - Documentation de relecture :
   - README réécrit ;
@@ -38,8 +59,16 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 
 ### Modifié
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
+- Layouts déplacés de `backend/templates/<L>x<H>/template_01.txt` vers `backend/layouts/<L>x<H>/001.txt` ; le champ `layout` de la grille générée et les clés du benchmark deviennent `6x7-001`. Variable de configuration `TEMPLATES_DIR` renommée `LAYOUTS_DIR`.
+- Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.
 - Dépendances Python figées (`backend/requirements.txt`, `tools/curator/requirements.txt`), suivies par Dependabot et auditées par `pip-audit` en CI (#6).
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
+
+### Corrigé
+- Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
+
+### Sécurité
+- Frontend : versions corrigées de postcss, nanoid et sharp imposées par des overrides pnpm (9 vulnérabilités transitives de next 15.5.25, #7).
 
 ## [0.1.0] — 2026-09-14
 

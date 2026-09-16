@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools lint-backend lint-frontend bench \
+.PHONY: help setup dev-api dev-front test test-backend test-tools lint-backend lint-frontend bench layouts-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls
 
@@ -31,6 +31,9 @@ lint-backend: ## Lint Python du backend et des outils (ruff, règles dans ruff.t
 test-backend: ## Tests backend (pytest, Python 3.11 dans Docker)
 	$(BACKEND_RUN) "pip install -q -r requirements.txt && pytest -q -p no:cacheprovider"
 
+layouts-check: ## Vérifie tous les layouts du catalogue (backend/layouts)
+	$(BACKEND_RUN) "python check_layouts.py"
+
 test-tools: ## Tests des outils (pipeline du lexique)
 	$(TOOLS_RUN) "pip install -q pytest -r tools/curator/requirements.txt && pytest -q -p no:cacheprovider tools"
 
@@ -51,11 +54,12 @@ CURATOR_DOCKER_ARGS := -p 8765:8765 -v "$(CURDIR)":/repo -w /repo --env-file .en
 	-e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c "pip install -q -r tools/curator/requirements.txt && python -m tools.curator"
 
 curator-check:
-	@test -f data/lexicon/build/lexicon.sqlite || (echo "Base absente : lancez d'abord make lexicon-build" && exit 1)
+	@test -f data/lexicon/build/lexicon.sqlite || echo "Base du lexique absente : seul l'éditeur de layouts sera disponible (make lexicon-build pour trier les mots)."
 	@grep -q '^CURATOR_PIN=......' .env 2>/dev/null || (echo "Définissez CURATOR_PIN (6 caractères minimum) dans .env" && exit 1)
 
 curator-urls:
 	@echo "Curateur sur cet ordinateur : http://localhost:8765"
+	@echo "Éditeur de layouts          : http://localhost:8765/layouts"
 	@# Adresse de l'interface qui porte la route par défaut (Wi-Fi ou Ethernet selon la machine)
 	@echo "Téléphone sur le même Wi-Fi : http://$$(ipconfig getifaddr $$(route -n get default 2>/dev/null | awk '/interface:/{print $$2}') 2>/dev/null || echo IP-du-Mac):8765"
 	@TS=$$( (tailscale ip -4 || /Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4) 2>/dev/null | head -n 1 ); \

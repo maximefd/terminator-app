@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class SolverBudgetExceeded(Exception):
-    """Levée quand le solveur dépasse son budget de temps ou d'appels récursifs."""
+    """Levée quand le solveur dépasse son budget de temps (`reason="time"`) ou d'appels récursifs (`"calls"`)."""
+
+    def __init__(self, message: str, reason: str):
+        super().__init__(message)
+        self.reason = reason
 
 
 class GridSolver:
@@ -52,6 +56,9 @@ class GridSolver:
         self.time_budget_s = time_budget_s
         self.max_recursive_calls = max_recursive_calls
         self.budget_exceeded = False
+        self.stop_reason = None  # "time" ou "calls" si la résolution a été interrompue
+        # Mots retirés du dépôt par la branche en cours : rendus si la résolution est interrompue
+        self._consumed: list[tuple[str, int]] = []
 
         self.template = template
         self.repository = repository
@@ -96,9 +103,15 @@ class GridSolver:
         try:
             return self._solve_recursive()
         except SolverBudgetExceeded as e:
-            logging.warning(f"Résolution interrompue : {e}")
+            # Un seuil d'appels atteint est un redémarrage prévu, pas une anomalie
+            (logging.warning if e.reason == "time" else logging.info)(f"Résolution interrompue : {e}")
             self.budget_exceeded = True
+            self.stop_reason = e.reason
             self.placed_words = []
+            # Le dépôt redevient intact : un nouvel essai peut repartir de zéro avec les mêmes mots
+            for word, length in reversed(self._consumed):
+                self.repository.add_word_to_available(word, length)
+            self._consumed.clear()
             return False
         finally:
             # Afficher les métriques dans TOUS les cas (succès, échec, timeout)
@@ -131,9 +144,8 @@ class GridSolver:
             if nb_unknowns == 0:
                 continue
 
-            # Récupérer le nombre de candidats pour ce pattern
-            candidates = self.repository.get_candidates(pattern)
-            nb_candidates = len(candidates) if candidates else 0
+            # Nombre de candidats pour ce pattern (compté sans construire la liste)
+            nb_candidates = self.repository.count_candidates(pattern)
             
             # Si aucun candidat, ce slot est un dead-end immédiat
             # (sera géré par _solve_recursive qui fera backtrack)
@@ -248,7 +260,8 @@ class GridSolver:
             # Si on arrive ici, le mot est valide ET passe le forward checking
             # --- CONSOMMATION ---
             slot['is_filled'] = True # Marque le slot comme rempli
-            self.repository.remove_word_from_available(word, slot['length']) 
+            self.repository.remove_word_from_available(word, slot['length'])
+            self._consumed.append((word, slot['length']))
             logging.debug(f"  → Place '{word}'")
 
             if self._solve_recursive(): # Appel récursif SANS INDEX
@@ -266,8 +279,9 @@ class GridSolver:
                 self._invalidate_dependent_nogoods(slot)
                 
                 # Annule la consommation du mot et marque le slot comme vide
-                self.repository.add_word_to_available(word, slot['length']) 
-                slot['is_filled'] = False 
+                self.repository.add_word_to_available(word, slot['length'])
+                self._consumed.pop()
+                slot['is_filled'] = False
                 logging.debug(f"      <- Retour arrière (Backtrack) pour '{word}'.")
                 
                 # --- REVERT DE LA GRILLE ---
@@ -282,9 +296,9 @@ class GridSolver:
     def _check_budget(self) -> None:
         """Interrompt la résolution si le budget de temps ou d'appels est dépassé."""
         if self.time_budget_s is not None and time.time() - self.start_time > self.time_budget_s:
-            raise SolverBudgetExceeded(f"budget de temps dépassé ({self.time_budget_s}s)")
+            raise SolverBudgetExceeded(f"budget de temps dépassé ({self.time_budget_s}s)", "time")
         if self.max_recursive_calls is not None and self.metrics['recursive_calls'] > self.max_recursive_calls:
-            raise SolverBudgetExceeded(f"budget d'appels récursifs dépassé ({self.max_recursive_calls})")
+            raise SolverBudgetExceeded(f"budget d'appels récursifs dépassé ({self.max_recursive_calls})", "calls")
 
     def _check_grid_integrity(self):
         """
@@ -360,41 +374,53 @@ class GridSolver:
         for (x, y, old_char) in original_state:
             self.grid[y][x] = old_char
 
-    # --- MODIFICATION 2 : MÉTHODE _is_placement_valid ENTIÈREMENT REMPLACÉE ---
     def _is_placement_valid(self, word: str, slot: dict, original_state: list[tuple[int, int, str]]) -> bool:
         """
-        Vérifie si le mot crée des fragments valides dans l'autre sens,
-        en se basant sur les lettres qui ont réellement changé.
+        Vérifie les mots créés dans l'autre sens par les lettres qui ont réellement changé.
+
+        On ne vérifie qu'un mot **terminé** : une suite de lettres bordée des deux côtés par une
+        case définition ou par le bord de la grille. Une suite encore ouverte (« AB » au milieu
+        d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : exiger qu'elle existe
+        au dictionnaire rejetait des placements parfaitement valides et empêchait toute grille de
+        plus d'une trentaine de mots d'aboutir. Le forward checking garantit par ailleurs qu'un
+        emplacement encore ouvert conserve des candidats.
         """
-        
-        # On itère sur le mot zippé avec l'état original
-        # (px, py, old_char) vient de original_state
-        for i, (char, (px, py, old_char)) in enumerate(zip(word, original_state)):
-            
-            # Si la lettre n'a pas changé (ex: la case contenait déjà 'A'
-            # et on place un mot avec 'A' au même endroit),
-            # alors le fragment croisé est déjà valide. On ignore.
+        for char, (px, py, old_char) in zip(word, original_state):
+            # Si la lettre n'a pas changé, le mot croisé l'a déjà été
             if old_char == char:
                 continue
 
-            # Si la lettre a changé (ex: '?' -> 'A', ou 'B' -> 'A'),
-            # on doit impérativement valider le fragment créé dans l'autre sens.
-            
-            fragment = ""
             if slot['direction'] == 'across':
-                # Le mot est 'across', on vérifie le fragment 'down' (vertical)
                 fragment = self._get_vertical_fragment(px, py)
+                finished = self._is_run_finished(px, py, 'down')
             else:
-                # Le mot est 'down', on vérifie le fragment 'across' (horizontal)
                 fragment = self._get_horizontal_fragment(px, py)
+                finished = self._is_run_finished(px, py, 'across')
 
-            # Si le fragment a plus d'une lettre et n'est pas un mot valide...
-            if len(fragment) > 1 and not self.repository.is_word_valid(fragment):
-                logging.debug(f"      -> REJETÉ : Le mot '{word}' crée un fragment invalide : '{fragment}'")
-                return False # Rejeter ce candidat
-                
-        return True # Toutes les lettres ont créé des fragments valides
-    # --- FIN DE LA MÉTHODE REMPLACÉE ---
+            if finished and len(fragment) > 1 and not self.repository.is_word_valid(fragment):
+                logging.debug(f"      -> REJETÉ : Le mot '{word}' crée un mot invalide : '{fragment}'")
+                return False
+
+        return True
+
+    def _is_run_finished(self, x: int, y: int, direction: str) -> bool:
+        """La suite de lettres qui contient (x, y) est-elle terminée dans cette direction ?
+
+        Terminée = bordée des deux côtés par une case définition ou par le bord de la grille.
+        Si une case lettre vide la prolonge, le mot s'écrit encore.
+        """
+        empty = (self.template.BLACK_SQUARE, self.template.EMPTY_CELL, ' ', '', None)
+        dx, dy = (0, 1) if direction == 'down' else (1, 0)
+
+        for step in (1, -1):
+            cx, cy = x, y
+            while (0 <= cx + dx * step < self.width and 0 <= cy + dy * step < self.height
+                   and self.grid[cy + dy * step][cx + dx * step] not in empty):
+                cx, cy = cx + dx * step, cy + dy * step
+            nx, ny = cx + dx * step, cy + dy * step
+            if 0 <= nx < self.width and 0 <= ny < self.height and self.grid[ny][nx] == self.template.EMPTY_CELL:
+                return False  # une case vide prolonge la suite : le mot n'est pas fini
+        return True
 
     def _get_vertical_fragment(self, x: int, y: int) -> str:
         """Construit le mot vertical complet passant par (x,y)."""
@@ -628,8 +654,7 @@ class GridSolver:
             future_pattern = self._get_slot_pattern(intersected_slot)
             
             # Vérifier s'il reste assez de candidats pour ce pattern
-            candidates = self.repository.get_candidates(future_pattern)
-            nb_candidates = len(candidates) if candidates else 0
+            nb_candidates = self.repository.count_candidates(future_pattern)
             
             if nb_candidates < self.min_safe_candidates:
                 # DEAD-END détecté : ce placement laisse trop peu de candidats

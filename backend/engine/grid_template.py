@@ -1,4 +1,5 @@
-import logging
+from .layout_format import DEFINITION, LayoutFormatError, layout_size, parse_layout
+
 
 class GridTemplate:
     BLACK_SQUARE = "#"
@@ -10,38 +11,41 @@ class GridTemplate:
         self.grid = [[self.EMPTY_CELL for _ in range(width)] for _ in range(height)]
 
         if template_path:
-            if not self._load_from_file(template_path):
-                raise FileNotFoundError(f"Impossible de charger le template : {template_path}")
+            self._load_from_file(template_path)
 
     @classmethod
     def from_rows(cls, rows: list[str]) -> "GridTemplate":
-        """Construit un template directement depuis ses lignes (ex: ['#.#', '...'])."""
-        height = len(rows)
-        width = max((len(row) for row in rows), default=0)
-        template = cls(width, height)
-        template._apply_rows(rows)
+        """Construit un template directement depuis ses lignes (ex: ['x-x', '---'] ou ['#.#', '...'])."""
+        parsed = parse_layout("\n".join(rows))
+        template = cls(*layout_size(parsed))
+        template._apply_rows(parsed)
         return template
 
-    def _apply_rows(self, rows) -> None:
-        """Place les cases noires décrites par les lignes ; tout le reste est une case vide."""
-        for y, line in enumerate(rows):
-            if y >= self.height:
-                break
-            line = line.rstrip('\n')
-            for x, char in enumerate(line):
-                if x >= self.width:
-                    break
-                self.grid[y][x] = self.BLACK_SQUARE if char == self.BLACK_SQUARE else self.EMPTY_CELL
+    def _apply_rows(self, rows: list[str]) -> None:
+        """Place les cases définitions décrites par des rangées au format v1 (`x` / `-`)."""
+        for y, row in enumerate(rows):
+            for x, char in enumerate(row):
+                self.grid[y][x] = self.BLACK_SQUARE if char == DEFINITION else self.EMPTY_CELL
 
-    def _load_from_file(self, file_path: str) -> bool:
-        """Charge une structure de grille depuis un fichier .txt."""
+    def _load_from_file(self, file_path: str) -> None:
+        """Charge un layout ; sa taille doit correspondre à celle demandée (le nom de son dossier)."""
         try:
-            with open(file_path, 'r') as f:
-                self._apply_rows(f)
-            return True
-        except Exception as e:
-            logging.error(f"Erreur lors du chargement du template {file_path}: {e}")
-            return False
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+        except OSError as e:
+            raise FileNotFoundError(f"Impossible de charger le layout : {file_path}") from e
+
+        try:
+            rows = parse_layout(text)
+        except LayoutFormatError as e:
+            raise LayoutFormatError(f"{file_path} : {e}") from e
+        width, height = layout_size(rows)
+        if (width, height) != (self.width, self.height):
+            raise LayoutFormatError(
+                f"{file_path} : la grille mesure {width}x{height} alors que le format attendu est "
+                f"{self.width}x{self.height}."
+            )
+        self._apply_rows(rows)
 
     def get_cell(self, x, y):
         """Récupère le caractère à une coordonnée donnée."""
@@ -52,12 +56,6 @@ class GridTemplate:
     def is_black_square(self, x, y):
         """Vérifie si une case est une case noire."""
         return self.get_cell(x, y) == self.BLACK_SQUARE
-
-    # --- FUTURES FONCTIONS (Backlog A1, A2) ---
-    def validate_aesthetic_rules(self):
-        """Vérifie si le template respecte nos règles (ex: cases noires adjacentes)."""
-        # À IMPLÉMENTER (Story A1)
-        pass
 
     def __str__(self):
         """Représentation textuelle de la grille pour le débogage."""
