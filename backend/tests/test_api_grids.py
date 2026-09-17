@@ -1,7 +1,9 @@
 import json
 
 import pytest
+import routes
 
+from tests.helpers import auth_headers, default_dictionary_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
 
 FIXTURE_FORMATS = [{"width": 5, "height": 5, "layouts": 1}]
@@ -15,8 +17,9 @@ def grid_app(test_app, small_trie, monkeypatch):
     return test_app
 
 
-def post_generate(client, body):
-    return client.post("/api/grids/generate", data=json.dumps(body), content_type="application/json")
+def post_generate(client, body, headers=None):
+    return client.post("/api/grids/generate", data=json.dumps(body), content_type="application/json",
+                       headers=headers or {})
 
 
 def test_formats_endpoint_lists_available_formats(grid_app, client):
@@ -45,6 +48,31 @@ def test_generate_returns_a_filled_grid(grid_app, client):
     assert grid["fill_ratio"] == 1.0
     assert len(grid["cells"]) == 25
     assert grid["words"]
+
+
+def test_the_active_personal_dictionary_feeds_the_wished_pool(grid_app, client, monkeypatch):
+    """#17 : les mots personnels étaient mélangés au lexique commun, donc ignorés à l'indexation."""
+    headers = auth_headers(client)
+    dict_id = default_dictionary_id(client, headers)
+    assert client.post(f"/api/dictionaries/{dict_id}/words", json={"mot": "Zorgl"},
+                       headers=headers).status_code == 201
+
+    generators = []
+    real_generator = routes.GridGenerator
+
+    def spy(*args, **kwargs):
+        generators.append((args[2], kwargs["wish_words"], real_generator(*args, **kwargs)))
+        return generators[-1][2]
+
+    monkeypatch.setattr(routes, "GridGenerator", spy)
+
+    response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42}, headers)
+
+    assert response.status_code == 200, response.get_json()
+    common_words, wish_words, generator = generators[0]
+    assert wish_words == ["ZORGL"] and "ZORGL" not in common_words
+    assert generator.repository.source_of("ZORGL") == "wish"
+    assert "wish_ratio" in response.get_json()["grid"]
 
 
 def test_generate_unknown_format_returns_available_formats(grid_app, client):

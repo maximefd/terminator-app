@@ -27,6 +27,26 @@ def test_mask_of_ignores_unknown_words():
     assert index.words_in(index.mask_of(["POLE", "INCONNU", "PALE"])) == ["PALE", "POLE"]
 
 
+def test_extended_appends_new_words_without_touching_the_shared_index():
+    index = PatternIndex(["PALE", "PILE"])
+
+    extended = index.extended(["ZORG", "PALE", "ZORG"])  # doublon et mot déjà connu : ignorés
+
+    assert extended.words == ["PALE", "PILE", "ZORG"]
+    assert extended.words_in(extended.mask("P?LE")) == ["PALE", "PILE"]
+    assert extended.words_in(extended.mask("Z???")) == ["ZORG"]
+    # Les positions ne bougent pas : les ensembles de bits déjà calculés restent valides
+    assert extended.bit("PALE") == index.bit("PALE")
+    assert index.words == ["PALE", "PILE"] and index.extended([]) is index
+
+
+def test_extended_from_an_empty_index():
+    extended = PatternIndex([]).extended(["ZORG"])
+
+    assert extended.words_in(extended.mask("????")) == ["ZORG"]
+    assert extended.length == 4
+
+
 def test_empty_index():
     index = PatternIndex([])
 

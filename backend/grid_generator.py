@@ -49,6 +49,8 @@ class GridGenerator:
         layout_path: str | None = None,
         time_budget_s: float | None = None,
         restart_unit_calls: int | None = DEFAULT_RESTART_UNIT_CALLS,
+        wish_words: list[str] | tuple = (),
+        must_words: list[str] | tuple = (),
     ):
         """
         Initialise le générateur.
@@ -56,13 +58,16 @@ class GridGenerator:
         Args:
             width (int): Largeur de la grille.
             height (int): Hauteur de la grille.
-            valid_words (list[str]): Liste de mots DÉJÀ FILTRÉS pour la taille de la grille.
+            valid_words (list[str]): Mots du lexique commun, DÉJÀ FILTRÉS pour la taille de la grille.
             prebuilt_trie (DictionnaireTrie): Un Trie DÉJÀ CONSTRUIT avec les valid_words.
             seed (int, optional): Seed pour la reproductibilité.
             layouts_dir (str, optional): Dossier des layouts (défaut : backend/layouts).
             layout_path (str, optional): Layout précis à utiliser (sinon tirage aléatoire dans le format).
             time_budget_s (float, optional): Temps maximum accordé à la génération (tous essais confondus).
             restart_unit_calls (int, optional): Unité des redémarrages en appels récursifs (None : un seul essai).
+            wish_words (list[str], optional): Mots souhaités (dictionnaires personnels et thématiques),
+                essayés avant le lexique commun et valides aux croisements même s'ils n'y sont pas (#17).
+            must_words (list[str], optional): Mots obligatoires, essayés avant tous les autres.
         """
         self.width = width
         self.height = height
@@ -85,7 +90,7 @@ class GridGenerator:
         self.template = GridTemplate(width, height, self.layout_path)
 
         # 2. Préparer le dictionnaire (utilise le Trie et les mots pré-filtrés)
-        self.repository = self._create_repository(valid_words)
+        self.repository = self._create_repository(valid_words, wish_words, must_words)
 
         # 3. Trouver les slots
         self.finder = SlotFinder(self.template)
@@ -115,13 +120,14 @@ class GridGenerator:
         layouts = sorted(f for f in os.listdir(format_dir) if f.endswith('.txt'))
         return os.path.join(format_dir, self.rng.choice(layouts)) if layouts else None
 
-    def _create_repository(self, valid_words: list[str]) -> WordRepository:
+    def _create_repository(self, valid_words: list[str], wish_words, must_words) -> WordRepository:
         """
         Crée un repository en RÉUTILISANT le Trie pré-construit (et ses index)
-        et une liste de mots DÉJÀ FILTRÉS.
+        et les trois pools de mots DÉJÀ FILTRÉS.
         """
-        repo = WordRepository.from_words(self.prebuilt_trie, valid_words)
-        logging.info(f"{len(valid_words)} mots pertinents indexés pour cette grille.")
+        repo = WordRepository.from_pools(self.prebuilt_trie, valid_words, wish_words, must_words)
+        logging.info(f"{len(repo.pools)} mots pertinents indexés pour cette grille "
+                     f"({len(wish_words)} souhaités, {len(must_words)} obligatoires).")
         return repo
 
     def generate(self) -> bool:
@@ -198,12 +204,17 @@ class GridGenerator:
                     totals[name] = totals.get(name, 0) + value
             stats = {**stats, "metrics": totals, "attempts": len(self.attempts)}
 
+        # Part des mots de l'auteur (obligatoires et souhaités) parmi les mots placés (ADR 0007)
+        wished = sum(1 for word in self.placed_words if word.get("source") in ("must", "wish"))
+        wish_ratio = wished / len(self.placed_words) if self.placed_words else 0.0
+
         return {
             "seed": getattr(self, "seed", None),
             "width": self.width,
             "height": self.height,
             "layout": layout_id(self.layout_path),
             "fill_ratio": round(fill_ratio, 3),
+            "wish_ratio": round(wish_ratio, 3),
             "cells": cells,
             "words": self.placed_words,
             "statistics": stats,  # Ajout des statistiques

@@ -31,7 +31,7 @@ flowchart TD
 
 1. **`GridTemplate`** lit le layout avec `layout_format.py` : `x` = case définition, `-` = case lettre (ancien format `#` / `.` accepté). Un caractère inconnu ou une taille différente de celle du dossier est une erreur.
 2. **`SlotFinder`** repère tous les slots horizontaux et verticaux d'au moins 2 lettres.
-3. **`WordRepository`** répond à « quels mots disponibles correspondent à ce motif ? » grâce à un **index par (position, lettre)** (`pattern_index.py`) : pour chaque longueur, l'ensemble des mots ayant telle lettre à telle position est un ensemble de bits (un entier Python). Les candidats de `P??LE` sont le ET binaire des ensembles « P en 1 », « L en 4 », « E en 5 » et des mots encore disponibles ; les compter ne demande qu'un `bit_count()`. L'index est construit une fois par lexique chargé et partagé entre les générations. Un mot placé est retiré des mots disponibles : **pas de doublon dans une grille**.
+3. **`WordRepository`** répond à « quels mots disponibles correspondent à ce motif ? » grâce à un **index par (position, lettre)** (`pattern_index.py`) : pour chaque longueur, l'ensemble des mots ayant telle lettre à telle position est un ensemble de bits (un entier Python). Les candidats de `P??LE` sont le ET binaire des ensembles « P en 1 », « L en 4 », « E en 5 » et des mots encore disponibles ; les compter ne demande qu'un `bit_count()`. L'index est construit une fois par lexique chargé et partagé entre les générations. Un mot placé est retiré des mots disponibles : **pas de doublon dans une grille**. Les mots viennent de trois **pools** — obligatoires, souhaités (dictionnaires personnels et thématiques), communs (lexique curé) : ceux qui ne sont pas dans le lexique sont ajoutés à l'index de leur longueur et acceptés aux croisements (#17, [ADR 0007](adr/0007-contrat-de-generation.md)).
 4. **`GridSolver`** remplit la grille :
    - il choisit le **slot le plus contraint** ;
    - il essaie ses meilleurs candidats un par un ;
@@ -44,6 +44,7 @@ flowchart TD
 | Heuristique | Idée | Réglage |
 |-------------|------|---------|
 | **MRV amélioré** (*Minimum Remaining Values*) | Traiter d'abord le slot avec le moins de candidats par croisement : `score = nb_candidats / (1 + nb_intersections)` | — |
+| **Pools de mots** | Essayer d'abord les mots de l'auteur : obligatoires, puis souhaités, puis le lexique commun. Le pool passe avant le score, donc un mot souhaité survit à la limite de candidats | `POOL_PRIORITY` (`word_repository.py`) |
 | **Score des mots** | Préférer les mots faits de lettres fréquentes (E, A, S, R…), qui laissent plus de possibilités aux croisements | `LETTER_SCORES` |
 | **Limite de candidats** | N'essayer que les 100 meilleurs candidats d'un slot | `MAX_CANDIDATES_PER_SLOT = 100` |
 | **Variété** | Mélanger aléatoirement le top 20 % des candidats, pour ne pas produire toujours la même grille | générateur aléatoire seedé |
@@ -88,7 +89,6 @@ Trois changements ont mené là. Le 11×6 était « vite ou jamais » : les **re
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| **Les mots personnels ne sont jamais placés** : les candidats viennent uniquement du Trie DELA, qui ne contient pas les mots des dictionnaires personnels | Le dictionnaire personnel actif n'influence pas la grille | Phase 3 : pools de mots obligatoires / souhaités / communs |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |

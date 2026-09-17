@@ -47,3 +47,30 @@ def test_from_words_limits_candidates_but_not_validity(repo):
 
 def test_get_words_by_length(repo):
     assert repo.get_words_by_length(2) == ["OU"]
+
+
+def test_pool_words_absent_from_the_lexicon_are_placeable_and_valid(repo):
+    """#17 : un mot personnel était simplement ignoré à l'indexation, donc jamais placé."""
+    grid_repo = WordRepository.from_pools(repo.trie, common_words=["CHAT"], wish_words=["ZORG"])
+
+    assert grid_repo.get_candidates("Z???") == ["ZORG"]
+    assert grid_repo.is_word_valid("ZORG")  # accepté aussi comme mot croisé
+    assert (grid_repo.source_of("ZORG"), grid_repo.source_of("CHAT")) == ("wish", "common")
+
+
+def test_a_word_cited_twice_keeps_its_most_prioritary_pool(repo):
+    grid_repo = WordRepository.from_pools(repo.trie, common_words=["PILE", "PALE", "POLE"],
+                                          wish_words=["PILE"], must_words=["PALE"])
+
+    assert (grid_repo.source_of("PALE"), grid_repo.source_of("PILE")) == ("must", "wish")
+    assert grid_repo.priority_of("PALE") < grid_repo.priority_of("PILE") < grid_repo.priority_of("POLE")
+
+
+def test_a_pool_word_is_consumed_and_restored_like_the_others(repo):
+    grid_repo = WordRepository.from_pools(repo.trie, wish_words=["ZORG"])
+
+    grid_repo.remove_word_from_available("ZORG", 4)
+    assert grid_repo.get_candidates("????") == []
+
+    grid_repo.add_word_to_available("ZORG", 4)
+    assert grid_repo.get_candidates("????") == ["ZORG"]

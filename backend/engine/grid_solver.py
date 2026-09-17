@@ -212,9 +212,12 @@ class GridSolver:
             self._record_nogood(slot_id, pattern)
             return False
         
-        # Tri des candidats par score (heuristique) - les meilleurs en premier
-        scored_candidates = [(self._score_word(w), w) for w in candidates]
-        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        # Tri des candidats par pool puis par score (heuristique) - les meilleurs en premier.
+        # Le pool passe avant le score : un mot souhaité est essayé avant un mot du lexique commun,
+        # et survit donc à la troncature à MAX_CANDIDATES_PER_SLOT (ADR 0007). À pool égal, l'ordre
+        # est exactement celui d'avant les pools (tri stable sur le score décroissant).
+        scored_candidates = [(self.repository.priority_of(w), self._score_word(w), w) for w in candidates]
+        scored_candidates.sort(key=lambda item: (item[0], -item[1]))
 
         # Limiter le nombre de candidats pour accélérer le backtracking
         scored_candidates = scored_candidates[:self.MAX_CANDIDATES_PER_SLOT]
@@ -230,7 +233,7 @@ class GridSolver:
         logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
 
         # 4. Boucle de test des candidats
-        for i, (score, word) in enumerate(scored_candidates):
+        for i, (_priority, score, word) in enumerate(scored_candidates):
             self.metrics['candidates_tested'] += 1
             
             logging.debug(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
@@ -269,7 +272,8 @@ class GridSolver:
                 self.placed_words.insert(0, {
                     "text": word, "x": slot['x'], "y": slot['y'],
                     "direction": slot['direction'], "id": slot['id'],
-                    "score": score  # Ajouter le score pour l'historique
+                    "score": score,  # Ajouter le score pour l'historique
+                    "source": self.repository.source_of(word),  # « must », « wish » ou « common »
                 })
                 return True
             else:
