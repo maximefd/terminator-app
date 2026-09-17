@@ -14,7 +14,7 @@
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
 | 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
-| 3 — Moteur avec mots imposés | 🚧 redémarrages (#19), index des candidats (#20) et correction de la validation croisée (#57) : 20/20 sur les 16 layouts du benchmark ; contrat de génération accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16) ; pools de mots (#17) et mots obligatoires (#18) faits ; les grands layouts récents (plus de 60 mots) ne tiennent pas encore le budget (#61) ; restent le ratio visé et les dictionnaires thématiques, avec la saisie en Phase 4 |
+| 3 — Moteur avec mots imposés | 🚧 redémarrages (#19), index des candidats (#20) et correction de la validation croisée (#57) : 20/20 sur les layouts du benchmark ; contrat de génération accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16) ; pools de mots (#17) et mots obligatoires (#18) faits ; seuil du forward checking corrigé (#61) : **les 21 layouts du catalogue réussissent 20/20**, soit le critère de sortie de la phase ; restent le ratio visé et les dictionnaires thématiques, avec la saisie en Phase 4 |
 | 4 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).

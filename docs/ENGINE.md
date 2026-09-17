@@ -50,7 +50,7 @@ flowchart TD
 | **Limite de candidats** | N'essayer que les 100 meilleurs candidats d'un slot | `MAX_CANDIDATES_PER_SLOT = 100` |
 | **Variété** | Mélanger aléatoirement le top 20 % des candidats, pour ne pas produire toujours la même grille | générateur aléatoire seedé |
 | **Validation croisée** | Un mot est refusé s'il forme, dans l'autre sens, un mot **terminé** qui n'existe pas. Une suite de lettres encore ouverte (« AB » au milieu d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : elle n'est pas vérifiée | `_is_placement_valid` |
-| **Forward checking strict** | Refuser un mot qui laisserait un slot croisé avec moins de 3 candidats | `MIN_SAFE_CANDIDATES = 3` (doit rester ≥ 2) |
+| **Forward checking** | Refuser un mot qui laisserait un slot croisé sans candidat de rechange. Exiger davantage paraît prudent mais interdit les clôtures de fin de grille (#61) | `MIN_SAFE_CANDIDATES = 2` (minimum imposé par l'invariant) |
 | **Nogoods** | Mémoriser les motifs sans aucun mot pour ne pas les recréer | invalidés au retour arrière |
 | **Redémarrages** | Plusieurs essais courts plutôt qu'un long : l'essai n°i s'arrête après `unité × luby(i)` appels récursifs (1, 1, 2, 1, 1, 2, 4…), puis repart avec une nouvelle trajectoire dérivée du seed, tant que le budget temps le permet. Les mots consommés par un essai interrompu sont rendus au dépôt | `DEFAULT_RESTART_UNIT_CALLS = 300` (`grid_generator.py`) |
 
@@ -73,27 +73,26 @@ Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/
 
 **Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-Les **16 layouts de la baseline réussissent 20 fois sur 20**, du 6×7 (13 mots) au 13×16 (61 mots) :
+Les **21 layouts du catalogue réussissent 20 fois sur 20** (420 générations, 420 réussites), du 6×7 (12 mots) au 13×18 (81 mots) :
 
 | Format | Mots | p50 | p95 |
 |--------|------|-----|-----|
-| 6×7 | 12-13 | 0,04 à 0,08 s | 0,13 à 0,32 s |
-| 7×9 | 20 | 0,18 s | 0,55 s |
-| 11×6 | 21 | 0,45 s | 1,10 s |
-| 11×9 | 33 | 0,70 s | 4,21 s |
-| 14×9 | 38 | 1,39 s | 9,58 s |
-| 10×13 | 41-43 | 0,60 à 2,42 s | 1,94 à 13,50 s |
-| 13×16 | 61 | 1,90 s | 6,74 s |
+| 6×7 (5 layouts) | 12-13 | 0,05 à 0,08 s | 0,13 à 0,15 s |
+| 7×9 | 20 | 0,19 s | 0,45 s |
+| 11×6 | 21 | 0,41 s | 1,09 s |
+| 11×9 | 33 | 0,70 s | 1,29 s |
+| 14×9 | 38 | 1,55 s | 3,75 s |
+| 10×13 (6 layouts) | 41-43 | 0,58 à 1,09 s | 0,93 à 3,44 s |
+| 11×17 (2 layouts) | 61-62 | 1,50 à 1,79 s | 4,62 à 9,89 s |
+| 13×16 (3 layouts) | 61-64 | 1,03 à 3,27 s | 2,58 à 12,72 s |
+| 13×18 | 81 | 1,99 s | 14,57 s |
 
-Le catalogue compte depuis **21 layouts** : les cinq grands formats ajoutés ensuite n'atteignent pas encore ce niveau — 11x17-001 et 11x17-002 restent à 100 %, mais 13x16-003 tombe à 95 %, 13x18-001 (81 mots) à 85 % et 13x16-002 à 75 %. Le moteur sait remplir ces grilles ; il n'y arrive pas assez souvent dans le budget de 20 s ([#61](https://github.com/maximefd/terminator-app/issues/61)).
-
-Trois changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`).
+Quatre changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`). Enfin, le seuil du forward checking est passé de 3 à 2 : à 3, les grilles de plus de 60 mots arrivaient à deux mots de la fin sans pouvoir conclure (#61).
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| Layouts de plus de 60 mots : 75 à 95 % de succès dans le budget de 20 s, alors que les 16 layouts de la baseline sont à 100 % | Il faut parfois relancer la génération sur les très grands formats | [#61](https://github.com/maximefd/terminator-app/issues/61) : unité de redémarrage dépendant de la taille de la grille plutôt que fixe (`DEFAULT_RESTART_UNIT_CALLS = 300`, mesurée sur le 11×6) |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
 | Première génération après le chargement d'un lexique : construction de l'index (1,4 s sur le DELA complet, puis 0,3 s par génération) | Première génération un peu plus lente | Construire l'index au chargement du lexique si besoin |
