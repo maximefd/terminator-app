@@ -101,6 +101,32 @@ def test_grid_data_shape(small_words, small_trie):
     assert {"metrics", "cache_stats", "placement_history"} <= data["statistics"].keys()
 
 
+def test_a_must_word_is_placed_and_reported_as_such(small_words, small_trie):
+    # Le mot imposé est repris d'une grille déjà résolue avec ce seed : une solution existe forcément
+    reference = make_generator(small_words, small_trie, seed=3)
+    assert reference.generate()
+    imposed = reference.get_grid_data()["words"][0]["text"]
+
+    generator = make_generator(small_words, small_trie, seed=3, must_words=[imposed], time_budget_s=20)
+
+    assert generator.generate()
+    data = generator.get_grid_data()
+    assert data["must_words"] == [imposed]
+    assert generator.unplaced_must_words == []
+    assert [word["source"] for word in data["words"] if word["text"] == imposed] == ["must"]
+    assert data["wish_ratio"] > 0  # le mot imposé compte dans la part des mots de l'auteur
+
+
+def test_an_impossible_must_word_is_named_after_the_failure(small_trie):
+    # Sans lexique commun, le mot imposé est seul : sa longueur convient au layout, mais rien ne peut
+    # le croiser. (Avec les 11 600 mots de la fixture, « ZZZZZ » se croise très bien : HADZA, NAZI, SEIZE…)
+    generator = GridGenerator(5, 5, [], prebuilt_trie=small_trie, layouts_dir=FIXTURE_LAYOUTS_DIR,
+                              seed=3, must_words=["ZZZZZ"], restart_unit_calls=None)
+
+    assert not generator.generate()
+    assert generator.unplaced_must_words == ["ZZZZZ"]
+
+
 def test_each_placed_word_reports_its_pool(small_words, small_trie):
     generator = GridGenerator(5, 5, small_words, prebuilt_trie=small_trie,
                               layouts_dir=FIXTURE_LAYOUTS_DIR, seed=3)

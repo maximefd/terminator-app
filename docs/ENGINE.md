@@ -44,6 +44,7 @@ flowchart TD
 | Heuristique | Idée | Réglage |
 |-------------|------|---------|
 | **MRV amélioré** (*Minimum Remaining Values*) | Traiter d'abord le slot avec le moins de candidats par croisement : `score = nb_candidats / (1 + nb_intersections)` | — |
+| **Mots obligatoires d'abord** | Placer les mots imposés avant tout le reste, en commençant par celui qui a le moins d'emplacements possibles (échouer vite plutôt qu'après avoir rempli la moitié de la grille), avec retour arrière | `_place_a_must_word` |
 | **Pools de mots** | Essayer d'abord les mots de l'auteur : obligatoires, puis souhaités, puis le lexique commun. Le pool passe avant le score, donc un mot souhaité survit à la limite de candidats | `POOL_PRIORITY` (`word_repository.py`) |
 | **Score des mots** | Préférer les mots faits de lettres fréquentes (E, A, S, R…), qui laissent plus de possibilités aux croisements | `LETTER_SCORES` |
 | **Limite de candidats** | N'essayer que les 100 meilleurs candidats d'un slot | `MAX_CANDIDATES_PER_SLOT = 100` |
@@ -57,6 +58,7 @@ flowchart TD
 
 - **Déterminisme** : même code + même dictionnaire + même seed ⇒ même grille. Chaque génération a son propre générateur aléatoire (aucun état global partagé).
 - **Budget temps** : la résolution s'arrête au-delà de `GENERATION_TIME_BUDGET_S` (20 s par défaut) et l'API renvoie une erreur `422` avec `reason: "timeout"`. Une grille impossible renvoie `reason: "no_solution"`.
+- **Mots obligatoires** : une grille n'est renvoyée que si **tous** sont placés. Un mot qui n'entre pas dans le layout est refusé **avant toute résolution** (`reason: "must_words"`, avec le problème mot par mot et des layouts où ils tiennent) ; un mot que la recherche n'a pas su placer donne `reason: "must_words_unplaced"` et la liste des mots restants.
 - **Portabilité** : `backend/engine/` n'importe ni Flask ni la base de données. Il pourra un jour tourner côté client (voir [ADR 0002](adr/0002-moteur-pur-et-deterministe.md)).
 
 ## Mesurer : le benchmark
@@ -71,7 +73,7 @@ Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/
 
 **Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
 
-Les **16 layouts du catalogue réussissent 20 fois sur 20**, du 6×7 (13 mots) au 13×16 (61 mots) :
+Les **16 layouts de la baseline réussissent 20 fois sur 20**, du 6×7 (13 mots) au 13×16 (61 mots) :
 
 | Format | Mots | p50 | p95 |
 |--------|------|-----|-----|
@@ -83,13 +85,15 @@ Les **16 layouts du catalogue réussissent 20 fois sur 20**, du 6×7 (13 mots) a
 | 10×13 | 41-43 | 0,60 à 2,42 s | 1,94 à 13,50 s |
 | 13×16 | 61 | 1,90 s | 6,74 s |
 
+Le catalogue compte depuis **21 layouts** : les cinq grands formats ajoutés ensuite n'atteignent pas encore ce niveau — 11x17-001 et 11x17-002 restent à 100 %, mais 13x16-003 tombe à 95 %, 13x18-001 (81 mots) à 85 % et 13x16-002 à 75 %. Le moteur sait remplir ces grilles ; il n'y arrive pas assez souvent dans le budget de 20 s ([#61](https://github.com/maximefd/terminator-app/issues/61)).
+
 Trois changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`).
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
+| Layouts de plus de 60 mots : 75 à 95 % de succès dans le budget de 20 s, alors que les 16 layouts de la baseline sont à 100 % | Il faut parfois relancer la génération sur les très grands formats | [#61](https://github.com/maximefd/terminator-app/issues/61) : unité de redémarrage dépendant de la taille de la grille plutôt que fixe (`DEFAULT_RESTART_UNIT_CALLS = 300`, mesurée sur le 11×6) |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
-| Pas de mots imposés | Impossible de forcer des mots | Phase 3 |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
 | Première génération après le chargement d'un lexique : construction de l'index (1,4 s sur le DELA complet, puis 0,3 s par génération) | Première génération un peu plus lente | Construire l'index au chargement du lexique si besoin |

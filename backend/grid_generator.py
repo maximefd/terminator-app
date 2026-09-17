@@ -76,6 +76,9 @@ class GridGenerator:
         self.restart_unit_calls = restart_unit_calls
         self.attempts: list[dict] = []
         self._timed_out = False
+        # Doublons écartés, ordre stable : le placement des mots obligatoires doit rester reproductible
+        self.must_words = sorted(set(must_words))
+        self.unplaced_must_words = list(self.must_words)
         # Générateur aléatoire dédié : même seed ⇒ même grille, sans toucher à l'état global
         # (plusieurs générations peuvent coexister dans le même processus).
         self.rng = random.Random(seed)
@@ -109,7 +112,7 @@ class GridGenerator:
     def _new_solver(self, rng: random.Random, time_budget_s: float | None, attempt: int) -> GridSolver:
         max_calls = None if self.restart_unit_calls is None else self.restart_unit_calls * luby(attempt)
         return GridSolver(self.template, self.repository, self.finder, time_budget_s=time_budget_s,
-                          max_recursive_calls=max_calls, rng=rng)
+                          max_recursive_calls=max_calls, rng=rng, must_words=self.must_words)
 
     def _find_layout_path(self, width: int, height: int) -> str | None:
         """Trouve un fichier de layout au hasard pour la taille donnée."""
@@ -142,6 +145,9 @@ class GridGenerator:
             success = self.solver.solve()
             self.attempts.append({"attempt": attempt, "stop_reason": self.solver.stop_reason,
                                   "metrics": self.solver.metrics.copy()})
+            # On garde l'essai qui est allé le plus loin : c'est lui qui explique le mieux l'échec
+            if len(self.solver.unplaced_must) < len(self.unplaced_must_words):
+                self.unplaced_must_words = list(self.solver.unplaced_must)
             if success or self.restart_unit_calls is None or self.solver.stop_reason != "calls":
                 # Réussite, redémarrages désactivés, absence de solution (recherche épuisée) ou budget temps dépassé
                 self._timed_out = self.solver.stop_reason == "time"
@@ -157,6 +163,7 @@ class GridGenerator:
         if success:
             # On trie les mots dans l'ordre de leur slot pour un affichage cohérent
             self.placed_words = sorted(self.solver.placed_words, key=lambda p: p['id'])
+            self.unplaced_must_words = []
         return success
 
 
@@ -215,6 +222,7 @@ class GridGenerator:
             "layout": layout_id(self.layout_path),
             "fill_ratio": round(fill_ratio, 3),
             "wish_ratio": round(wish_ratio, 3),
+            "must_words": self.must_words,
             "cells": cells,
             "words": self.placed_words,
             "statistics": stats,  # Ajout des statistiques

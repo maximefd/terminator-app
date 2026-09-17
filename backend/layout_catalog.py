@@ -122,6 +122,27 @@ def catalog(layouts_dir: str | None = None) -> list[dict]:
     return [{"width": width, "height": height, "layouts": layouts} for (width, height), layouts in formats.items()]
 
 
+def suggest_layouts_for(words, layouts_dir: str | None = None, limit: int = 5) -> list[str]:
+    """Layouts du catalogue où ces mots tiennent tous, par longueur : de quoi rebondir sur un refus.
+
+    Ne dit pas que la grille aboutira (les croisements ne se savent qu'en résolvant), seulement que
+    les emplacements existent — c'est déjà ce qui manque quand un mot est trop long pour un format.
+    """
+    needed: dict[int, int] = {}
+    for word in words:
+        needed[len(word)] = needed.get(len(word), 0) + 1
+
+    suggestions = []
+    for fmt in catalog(layouts_dir):
+        for layout in fmt["layouts"]:
+            lengths = {int(length): count for length, count in layout["stats"]["lengths"].items()}
+            if all(lengths.get(length, 0) >= count for length, count in needed.items()):
+                suggestions.append(layout["id"])
+                if len(suggestions) >= limit:
+                    return suggestions
+    return suggestions
+
+
 def find_duplicate(rows: list[str], layouts_dir: str | None = None) -> str | None:
     """Identifiant d'un layout du catalogue identique à cette grille, s'il y en a un."""
     for entry in list_layouts(layouts_dir):

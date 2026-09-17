@@ -94,10 +94,18 @@ class GridSize(ApiModel):
     height: Annotated[int, Field(ge=2, le=20)] = 10
 
 
+GridWord = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=2, max_length=30, pattern=WORD_PATTERN)
+]
+
+
 class GenerateRequest(ApiModel):
     size: GridSize = Field(default_factory=GridSize)
     seed: Annotated[int, Field(ge=0, le=MAX_SEED)] | None = None
     use_global: StrictBool = True
+    # Plafonds de garde uniquement : la vraie limite est le layout, vérifiée avant de résoudre (ADR 0007)
+    must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
+    wish_words: Annotated[list[GridWord], Field(max_length=500)] = Field(default_factory=list)
 
 
 # --- Conversion des erreurs ---
@@ -116,6 +124,8 @@ FIELD_LABELS = {
     "height": "hauteur",
     "seed": "seed",
     "use_global": "dictionnaire commun",
+    "must_words": "mots obligatoires",
+    "wish_words": "mots souhaités",
 }
 
 

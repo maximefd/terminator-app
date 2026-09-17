@@ -61,7 +61,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | POST | `/api/search` | optionnelle | Recherche par motif (DELA + dictionnaire personnel actif) |
 | GET | `/api/grids/formats` | — | Formats de grille disponibles |
 | GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
-| POST | `/api/grids/generate` | optionnelle | Génère une grille remplie |
+| POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (`must_words`, `wish_words`, dictionnaire personnel actif) |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
@@ -103,13 +103,14 @@ sequenceDiagram
     participant A as API /grids/generate
     participant G as GridGenerator
     participant S as GridSolver
-    F->>A: POST {size, seed}
+    F->>A: POST {size, seed, must_words, wish_words}
     A->>A: validation (schemas.py) + rate limit
-    A->>G: mots du DELA de longueur utile + mots perso actifs
+    A->>G: pools : lexique commun, mots souhaités (+ dictionnaire perso actif), mots obligatoires
     G->>G: choix du layout (backend/layouts/LxH)
+    A->>A: un mot obligatoire n'entre pas ? 422 avant toute résolution
     G->>S: slots + dépôt de mots + budget temps
-    S-->>G: grille remplie, ou échec / timeout
-    G-->>A: cellules, mots placés, statistiques
+    S-->>G: mots obligatoires d'abord, puis la grille remplie, ou échec / timeout
+    G-->>A: cellules, mots placés avec leur source, statistiques
     A-->>F: 200 {grid} ou 422 {error, reason}
 ```
 
