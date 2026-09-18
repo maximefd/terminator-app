@@ -5,6 +5,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Dictionnaires thématiques dans la génération (Phase 3, [ADR 0007](docs/adr/0007-contrat-de-generation.md)) : `wish_dictionary_ids` verse les mots des dictionnaires choisis au pool « souhaité », en plus du dictionnaire actif. Dix au plus, et **uniquement ceux de l'utilisateur connecté** : tout autre dictionnaire répond 404, sans révéler son existence.
 - Fréquence des mots dans le moteur (Phase 3) : le lexique curé porte une colonne zipf que le chargeur jetait. Elle est désormais lue, et `frequency_mode` (requête d'API, `--frequency-mode` au benchmark) choisit la place de la fréquence dans le tri des candidats. **Désactivé par défaut** : mesuré, le tri par fréquence ramène les mots absents des corpus de 33 % à 17 % des mots placés, mais fait tomber sept layouts sous 20/20 — sous le critère de la Phase 3. Le benchmark rapporte maintenant la qualité (`mean_zipf`, `unknown_share`), sans quoi rien ne mesurerait l'effet recherché ([mesures](backend/benchmarks/README.md)).
 - Pipeline du lexique (`tools/lexicon/`, Phase 1a) :
   - téléchargement de Lexique 3.83 et du Wiktionnaire avec empreintes consignées ;
