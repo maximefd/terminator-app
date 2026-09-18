@@ -44,9 +44,13 @@ def test_composed_forms_are_matched_by_their_displayed_form(db_path):
     assert "PORTE" not in matches(db_path, ["formes-composees"])
 
 
-def test_a_space_in_any_spelling_is_enough(db_path):
-    # « cava » s'écrit aussi « ça va » : la deuxième graphie suffit à en faire une forme composée
-    assert "CAVA" in matches(db_path, ["formes-composees"])
+def test_only_the_displayed_spelling_decides_a_deletion(db_path):
+    """« cava » ne s'écrit « ça va » qu'en deuxième graphie : la règle ne le supprime pas.
+
+    Élargir la règle à toutes les graphies viserait « avoir » (« à voir »), « savoir »
+    (« s'avoir ») ou « avec » (« av. è. c. ») : des mots indispensables aux grilles.
+    """
+    assert "CAVA" not in matches(db_path, ["formes-composees"])
 
 
 def test_unknown_words_without_definition_are_matched_from_six_letters(db_path):
@@ -91,12 +95,28 @@ def test_preview_counts_words_and_shows_examples_without_writing(db_path, tmp_pa
     report = preview(db_path, decisions, sample=5)
 
     composed = report["formes-composees"]
-    assert composed["words"] == 1  # APRIORI est gardé explicitement, CAVA reste visé
+    # APRIORI est gardé explicitement ; CAVA n'est pas visé (sa graphie affichée est en un mot)
+    assert composed["words"] == 0
     assert composed["kept_by_author"] == 1
     unknown = report["inconnues-sans-definition"]
     assert unknown["words"] == 2
     assert set(unknown["sample"]) == {"aabamesque", "zorflique"}
     assert unknown["words_up_to_11"] == 2
+
+
+def test_very_common_words_are_out_of_reach_of_the_rules(dela_file, lexique_file, tmp_path):
+    """Un mot très courant (bande « keep ») n'est jamais retiré par une règle.
+
+    Sans cette garde, « aujourd\'hui », « quelqu\'un » ou « parce que » quitteraient le lexique.
+    """
+    from tools.lexicon.scoring import Thresholds
+
+    db = tmp_path / "courants.sqlite"
+    # Seuil abaissé : « a priori » (zipf 2,6) passe dans la bande des mots courants
+    build_lexicon(dela_file, lexique_file, db, None, Thresholds(auto_keep_zipf=2.0), log=lambda _: None)
+
+    assert "APRIORI" not in matches(db, ["formes-composees"])
+    assert preview(db, tmp_path / "decisions.csv")["formes-composees"]["words"] == 0
 
 
 def test_recommended_rules_are_the_two_measured_ones():

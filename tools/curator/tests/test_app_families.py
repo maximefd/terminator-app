@@ -226,7 +226,8 @@ def test_words_covered_by_a_rule_are_not_proposed_anymore(paths):
 
     queued = {card["norm"] for card in client.get("/api/queue").get_json()["cards"]}
 
-    assert {"APRIORI", "CAVA"}.isdisjoint(queued)
+    assert "APRIORI" not in queued          # « a priori » : graphie affichée en deux mots
+    assert "CAVA" in queued                 # « cava » : la deuxième graphie ne fait pas supprimer
 
 
 def test_the_page_says_how_many_words_the_rules_handle(paths):
@@ -234,4 +235,4 @@ def test_the_page_says_how_many_words_the_rules_handle(paths):
                         auto_rules=["formes-composees"]).test_client()
     client.post("/login", json={"pin": PIN})
 
-    assert client.get("/api/stats").get_json()["handled_by_rules"] == 2  # APRIORI et CAVA
+    assert client.get("/api/stats").get_json()["handled_by_rules"] == 1  # APRIORI seulement
