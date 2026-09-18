@@ -24,7 +24,7 @@ class FakeExport:
     def __init__(self):
         self.calls = 0
 
-    def __call__(self, db_path, decisions_path, out_path):
+    def __call__(self, db_path, decisions_path, out_path, auto_rules=(), filter_level="aucun"):
         self.calls += 1
         return {"exported": 7, "deleted_by_author": 1}
 

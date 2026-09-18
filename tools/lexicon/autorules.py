@@ -19,11 +19,18 @@ from pathlib import Path
 
 # Les règles parlent du mot (`w`) et de son lemme (`l`)
 FROM_CLAUSE = "words w LEFT JOIN words l ON l.norm = w.lemma_norm"
-# Un mot a plusieurs graphies (`["a priori", "à priori"]`) : il suffit que **l'une** d'elles soit
-# en plusieurs mots pour que le mot en soit un. Ne regarder que la première en laissait passer.
-COMPOSED_FORM = ("EXISTS (SELECT 1 FROM json_each(w.display_forms) "
-                 "WHERE json_each.value LIKE '% %' OR json_each.value LIKE '%''%' "
-                 "OR json_each.value LIKE '%’%')")
+# La graphie affichée — celle qui part dans le lexique exporté. C'est sur elle que porte la mesure
+# (119 mots triés à la main, 119 supprimés), donc c'est elle que la règle de suppression regarde.
+COMPOSED_FORM = ("(json_extract(w.display_forms, '$[0]') LIKE '% %' "
+                 "OR json_extract(w.display_forms, '$[0]') LIKE '%''%' "
+                 "OR json_extract(w.display_forms, '$[0]') LIKE '%’%')")
+
+# N'importe laquelle des graphies. Beaucoup de mots courants ont une graphie secondaire en deux mots
+# (« avoir » / « à voir », « savoir » / « s'avoir ») : ce test ne sert donc **jamais** à supprimer,
+# seulement à écarter un mot du regroupement par famille, où il n'a rien à faire.
+ANY_COMPOSED_FORM = ("EXISTS (SELECT 1 FROM json_each(w.display_forms) "
+                     "WHERE json_each.value LIKE '% %' OR json_each.value LIKE '%''%' "
+                     "OR json_each.value LIKE '%’%')")
 
 
 @dataclass(frozen=True)
@@ -101,11 +108,17 @@ def save_enabled(path, ids) -> tuple[str, ...]:
 
 
 def condition(ids) -> str:
-    """Condition SQL vraie pour les mots visés par au moins une règle activée (vide si aucune)."""
+    """Condition SQL vraie pour les mots visés par au moins une règle activée (vide si aucune).
+
+    Les mots très courants (`suggestion = 'keep'`, zipf ≥ 3,5) sont hors d'atteinte des règles :
+    ils ne passent déjà pas par le tri, et une règle ne doit jamais les retirer du lexique.
+    Sans cette garde, « est », « avec » ou « avoir » disparaîtraient des grilles.
+    """
     enabled = _validated(ids)
     if not enabled:
         return ""
-    return "(" + " OR ".join(RULES_BY_ID[rule_id].sql for rule_id in enabled) + ")"
+    rules = " OR ".join(RULES_BY_ID[rule_id].sql for rule_id in enabled)
+    return f"(w.suggestion != 'keep' AND ({rules}))"
 
 
 def matches(db_path, ids) -> set[str]:
@@ -135,9 +148,11 @@ def preview(db_path, decisions_path, ids=None, sample: int = 10) -> dict:
         for rule in RULES:
             if ids is not None and rule.id not in ids:
                 continue
+            # Même garde que `condition` : l'aperçu ne doit pas annoncer des mots que la règle
+            # ne touchera jamais (les très courants sont hors d'atteinte).
             rows = connection.execute(
                 f"SELECT w.norm, w.length, json_extract(w.display_forms, '$[0]') FROM {FROM_CLAUSE} "
-                f"WHERE {rule.sql} ORDER BY w.queue_order"
+                f"WHERE w.suggestion != 'keep' AND ({rule.sql}) ORDER BY w.queue_order"
             ).fetchall()
             concerned = [row for row in rows if row[0] not in kept]
             report[rule.id] = {
