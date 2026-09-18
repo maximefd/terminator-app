@@ -44,6 +44,9 @@ def parse_args():
     parser.add_argument("--html", help="Chemin d'un rapport HTML visuel (optionnel).")
     parser.add_argument("--restart-unit", type=int, default=None,
                         help="Unité des redémarrages en appels récursifs (0 : un seul essai ; défaut : réglage du générateur).")
+    parser.add_argument("--min-safe-candidates", type=int, default=None,
+                        help="Seuil du forward checking : un emplacement croisé doit garder au moins N candidats "
+                             "(minimum 2 ; défaut : réglage du solveur).")
     return parser.parse_args()
 
 
@@ -70,11 +73,14 @@ def percentile(values, pct):
     return ordered[index]
 
 
-def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None):
+def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None,
+               min_safe_candidates=None):
     """Génère une grille par seed pour un layout et collecte les mesures."""
     runs, grids = [], []
     layout_name = layout_id(layout_path)
     restart = {} if restart_unit is None else {"restart_unit_calls": restart_unit or None}
+    if min_safe_candidates is not None:
+        restart["min_safe_candidates"] = min_safe_candidates
     for seed in range(seeds):
         print(f"  {layout_name} seed={seed}...", end="", flush=True)
         start = time.perf_counter()
@@ -236,7 +242,8 @@ def main():
                         "cpu_count": os.cpu_count()},
         "config": {"seeds": args.seeds, "time_budget_s": args.time_budget,
                    "dictionary": os.path.basename(args.dictionary), "dictionary_words": len(all_words),
-                   "restart_unit_calls": args.restart_unit},
+                   "restart_unit_calls": args.restart_unit,
+                   "min_safe_candidates": args.min_safe_candidates},
         "layouts": [],
     }
     grids_by_layout = {}
@@ -254,7 +261,8 @@ def main():
             if (w, h) != (width, height):
                 continue
             result, grids = run_layout(width, height, layout_path, format_words, format_trie,
-                                       args.seeds, args.time_budget, args.restart_unit)
+                                       args.seeds, args.time_budget, args.restart_unit,
+                                       args.min_safe_candidates)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 

@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+from engine.grid_solver import GridSolver
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
 from grid_generator import GridGenerator, LayoutNotFoundError, luby
@@ -125,6 +126,15 @@ def test_an_impossible_must_word_is_named_after_the_failure(small_trie):
 
     assert not generator.generate()
     assert generator.unplaced_must_words == ["ZZZZZ"]
+
+
+def test_the_forward_checking_threshold_reaches_the_solver(small_words, small_trie):
+    """Réglable pour les mesures (#61) ; sans réglage, le solveur applique son minimum."""
+    default = make_generator(small_words, small_trie, seed=3)
+    tuned = make_generator(small_words, small_trie, seed=3, min_safe_candidates=5)
+
+    assert default.solver.min_safe_candidates == GridSolver.MIN_SAFE_CANDIDATES == 2
+    assert tuned.solver.min_safe_candidates == 5
 
 
 def test_each_placed_word_reports_its_pool(small_words, small_trie):

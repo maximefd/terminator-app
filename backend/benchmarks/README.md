@@ -31,17 +31,19 @@ Pour chaque layout : taux de succès dans le budget, temps p50 / p95 / max, nomb
 
 Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` complet, 20 seeds, budget 20 s, exécution seule.
 
-**Les 16 layouts du catalogue réussissent 20 fois sur 20** : 320 générations, 320 réussites.
+**Les 21 layouts du catalogue réussissent 20 fois sur 20** : 420 générations, 420 réussites.
 
 | Layout | Mots | Succès | p50 | p95 |
 |--------|------|--------|-----|-----|
-| 6x7-001 à 005 | 12-13 | 20/20 | 0,04 à 0,08 s | 0,13 à 0,32 s |
-| 7x9-001 | 20 | 20/20 | 0,18 s | 0,55 s |
-| 11x6-001 | 21 | 20/20 | 0,45 s | 1,10 s |
-| 11x9-001 | 33 | 20/20 | 0,70 s | 4,21 s |
-| 14x9-001 | 38 | 20/20 | 1,39 s | 9,58 s |
-| 10x13-001 à 006 | 41-43 | 20/20 | 0,60 à 2,42 s | 1,94 à 13,50 s |
-| 13x16-001 | 61 | 20/20 | 1,90 s | 6,74 s |
+| 6x7-001 à 005 | 12-13 | 20/20 | 0,05 à 0,08 s | 0,13 à 0,15 s |
+| 7x9-001 | 20 | 20/20 | 0,19 s | 0,45 s |
+| 11x6-001 | 21 | 20/20 | 0,41 s | 1,09 s |
+| 11x9-001 | 33 | 20/20 | 0,70 s | 1,29 s |
+| 14x9-001 | 38 | 20/20 | 1,55 s | 3,75 s |
+| 10x13-001 à 006 | 41-43 | 20/20 | 0,58 à 1,09 s | 0,93 à 3,44 s |
+| 11x17-001 et 002 | 61-62 | 20/20 | 1,50 à 1,79 s | 4,62 à 9,89 s |
+| 13x16-001 à 003 | 61-64 | 20/20 | 1,03 à 3,27 s | 2,58 à 12,72 s |
+| 13x18-001 | 81 | 20/20 | 1,99 s | 14,57 s |
 
 Historique sur les deux layouts d'origine :
 
@@ -71,6 +73,28 @@ Ni le réglage des redémarrages, ni le budget, ni le vocabulaire (67 000 mots d
 Un balayage du catalogue a montré un mur net **entre 21 et 33 mots** : 100 % de réussite en dessous, 0 % au-dessus. Trop tôt et trop brutal pour une limite naturelle. En cause, `_is_placement_valid` : il reconstruisait la suite de lettres perpendiculaire et exigeait qu'elle existe au dictionnaire dès deux lettres, sans distinguer un mot **terminé** d'un mot **en cours d'écriture**. Deux rangées voisines traversant un emplacement de 5 cases y laissent « AB » : le solveur refusait, alors que le mot final pouvait être « TABLE ».
 
 Les petites grilles referment leurs croisements tout de suite, ce qui masquait le défaut. Depuis la correction (seuls les mots terminés sont vérifiés), les 16 layouts passent à 20/20, 13×16 compris. Les optimisations envisagées avant d'avoir trouvé la cause — propagation des lettres possibles, tri anticipatif des candidats, retour arrière dirigé par le conflit — restent des pistes valables mais ne sont plus nécessaires.
+
+## La fin de partie des grandes grilles (#61, septembre 2026)
+
+Après l'ajout de cinq grands layouts au catalogue, trois n'atteignaient pas le budget : 13x16-002 15/20, 13x18-001 17/20, 13x16-003 19/20. L'issue accusait l'unité de redémarrage, calibrée sur le 11×6. **C'était faux**, et les données déjà mesurées suffisaient à le montrer.
+
+| Question | Mesure | Réponse |
+|----------|--------|---------|
+| Les essais sont-ils coupés trop tôt ? | seeds en échec : 61 à 69 essais, 46 000 appels en 20 s | Non : ni les essais ni le temps ne manquent |
+| Un état fuit-il entre les redémarrages ? | mots disponibles au début de chaque essai | Non : 651 990, invariablement |
+| Les redémarrages diversifient-ils ? | débuts d'essai distincts | Oui, imparfaitement : 21 et 24 sur ~62 |
+| Où la recherche bute-t-elle ? | profondeur maximale atteinte | **62 emplacements sur 64**, encore et encore |
+
+La recherche n'échouait donc pas au début : elle arrivait à deux mots de la fin. Les emplacements restants avaient encore 4 à 13 candidats — pas d'impasse combinatoire. En cause, `MIN_SAFE_CANDIDATES = 3` : le forward checking refusait tout placement laissant un emplacement croisé avec moins de trois candidats, alors qu'en fin de grille presque tous les emplacements restants sont dans ce cas. La clôture était interdite par construction, et chaque redémarrage jetait 62 placements corrects pour repartir de zéro.
+
+Le seuil est passé à **2**, le minimum imposé par l'invariant du solveur (un emplacement entièrement déterminé par ses croisements n'a qu'un candidat ; avec un seuil ≥ 2 il est rejeté, ce qui garantit que chaque emplacement est rempli explicitement).
+
+| Seuil | Succès (21 layouts, 20 seeds) | 13x18-001 p50 | Petits formats, p50 moyen |
+|-------|-------------------------------|---------------|---------------------------|
+| 3 | 411/420 | 12,70 s | 0,167 s |
+| **2 (retenu)** | **420/420** | **1,99 s** | **0,127 s** |
+
+Aucun layout n'est dégradé, et **tout accélère**, y compris les petits formats qui n'avaient aucun problème : un seuil élevé ne protégeait pas la recherche, il l'envoyait explorer des branches plus longues.
 
 ## Index des candidats (#20, septembre 2026)
 

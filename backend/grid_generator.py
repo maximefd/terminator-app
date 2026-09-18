@@ -51,6 +51,7 @@ class GridGenerator:
         restart_unit_calls: int | None = DEFAULT_RESTART_UNIT_CALLS,
         wish_words: list[str] | tuple = (),
         must_words: list[str] | tuple = (),
+        min_safe_candidates: int | None = None,
     ):
         """
         Initialise le générateur.
@@ -65,6 +66,7 @@ class GridGenerator:
             layout_path (str, optional): Layout précis à utiliser (sinon tirage aléatoire dans le format).
             time_budget_s (float, optional): Temps maximum accordé à la génération (tous essais confondus).
             restart_unit_calls (int, optional): Unité des redémarrages en appels récursifs (None : un seul essai).
+            min_safe_candidates (int, optional): Seuil du forward checking (None : réglage du solveur).
             wish_words (list[str], optional): Mots souhaités (dictionnaires personnels et thématiques),
                 essayés avant le lexique commun et valides aux croisements même s'ils n'y sont pas (#17).
             must_words (list[str], optional): Mots obligatoires, essayés avant tous les autres.
@@ -74,6 +76,8 @@ class GridGenerator:
         self.seed = seed
         self.time_budget_s = time_budget_s
         self.restart_unit_calls = restart_unit_calls
+        # None : on laisse le solveur appliquer son propre défaut (MIN_SAFE_CANDIDATES)
+        self.min_safe_candidates = min_safe_candidates
         self.attempts: list[dict] = []
         self._timed_out = False
         # Doublons écartés, ordre stable : le placement des mots obligatoires doit rester reproductible
@@ -111,8 +115,9 @@ class GridGenerator:
 
     def _new_solver(self, rng: random.Random, time_budget_s: float | None, attempt: int) -> GridSolver:
         max_calls = None if self.restart_unit_calls is None else self.restart_unit_calls * luby(attempt)
+        threshold = {} if self.min_safe_candidates is None else {"min_safe_candidates": self.min_safe_candidates}
         return GridSolver(self.template, self.repository, self.finder, time_budget_s=time_budget_s,
-                          max_recursive_calls=max_calls, rng=rng, must_words=self.must_words)
+                          max_recursive_calls=max_calls, rng=rng, must_words=self.must_words, **threshold)
 
     def _find_layout_path(self, width: int, height: int) -> str | None:
         """Trouve un fichier de layout au hasard pour la taille donnée."""

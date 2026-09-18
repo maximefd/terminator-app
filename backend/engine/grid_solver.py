@@ -23,7 +23,12 @@ class GridSolver:
 
     # --- CONSTANTE ---
     MAX_CANDIDATES_PER_SLOT = 100  # Réduit pour accélérer le backtracking
-    MIN_SAFE_CANDIDATES = 3  # Nombre minimum de candidats pour considérer un slot "sûr" (Forward Checking strict)
+    # Nombre minimum de candidats pour considérer un slot "sûr" (Forward Checking).
+    # Mesuré (#61) : à 3, les grandes grilles atteignaient 62 mots sur 64 puis se voyaient interdire
+    # la clôture, parce qu'en fin de grille presque tous les emplacements restants ont peu de
+    # candidats. À 2 — le minimum autorisé par l'invariant ci-dessous — les 21 layouts du catalogue
+    # réussissent 20/20 (contre 411/420) et les temps baissent partout, petits formats compris.
+    MIN_SAFE_CANDIDATES = 2
     # ---------------------------------------------
 
     LETTER_SCORES = {
@@ -696,12 +701,13 @@ class GridSolver:
     
     def _forward_check(self, word: str, slot: dict, original_state: list[tuple[int, int, str]]) -> bool:
         """
-        Forward Checking STRICT : Vérifie que placer ce mot ne crée pas de dead-end.
+        Forward Checking : vérifie que placer ce mot ne crée pas de dead-end.
         Pour chaque slot intersecté non rempli, vérifie qu'il aura encore
         au moins MIN_SAFE_CANDIDATES candidats valides après le placement.
-        
-        Logique : Exiger au moins 5 candidats (au lieu de 1) donne une marge de sécurité
-        et évite d'explorer des branches qui mènent presque toujours à des impasses.
+
+        Le seuil est au minimum de l'invariant (2). Exiger davantage paraît prudent mais coûte cher :
+        un emplacement croisé qui ne garde que deux candidats est souvent la seule façon de terminer
+        une grande grille, et le refuser envoie la recherche explorer des branches plus longues (#61).
         """
         # Collecter tous les slots intersectés uniques
         intersected_slots = set()
@@ -737,7 +743,7 @@ class GridSolver:
             
             if nb_candidates < self.min_safe_candidates:
                 # DEAD-END détecté : ce placement laisse trop peu de candidats
-                logging.debug(f"        FC STRICT: Slot {slot_id} n'aurait que {nb_candidates} candidat(s) (min: {self.min_safe_candidates}, pattern: '{future_pattern}')")
+                logging.debug(f"        FC: Slot {slot_id} n'aurait que {nb_candidates} candidat(s) (min: {self.min_safe_candidates}, pattern: '{future_pattern}')")
                 return False
         
         # Tous les slots intersectés ont encore des candidats
