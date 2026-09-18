@@ -137,13 +137,79 @@ def test_an_invalid_decision_is_refused(logged, paths):
     assert decisions(paths) == {}
 
 
-def test_a_family_without_anything_left_to_sort_is_refused(logged):
+def test_a_family_already_sorted_is_not_an_error(logged):
+    """La carte affichée peut être périmée : bloquer l'écran jusqu'au rechargement était le bug."""
     logged.post("/api/decisions/family", json={"word": "OUVRAGER", "decision": DELETE}, headers=API)
 
     response = logged.post("/api/decisions/family", json={"word": "OUVRAGER", "decision": DELETE}, headers=API)
 
+    assert response.status_code == 200
+    assert response.get_json() == {"words": [], "decision": DELETE, "already_sorted": True,
+                                   "lexicon_export": None}
+
+
+def test_an_unknown_word_is_still_refused(logged):
+    response = logged.post("/api/decisions/family", json={"word": "ZORGLUB"}, headers=API)
+
     assert response.status_code == 400
-    assert "Aucun mot" in response.get_json()["error"]
+    assert "inconnu" in response.get_json()["error"]
+
+
+# --- Les mots d'une famille ne se trient qu'au même endroit ---
+
+def queue_words(client, **params):
+    response = client.get("/api/queue", query_string=params)
+    assert response.status_code == 200, response.get_json()
+    return {card["norm"] for card in response.get_json()["cards"]}
+
+
+def test_family_words_leave_the_word_by_word_queue(logged):
+    assert "OUVRAGER" in families(logged)
+
+    queued = queue_words(logged)
+
+    assert {"OUVRAGER", "OUVRAGEAMES", "OUVRAGEA", "OUVRAGERA"}.isdisjoint(queued)
+
+
+def test_a_word_without_a_family_stays_in_the_queue(logged):
+    # AABAM n'a ni lemme ni forme voisine : rien ne le montrerait dans Familles
+    assert "AABAM" not in families(logged)
+
+    assert "AABAM" in queue_words(logged)
+
+
+def test_a_composed_form_stays_in_the_queue_because_no_family_shows_it(logged):
+    """Une forme en plusieurs mots n'entre dans aucune famille : la retirer la rendrait intriable."""
+    assert "CAVA" not in families(logged)
+
+    assert "CAVA" in queue_words(logged)
+
+
+def test_a_family_shrunk_below_the_minimum_gives_its_words_back_to_the_queue(logged):
+    logged.post("/api/decisions", json={"words": ["OUVRAGEA", "OUVRAGERA"], "decision": DELETE}, headers=API)
+
+    assert "OUVRAGER" not in families(logged)
+    assert {"OUVRAGER", "OUVRAGEAMES"} <= queue_words(logged)
+
+
+def test_the_queue_card_no_longer_carries_the_internal_column(logged):
+    response = logged.get("/api/queue")
+
+    assert all("composed" not in card for card in response.get_json()["cards"])
+
+
+# --- Filtre par suggestion ---
+
+def test_the_suggestion_filter_selects_the_families(logged):
+    everything = families(logged, min_length=6, max_length=11)
+    assert "OUVRAGER" in everything
+
+    suggestion = everything["OUVRAGER"]["forms"][0]["suggestion"]
+    assert "OUVRAGER" in families(logged, min_length=6, max_length=11, suggestion=suggestion)
+
+
+def test_an_unknown_suggestion_is_refused(logged):
+    assert logged.get("/api/families", query_string={"suggestion": "peut-etre"}).status_code == 400
 
 
 def test_writing_still_requires_the_csrf_header(logged, paths):
