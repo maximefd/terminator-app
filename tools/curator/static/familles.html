@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Familles — Curateur Terminator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">🧩 Curateur</span>
+    <nav class="nav" aria-label="Sections">
+      <a href="/">Trier les mots</a>
+      <a href="/familles" aria-current="page">Familles</a>
+      <a href="/revision">Révision</a>
+      <a href="/layouts">Layouts</a>
+    </nav>
+    <p class="stats" aria-live="polite">
+      <span>famille <strong id="stat-position">…</strong></span>
+    </p>
+  </header>
+
+  <section class="filters" aria-label="Filtres">
+    <label>Longueur des formes
+      <select id="filter-length">
+        <option value="2-5">2 à 5 lettres</option>
+        <option value="6-8">6 à 8 lettres</option>
+        <option value="9-11">9 à 11 lettres</option>
+        <option value="2-99">Toutes</option>
+      </select>
+    </label>
+  </section>
+
+  <main class="workspace">
+    <p class="intro-line muted">
+      Un verbe et ses conjugaisons se décident ensemble : une décision ici vaut pour toutes les formes
+      qui restent à trier. Les mots courants et ceux déjà décidés ne sont jamais touchés.
+    </p>
+
+    <article id="card" class="card family-card" aria-live="polite" aria-label="Famille à trier">
+      <div class="card-top">
+        <span id="card-count" class="badge"></span>
+        <span id="card-total" class="muted"></span>
+      </div>
+      <h1 id="card-lemma" class="word"></h1>
+      <p id="card-definition" class="definition"></p>
+      <dl class="meta">
+        <div><dt>Fréquence</dt><dd><span class="freq" aria-hidden="true"><span id="card-freq-bar"></span></span> <span id="card-freq-label"></span></dd></div>
+        <div><dt>Catégorie</dt><dd id="card-pos"></dd></div>
+      </dl>
+      <h2 class="forms-title">Formes de la famille</h2>
+      <ul id="card-forms" class="family-forms"></ul>
+      <p id="card-more" class="muted" hidden></p>
+    </article>
+
+    <p id="loading" class="empty">Chargement des familles…</p>
+    <p id="empty" class="empty" hidden>Plus aucune famille à trier avec ce filtre 🎉</p>
+
+    <div class="actions">
+      <button id="btn-delete" class="danger" type="button"><span class="key">←</span> Supprimer la famille</button>
+      <button id="btn-keep" class="success" type="button">Garder la famille <span class="key">→</span></button>
+      <button id="btn-skip" type="button"><span class="key">↑</span> Passer</button>
+      <button id="btn-undo" type="button"><span class="key">↓</span> Annuler</button>
+    </div>
+
+    <p class="legend muted">
+      Clavier : <kbd>←</kbd> supprimer toute la famille · <kbd>→</kbd> la garder ·
+      <kbd>↑</kbd> passer · <kbd>↓</kbd> ou <kbd>⌫</kbd> annuler la dernière action.
+      Pour juger forme par forme, utilisez <a href="/">Trier les mots</a>.
+    </p>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/familles.js"></script>
+</body>
+</html>

@@ -78,5 +78,6 @@ def curation_stats(repository: LexiconRepository, store: DecisionStore, today: d
         ],
         "remaining_by_length": remaining,
         "totals_by_length": totals,
+        "handled_by_rules": repository.handled_by_rules(),
         "achievements": achievements_for(metrics),
     }

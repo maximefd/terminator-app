@@ -63,6 +63,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - `python -m tools.lexicon export --filtre moyen` : ne garde que les mots connus de Lexique, définis pour eux-mêmes ou formés sur un lemme de fréquence zipf ≥ 2 (191 709 mots de 11 lettres ou moins, contre 393 720) ;
   - `python -m tools.lexicon revision` : décisions douteuses (famille jugée à l'opposé, mot courant supprimé, rafale de décisions dans la même seconde) ; confirmer ou corriger écrit un lot marqué `revision`, et le mot ne revient plus ;
   - `stats` compte à part les mots traités par les règles (`handled_by_rules`).
+- Curateur : deux nouveaux onglets ([ADR 0008](docs/adr/0008-regles-automatiques-et-revision.md)) :
+  - **Familles** (`/familles`) : une carte par lemme (définition, fréquence, toutes ses formes), une décision pour toute la famille (`←` supprimer, `→` garder, `↑` passer, `↓` annuler) ; les formes déjà décidées et les mots très courants ne sont jamais touchés ;
+  - **Révision** (`/revision`) : les décisions douteuses reproposées une par une, à confirmer (`→`) ou inverser (`←`) ; un mot revu ne revient plus ;
+  - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
