@@ -85,13 +85,14 @@
 
   function filters() {
     const [min, max] = $("filter-length").value.split("-").map(Number);
-    return { min, max };
+    return { min, max, suggestion: $("filter-suggestion").value };
   }
 
   function fillBuffer() {
     if (state.fetching || state.exhausted) return state.fetching || Promise.resolve();
-    const { min, max } = filters();
+    const { min, max, suggestion } = filters();
     const params = new URLSearchParams({ after: state.after, limit: FETCH_SIZE, min_length: min, max_length: max });
+    if (suggestion) params.set("suggestion", suggestion);
     state.fetching = api(`/api/families?${params}`)
       .then((data) => {
         state.after = data.next_after;
@@ -112,42 +113,61 @@
     return "très courant";
   }
 
-  // --- Une forme de la famille, triable seule ---
+  // --- Une forme de la famille : une puce compacte, triable seule ---
 
   function formNode(card, form) {
     const item = element("li", "form");
     if (form.protected) item.classList.add("protected");
     if (form.decided) item.classList.add("decided");
+    if (state.open === form.norm) item.classList.add("open");
 
-    const head = element("button", "form-head");
-    head.type = "button";
-    head.append(element("span", "form-text", form.form));
-    if (form.protected) head.append(element("small", "muted", "mot courant, gardé d'office"));
-    else if (form.decided) head.append(element("small", "muted", "déjà décidé"));
-    else head.append(element("small", "muted", `${form.length} lettres`));
-    head.addEventListener("click", () => {
+    const chip = element("button", "form-chip");
+    chip.type = "button";
+    chip.setAttribute("aria-expanded", String(state.open === form.norm));
+    chip.append(element("span", "form-text", form.form));
+    if (form.protected) chip.append(element("small", "muted", "gardé"));
+    else if (form.decided) chip.append(element("small", "muted", "décidé"));
+    chip.addEventListener("click", () => {
       state.open = state.open === form.norm ? null : form.norm;
       render();
     });
-    item.append(head);
-
-    if (state.open === form.norm) {
-      const details = element("div", "form-details");
-      details.append(element("p", "form-definition", form.definition || "Aucune définition trouvée dans le Wiktionnaire."));
-      if (!form.protected && !form.decided) {
-        const actions = element("div", "form-actions");
-        const remove = element("button", "danger small", "Supprimer ce mot");
-        remove.type = "button";
-        remove.addEventListener("click", () => decideOne(card, form, "delete"));
-        const keep = element("button", "success small", "Garder ce mot");
-        keep.type = "button";
-        keep.addEventListener("click", () => decideOne(card, form, "keep"));
-        actions.append(remove, keep);
-        details.append(actions);
-      }
-      item.append(details);
-    }
+    item.append(chip);
     return item;
+  }
+
+  // Le détail s'ouvre SOUS le nuage, jamais dedans : la carte ne s'allonge que d'un bloc, et les
+  // boutons de décision restent atteignables sans faire défiler la page.
+  function renderDetail(card) {
+    const panel = $("form-detail");
+    const form = card && card.forms.find((item) => item.norm === state.open);
+    panel.hidden = !form;
+    if (!form) {
+      panel.replaceChildren();
+      return;
+    }
+
+    const title = element("h3", "form-detail-word", form.form);
+    title.append(element("small", "muted", `${form.length} lettres`));
+    panel.replaceChildren(title, element("p", "form-definition",
+      form.definition || "Aucune définition trouvée dans le Wiktionnaire."));
+
+    if (form.protected) {
+      panel.append(element("p", "muted", "Mot courant : gardé d'office, jamais supprimé avec la famille."));
+      return;
+    }
+    if (form.decided) {
+      panel.append(element("p", "muted", "Déjà décidé."));
+      return;
+    }
+    const actions = element("div", "form-actions");
+    const remove = element("button", "danger small", "Supprimer ce mot");
+    remove.type = "button";
+    remove.addEventListener("click", () => decideOne(card, form, "delete"));
+    const keep = element("button", "success small", "Garder ce mot");
+    keep.type = "button";
+    keep.addEventListener("click", () => decideOne(card, form, "keep"));
+    actions.append(remove, keep);
+    panel.append(actions);
   }
 
   function render() {
@@ -159,6 +179,7 @@
     $("stat-position").textContent = state.decided ? plural(state.decided, "décidée") : "—";
 
     if (!card) {
+      renderDetail(null);
       if (!state.exhausted) fillBuffer().then(() => { if (state.buffer.length || state.exhausted) render(); });
       return;
     }
@@ -182,6 +203,7 @@
     $("card-pos").textContent = pos ? (POS_LABELS[pos] || card.pos) : "—";
 
     $("card-forms").replaceChildren(...card.forms.map((form) => formNode(card, form)));
+    renderDetail(card);
     const hidden = card.total_forms - card.forms.length;
     $("card-more").hidden = hidden <= 0;
     if (hidden > 0) $("card-more").textContent = `… et ${plural(hidden, "autre forme")}.`;
@@ -223,6 +245,13 @@
     render();
     enqueue(() => post("/api/decisions/family", { word: card.norm, decision }))
       .then((data) => {
+        if (data.already_sorted) {
+          // La famille avait été triée ailleurs : la carte était périmée, on passe simplement
+          state.decided = Math.max(0, state.decided - 1);
+          render();
+          toast(`« ${card.lemma} » était déjà triée`);
+          return;
+        }
         const verb = decision === "delete" ? "supprimées" : "gardées";
         toast(`${plural(data.words.length, "forme")} de « ${card.lemma} » ${verb} · ↓ pour annuler`);
       })
@@ -266,7 +295,7 @@
   // --- Clavier (AZERTY : flèches et Retour arrière) ---
 
   document.addEventListener("keydown", (event) => {
-    if (event.target.closest("select, input, textarea, a, .form-details")) return;
+    if (event.target.closest("select, input, textarea, a, .form-detail")) return;
     const handlers = {
       ArrowLeft: () => decide("delete"),
       ArrowRight: () => decide("keep"),
@@ -287,16 +316,22 @@
   $("btn-keep").addEventListener("click", () => decide("keep"));
   $("btn-skip").addEventListener("click", skip);
   $("btn-undo").addEventListener("click", undo);
-  $("filter-length").addEventListener("change", () => {
-    storage.set(STORAGE_FILTER, $("filter-length").value);
+  function onFiltersChange() {
+    storage.set(STORAGE_FILTER, { length: $("filter-length").value, suggestion: $("filter-suggestion").value });
     state.buffer = [];
     state.after = -1;
     state.exhausted = false;
     state.open = null;
     render();
-  });
+  }
 
-  const saved = storage.get(STORAGE_FILTER, "2-5");
-  if (saved) $("filter-length").value = saved;
+  $("filter-length").addEventListener("change", onFiltersChange);
+  $("filter-suggestion").addEventListener("change", onFiltersChange);
+
+  const saved = storage.get(STORAGE_FILTER, {});
+  // Ancien format : seule la longueur était retenue
+  const savedFilters = typeof saved === "string" ? { length: saved } : saved;
+  if (savedFilters.length) $("filter-length").value = savedFilters.length;
+  if (savedFilters.suggestion) $("filter-suggestion").value = savedFilters.suggestion;
   render();
 })();

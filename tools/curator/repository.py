@@ -54,11 +54,19 @@ class LexiconRepository:
     def _card(row: sqlite3.Row) -> dict:
         card = dict(row)
         card["forms"] = json.loads(card.pop("display_forms"))
+        card.pop("composed", None)  # colonne de travail de la file, pas une donnée de la carte
         return card
 
     def queue(self, after: int, limit: int, min_length: int, max_length: int,
               suggestion: str | None, is_decided: Callable[[str], bool]) -> tuple[list[dict], int]:
         """Prochains mots à trier (hors mots courants, mots décidés et mots visés par une règle).
+
+        Les mots d'une vraie famille en sont retirés : ils se trient ensemble dans « Familles », et
+        les proposer aux deux endroits périmait les cartes déjà chargées (une forme décidée ici
+        vidait la carte famille affichée là-bas).
+
+        Une forme en plusieurs mots n'entre jamais dans une famille : elle reste donc dans cette
+        file, sans quoi plus rien ne permettrait de la trier.
 
         Renvoie les cartes et la position de reprise (`queue_order` du dernier mot examiné).
         """
@@ -68,24 +76,53 @@ class LexiconRepository:
         while len(cards) < limit:
             params = [cursor] + ([suggestion] if suggestion else []) + [min_length, max_length]
             rows = self.connection().execute(
-                f"SELECT {FIELDS} FROM {FROM_WORDS} WHERE w.queue_order > ? AND {suggestion_condition} "
+                f"SELECT {FIELDS}, {COMPOSED_FORM} AS composed FROM {FROM_WORDS} "
+                f"WHERE w.queue_order > ? AND {suggestion_condition} "
                 f"AND w.length BETWEEN ? AND ? AND {self._not_ruled_out} "
                 f"ORDER BY w.queue_order LIMIT {SCAN_BATCH}",
                 params,
             ).fetchall()
             if not rows:
                 break
+            sortable = self.family_pending_counts(
+                [row["lemma_norm"] or row["norm"] for row in rows if not row["composed"]], is_decided)
             for row in rows:
                 cursor = row["queue_order"]
                 if is_decided(row["norm"]):
+                    continue
+                family = row["lemma_norm"] or row["norm"]
+                if not row["composed"] and sortable.get(family, 0) >= MIN_FAMILY_FORMS:
                     continue
                 cards.append(self._card(row))
                 if len(cards) == limit:
                     break
         return cards, cursor
 
+    def family_pending_counts(self, families: list[str], is_decided: Callable[[str], bool]) -> dict[str, int]:
+        """Formes encore à trier dans chacune de ces familles, comptées **exactement** comme `family_card`.
+
+        Les deux comptages doivent rester identiques : la file mot à mot écarte les mots dont la
+        famille atteint `MIN_FAMILY_FORMS`, et la page Familles n'affiche que celles-là. Un écart
+        rendrait des mots invisibles des deux côtés.
+        """
+        counts: dict[str, int] = {}
+        unique = list(dict.fromkeys(families))
+        for start in range(0, len(unique), 900):  # limite de variables SQLite
+            chunk = unique[start:start + 900]
+            placeholders = ", ".join("?" for _ in chunk)
+            rows = self.connection().execute(
+                f"SELECT COALESCE(w.lemma_norm, w.norm) AS family, w.norm AS norm FROM {FROM_WORDS} "
+                f"WHERE COALESCE(w.lemma_norm, w.norm) IN ({placeholders}) AND w.suggestion != 'keep' "
+                f"AND NOT {COMPOSED_FORM} AND {self._not_ruled_out}",
+                chunk,
+            )
+            for row in rows:
+                if not is_decided(row["norm"]):
+                    counts[row["family"]] = counts.get(row["family"], 0) + 1
+        return counts
+
     def families(self, after: int, limit: int, min_length: int, max_length: int,
-                 is_decided: Callable[[str], bool]) -> tuple[list[dict], int]:
+                 is_decided: Callable[[str], bool], suggestion: str | None = None) -> tuple[list[dict], int]:
         """Prochaines familles à trier : un lemme, sa définition, sa fréquence et ses formes.
 
         Une famille doit avoir au moins `MIN_FAMILY_FORMS` formes encore à trier : en dessous,
@@ -94,16 +131,20 @@ class LexiconRepository:
 
         Les familles sont rangées comme le premier de leurs mots dans la file (les plus courts
         d'abord), ce qui garde la même position de reprise que le tri mot à mot.
+
+        `suggestion` retient les familles dont au moins une forme à trier porte cette suggestion,
+        comme le filtre du tri mot à mot.
         """
+        suggestion_condition = "w.suggestion = ?" if suggestion else "w.suggestion != 'keep'"
         families: list[dict] = []
         cursor = after
         while len(families) < limit:
             rows = self.connection().execute(
                 f"SELECT COALESCE(w.lemma_norm, w.norm) AS family, MIN(w.queue_order) AS family_order "
-                f"FROM {FROM_WORDS} WHERE w.queue_order > ? AND w.suggestion != 'keep' "
+                f"FROM {FROM_WORDS} WHERE w.queue_order > ? AND {suggestion_condition} "
                 f"AND w.length BETWEEN ? AND ? AND NOT {COMPOSED_FORM} AND {self._not_ruled_out} "
                 f"GROUP BY family ORDER BY family_order LIMIT {SCAN_BATCH}",
-                [cursor, min_length, max_length],
+                [cursor] + ([suggestion] if suggestion else []) + [min_length, max_length],
             ).fetchall()
             if not rows:
                 break

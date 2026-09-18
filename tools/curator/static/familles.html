@@ -29,7 +29,16 @@
         <option value="2-5">2 à 5 lettres</option>
         <option value="6-8">6 à 8 lettres</option>
         <option value="9-11">9 à 11 lettres</option>
+        <option value="12-99">12 lettres et plus</option>
         <option value="2-99">Toutes</option>
+      </select>
+    </label>
+    <label>Suggestion
+      <select id="filter-suggestion">
+        <option value="">Toutes</option>
+        <option value="likely_delete">Probablement rare</option>
+        <option value="review">À examiner</option>
+        <option value="likely_keep">Probablement courant</option>
       </select>
     </label>
   </section>
@@ -37,7 +46,8 @@
   <main class="workspace">
     <p class="intro-line muted">
       Un verbe et ses conjugaisons se décident ensemble. Une famille compte au moins trois formes à
-      trier : en dessous, les mots restent dans <a href="/">Trier les mots</a>.
+      trier : en dessous, les mots restent dans <a href="/">Trier les mots</a>, où les mots d'une
+      famille n'apparaissent plus.
       Si une famille mélange deux mots différents, touchez une forme pour la trier à part.
     </p>
 
@@ -55,6 +65,7 @@
       <h2 class="forms-title">Formes de la famille <span class="muted">— touchez un mot pour voir sa définition et le trier seul</span></h2>
       <ul id="card-forms" class="family-forms"></ul>
       <p id="card-more" class="muted" hidden></p>
+      <div id="form-detail" class="form-detail" hidden></div>
     </article>
 
     <p id="loading" class="empty">Chargement des familles…</p>
