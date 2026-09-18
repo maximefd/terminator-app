@@ -14,7 +14,7 @@
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
 | 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
-| 3 — Moteur avec mots imposés | 🚧 redémarrages (#19), index des candidats (#20) et correction de la validation croisée (#57) : 20/20 sur les layouts du benchmark ; contrat de génération accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16) ; pools de mots (#17) et mots obligatoires (#18) faits ; seuil du forward checking corrigé (#61) et plafond de candidats porté à 300 : **les 21 layouts du catalogue réussissent 20/20**, soit le critère de sortie de la phase ; tri par fréquence mesuré mais **désactivé par défaut** (il ramène les mots absents des corpus de 33 % à 17 % en faisant tomber sept layouts sous le critère — disponible par requête) ; dictionnaires thématiques (`wish_dictionary_ids`) faits ; reste le ratio visé (`target_wish_ratio`), et la saisie en Phase 4 |
+| 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve** : la baseline ne comporte aucun cas avec mots obligatoires, alors que l'ADR l'exigeait. Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
 | 4 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
@@ -152,6 +152,15 @@ Objectif : recopier vite et sans erreur les grilles trouvées dans des magazines
 ---
 
 ## Phase 4 — UX : génération et clarté globale
+
+**État de départ (septembre 2026)** : l'écran de génération se limite à un menu de format et un bouton. Tout ce que
+la Phase 3 a construit — mots obligatoires, dictionnaires thématiques, tri par fréquence, provenance des mots,
+ratio atteint — existe côté API mais **n'est visible nulle part dans l'interface**. C'est l'objet de cette phase.
+
+**Prérequis backend** : « choix du layout avec aperçus » demande `layout_id` dans la requête de génération
+(`GET /api/layouts` fournit déjà les aperçus). Avec `target_wish_ratio`, ce sont les deux derniers champs du
+contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implémenter.
+
 - **Audit UX** des pages existantes et corrections.
 - **Page d'accueil** : trois blocs (« trouver le mot manquant », « remplir une grille automatiquement », « vos propres dictionnaires »), exemple visuel, appel à l'action ; mode invité.
 - **Aide intégrée** : exemples de motifs (`P??LE`), infobulles obligatoires vs souhaités, états vides qui guident.
