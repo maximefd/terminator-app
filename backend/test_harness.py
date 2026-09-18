@@ -47,6 +47,14 @@ def parse_args():
     parser.add_argument("--min-safe-candidates", type=int, default=None,
                         help="Seuil du forward checking : un emplacement croisé doit garder au moins N candidats "
                              "(minimum 2 ; défaut : réglage du solveur).")
+    parser.add_argument("--frequency-mode", default=None,
+                        choices=["none", "exact", "band", "known", "tiebreak"],
+                        help="Place de la fréquence dans le tri des candidats (défaut : réglage du solveur).")
+    parser.add_argument("--frequency-band", type=float, default=None,
+                        help="Largeur des paliers de fréquence pour le tri des candidats "
+                             "(0 : valeur exacte ; défaut : réglage du solveur).")
+    parser.add_argument("--max-candidates", type=int, default=None,
+                        help="Candidats essayés par emplacement (défaut : réglage du solveur).")
     return parser.parse_args()
 
 
@@ -74,13 +82,20 @@ def percentile(values, pct):
 
 
 def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None,
-               min_safe_candidates=None):
+               min_safe_candidates=None, frequency_mode=None, frequency_band=None,
+               max_candidates=None):
     """Génère une grille par seed pour un layout et collecte les mesures."""
     runs, grids = [], []
     layout_name = layout_id(layout_path)
     restart = {} if restart_unit is None else {"restart_unit_calls": restart_unit or None}
     if min_safe_candidates is not None:
         restart["min_safe_candidates"] = min_safe_candidates
+    if frequency_mode is not None:
+        restart["frequency_mode"] = frequency_mode
+    if frequency_band is not None:
+        restart["frequency_band"] = frequency_band
+    if max_candidates is not None:
+        restart["max_candidates"] = max_candidates
     for seed in range(seeds):
         print(f"  {layout_name} seed={seed}...", end="", flush=True)
         start = time.perf_counter()
@@ -91,12 +106,18 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
 
         grid_data = generator.get_grid_data()
         metrics = grid_data["statistics"]["metrics"]
+        placed = [word["text"] for word in grid_data["words"]]
+        zipfs = [trie.frequency(word) for word in placed]
         runs.append({
             "seed": seed,
             "success": success,
             "budget_exceeded": generator.budget_exceeded,
             "time_s": round(elapsed, 3),
             "fill_ratio": grid_data["fill_ratio"] if success else 0,
+            # Qualité des mots : un taux de succès n'en dit rien. Moyenne des zipf des mots placés
+            # (0 si le lexique n'a pas de fréquence), et part de mots totalement absents des corpus.
+            "mean_zipf": round(statistics.mean(zipfs), 3) if zipfs else None,
+            "unknown_share": round(sum(1 for z in zipfs if z == 0) / len(zipfs), 3) if zipfs else None,
             "recursive_calls": metrics["recursive_calls"],
             "backtracks": metrics["backtracks"],
             "candidates_tested": metrics["candidates_tested"],
@@ -109,6 +130,9 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
 
     times = [r["time_s"] for r in runs]
     successes = sum(r["success"] for r in runs)
+    # La qualité ne se mesure que sur les grilles réellement produites
+    quality = [r["mean_zipf"] for r in runs if r["success"] and r["mean_zipf"] is not None]
+    unknown = [r["unknown_share"] for r in runs if r["success"] and r["unknown_share"] is not None]
     summary = {
         "runs": len(runs),
         "successes": successes,
@@ -118,6 +142,8 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         "time_p95_s": percentile(times, 95),
         "time_max_s": max(times, default=None),
         "mean_backtracks": round(statistics.mean(r["backtracks"] for r in runs), 1) if runs else None,
+        "mean_zipf": round(statistics.mean(quality), 3) if quality else None,
+        "unknown_share": round(statistics.mean(unknown), 3) if unknown else None,
     }
     return {"layout": layout_name, "width": width, "height": height, "summary": summary, "runs": runs}, grids
 
@@ -243,7 +269,10 @@ def main():
         "config": {"seeds": args.seeds, "time_budget_s": args.time_budget,
                    "dictionary": os.path.basename(args.dictionary), "dictionary_words": len(all_words),
                    "restart_unit_calls": args.restart_unit,
-                   "min_safe_candidates": args.min_safe_candidates},
+                   "min_safe_candidates": args.min_safe_candidates,
+                   "frequency_mode": args.frequency_mode,
+                   "frequency_band": args.frequency_band,
+                   "max_candidates": args.max_candidates},
         "layouts": [],
     }
     grids_by_layout = {}
@@ -255,6 +284,9 @@ def main():
         format_trie = DictionnaireTrie()
         for word in format_words:
             format_trie.insert(word)
+        # Le Trie du format est reconstruit mot à mot : sans ce report, il perdrait les fréquences
+        # du lexique, et le benchmark mesurerait un moteur privé de son critère de qualité.
+        format_trie.frequencies = {word: dictionary.frequency(word) for word in format_words}
         print(f"\n--- Format {width}x{height} : {len(format_words)} mots ---")
 
         for w, h, layout_path in layouts:
@@ -262,7 +294,8 @@ def main():
                 continue
             result, grids = run_layout(width, height, layout_path, format_words, format_trie,
                                        args.seeds, args.time_budget, args.restart_unit,
-                                       args.min_safe_candidates)
+                                       args.min_safe_candidates, args.frequency_mode,
+                                       args.frequency_band, args.max_candidates)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 
@@ -273,8 +306,9 @@ def main():
     print(f"\nRésultats JSON : {os.path.abspath(args.output)}")
     for layout in report["layouts"]:
         s = layout["summary"]
+        quality = "" if s["mean_zipf"] is None else f", zipf moyen {s['mean_zipf']}, inconnus {s['unknown_share']:.0%}"
         print(f"  {layout['layout']}: succès {s['success_rate']:.0%}, p50 {s['time_p50_s']}s, "
-              f"p95 {s['time_p95_s']}s, timeouts {s['timeouts']}")
+              f"p95 {s['time_p95_s']}s, timeouts {s['timeouts']}{quality}")
 
     if args.html:
         generate_html_report(report, grids_by_layout, args.html)

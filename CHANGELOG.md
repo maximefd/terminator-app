@@ -5,6 +5,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Fréquence des mots dans le moteur (Phase 3) : le lexique curé porte une colonne zipf que le chargeur jetait. Elle est désormais lue, et `frequency_mode` (requête d'API, `--frequency-mode` au benchmark) choisit la place de la fréquence dans le tri des candidats. **Désactivé par défaut** : mesuré, le tri par fréquence ramène les mots absents des corpus de 33 % à 17 % des mots placés, mais fait tomber sept layouts sous 20/20 — sous le critère de la Phase 3. Le benchmark rapporte maintenant la qualité (`mean_zipf`, `unknown_share`), sans quoi rien ne mesurerait l'effet recherché ([mesures](backend/benchmarks/README.md)).
 - Pipeline du lexique (`tools/lexicon/`, Phase 1a) :
   - téléchargement de Lexique 3.83 et du Wiktionnaire avec empreintes consignées ;
   - base locale (fréquence, lemme, définition, suggestion) ;
@@ -70,6 +71,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- Plafond de candidats du solveur porté de 100 à **300** : mesuré sur les 21 layouts, 420/420 dans les deux cas, mais médiane de 0,91 s à 0,71 s et p95 du 13×18 de 14,57 s à 8,72 s. Gain sec, sans contrepartie.
 - Curateur : les mots d'une famille ne sont plus proposés dans « Trier les mots ». Ils s'y triaient en double, et décider une forme d'un côté périmait la carte affichée de l'autre. Les formes en plusieurs mots et les groupes de moins de trois formes y restent : ce sont les seuls endroits où on peut les voir.
 - Curateur : les formes d'une famille s'affichent en **nuage de puces** au lieu d'une liste, et le détail d'une forme s'ouvre sous le nuage. Une famille de trente conjugaisons tient à l'écran, boutons de décision compris, sans faire défiler la page.
 - Regroupement par famille : toutes les graphies d'un mot sont examinées, plus seulement la première. 774 mots comme `cava` (« ça va »), `aras` (« à ras ») ou `etal` (« et al. ») pouvaient former des familles. La règle de suppression, elle, continue de ne regarder que la graphie affichée : l'élargir viserait « avoir » (« à voir »), « savoir » (« s'avoir ») ou « avec » (« av. è. c. »).

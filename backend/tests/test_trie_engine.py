@@ -45,3 +45,49 @@ def test_load_dela_csv_reads_first_column(tmp_path):
     trie = DictionnaireTrie()
     trie.load_dela_csv(str(csv_file))
     assert trie.words == {"ETE", "CHAT"}
+
+
+# --- Fréquences (Phase 3 : tri des candidats par fréquence) ---
+
+def test_the_frequency_column_of_the_curated_lexicon_is_read(tmp_path):
+    lexique = tmp_path / "lexique_cure.csv"
+    lexique.write_text("PORTE;porte;Ouverture;4.2\n"
+                       "ZORGL;zorgl;;\n"
+                       "AABAM;aabam;Plomb (métal).;0.0\n", encoding="utf-8")
+    trie = DictionnaireTrie()
+
+    trie.load_dela_csv(str(lexique))
+
+    assert trie.frequency("PORTE") == 4.2
+    assert trie.frequency("ZORGL") == 0.0  # colonne vide
+    assert trie.frequency("AABAM") == 0.0
+    assert trie.frequency("INCONNU") == 0.0
+
+
+def test_a_lexicon_without_the_column_leaves_every_frequency_at_zero(tmp_path):
+    """Le DELA brut n'a que trois colonnes : le solveur doit retomber sur le score de lettres."""
+    dela = tmp_path / "dela.csv"
+    dela.write_text("PORTE;porte;Forme fléchie\n", encoding="utf-8")
+    trie = DictionnaireTrie()
+
+    trie.load_dela_csv(str(dela))
+
+    assert trie.words == {"PORTE"}
+    assert trie.frequencies == {}
+
+
+def test_two_spellings_of_a_word_keep_the_highest_frequency(tmp_path):
+    lexique = tmp_path / "lexique.csv"
+    lexique.write_text("CAVA;cava;Vin;1.0\nCAVA;ça va;;3.0\n", encoding="utf-8")
+    trie = DictionnaireTrie()
+
+    trie.load_dela_csv(str(lexique))
+
+    assert trie.frequency("CAVA") == 3.0
+
+
+def test_insert_returns_the_normalized_word_or_none():
+    trie = DictionnaireTrie()
+
+    assert trie.insert("Éléphant") == "ELEPHANT"
+    assert trie.insert("a") is None  # moins de deux lettres : ignoré

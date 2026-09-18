@@ -115,6 +115,14 @@ class WordRepository:
         """Rang du pool du mot, pour trier les candidats (0 = essayé en premier)."""
         return POOL_PRIORITY[self.source_of(word)]
 
+    def frequency_of(self, word: str) -> float:
+        """Fréquence zipf du mot, 0 si le lexique chargé n'en donne pas (DELA brut).
+
+        Toutes les fréquences à 0 ⇒ le tri des candidats retombe exactement sur le score de
+        lettres, c'est-à-dire l'ordre d'avant cette mesure.
+        """
+        return self.trie.frequency(word)
+
     def _candidate_mask(self, pattern: str) -> tuple[PatternIndex | None, int]:
         index = self.indexes.get(len(pattern))
         if index is None:

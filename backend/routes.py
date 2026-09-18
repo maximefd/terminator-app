@@ -232,6 +232,7 @@ def generate_grid():
             time_budget_s=current_app.config.get('GENERATION_TIME_BUDGET_S', 20),
             wish_words=sorted(set(wish_words)),
             must_words=must_words,
+            frequency_mode=payload.frequency_mode,
         )
     except LayoutNotFoundError:
         formats = available_formats(layouts_dir)

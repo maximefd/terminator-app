@@ -47,7 +47,8 @@ flowchart TD
 | **Mots obligatoires d'abord** | Placer les mots imposés avant tout le reste, en commençant par celui qui a le moins d'emplacements possibles (échouer vite plutôt qu'après avoir rempli la moitié de la grille), avec retour arrière | `_place_a_must_word` |
 | **Pools de mots** | Essayer d'abord les mots de l'auteur : obligatoires, puis souhaités, puis le lexique commun. Le pool passe avant le score, donc un mot souhaité survit à la limite de candidats | `POOL_PRIORITY` (`word_repository.py`) |
 | **Score des mots** | Préférer les mots faits de lettres fréquentes (E, A, S, R…), qui laissent plus de possibilités aux croisements | `LETTER_SCORES` |
-| **Limite de candidats** | N'essayer que les 100 meilleurs candidats d'un slot | `MAX_CANDIDATES_PER_SLOT = 100` |
+| **Limite de candidats** | N'essayer que les 300 meilleurs candidats d'un slot. Mesuré : 100 ou 300 donnent 420/420, mais 300 est plus rapide (médiane 0,91 s → 0,71 s, p95 du 13×18 de 14,6 s à 8,7 s) ; 500 n'apporte rien | `MAX_CANDIDATES_PER_SLOT = 300` |
+| **Fréquence des mots** | Trier les candidats par fréquence donne des mots plus courants (mots absents des corpus : 33 % → 17 % des mots placés) mais **ferme la recherche** : sept layouts tombent sous 20/20. Désactivé par défaut, activable par requête (`frequency_mode`) | `FREQUENCY_MODE = "none"` |
 | **Variété** | Mélanger aléatoirement le top 20 % des candidats, pour ne pas produire toujours la même grille | générateur aléatoire seedé |
 | **Validation croisée** | Un mot est refusé s'il forme, dans l'autre sens, un mot **terminé** qui n'existe pas. Une suite de lettres encore ouverte (« AB » au milieu d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : elle n'est pas vérifiée | `_is_placement_valid` |
 | **Forward checking** | Refuser un mot qui laisserait un slot croisé sans candidat de rechange. Exiger davantage paraît prudent mais interdit les clôtures de fin de grille (#61) | `MIN_SAFE_CANDIDATES = 2` (minimum imposé par l'invariant) |
@@ -77,22 +78,23 @@ Les **21 layouts du catalogue réussissent 20 fois sur 20** (420 générations, 
 
 | Format | Mots | p50 | p95 |
 |--------|------|-----|-----|
-| 6×7 (5 layouts) | 12-13 | 0,05 à 0,08 s | 0,13 à 0,15 s |
-| 7×9 | 20 | 0,19 s | 0,45 s |
-| 11×6 | 21 | 0,41 s | 1,09 s |
-| 11×9 | 33 | 0,70 s | 1,29 s |
-| 14×9 | 38 | 1,55 s | 3,75 s |
-| 10×13 (6 layouts) | 41-43 | 0,58 à 1,09 s | 0,93 à 3,44 s |
-| 11×17 (2 layouts) | 61-62 | 1,50 à 1,79 s | 4,62 à 9,89 s |
-| 13×16 (3 layouts) | 61-64 | 1,03 à 3,27 s | 2,58 à 12,72 s |
-| 13×18 | 81 | 1,99 s | 14,57 s |
+| 6×7 (5 layouts) | 12-13 | 0,05 à 0,06 s | 0,10 à 0,19 s |
+| 7×9 | 20 | 0,16 s | 0,44 s |
+| 11×6 | 21 | 0,33 s | 1,09 s |
+| 11×9 | 33 | 0,78 s | 3,32 s |
+| 14×9 | 38 | 1,29 s | 3,41 s |
+| 10×13 (6 layouts) | 41-43 | 0,47 à 0,84 s | 1,49 à 5,53 s |
+| 11×17 (2 layouts) | 61-62 | 0,89 à 1,24 s | 3,44 à 3,67 s |
+| 13×16 (3 layouts) | 61-64 | 0,79 à 2,51 s | 2,87 à 10,08 s |
+| 13×18 | 81 | 2,19 s | 8,72 s |
 
-Quatre changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`). Enfin, le seuil du forward checking est passé de 3 à 2 : à 3, les grilles de plus de 60 mots arrivaient à deux mots de la fin sans pouvoir conclure (#61).
+Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`). Enfin, le seuil du forward checking est passé de 3 à 2 : à 3, les grilles de plus de 60 mots arrivaient à deux mots de la fin sans pouvoir conclure (#61). Et le plafond de candidats est passé de 100 à 300, ce qui accélère sans rien changer au taux de succès.
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
+| **Qualité des mots** : un tiers des mots placés sont absents de tout corpus | Grilles avec des formes rares | Le tri par fréquence les ramène à 17 %, mais fait échouer les grandes grilles : disponible par requête (`frequency_mode: "exact"`), pas par défaut. Le vrai levier reste la **curation du lexique** |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
 | Première génération après le chargement d'un lexique : construction de l'index (1,4 s sur le DELA complet, puis 0,3 s par génération) | Première génération un peu plus lente | Construire l'index au chargement du lexique si besoin |
