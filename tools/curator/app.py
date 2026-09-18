@@ -283,15 +283,25 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
             return _error("Mot invalide.", 400)
         if decision not in (KEEP, DELETE):
             return _error("Décision invalide.", 400)
+        if repository.family_key(word) is None:
+            return _error("Mot inconnu du lexique.", 400)
         words = _family_to_delete(word, store.state())
         if not words:
-            return _error("Aucun mot à trier dans cette famille.", 400)
+            # La famille a été triée entre-temps (mot à mot, autre onglet, annulation) : la carte
+            # affichée est périmée, ce n'est pas une erreur. Répondre 400 bloquait l'écran jusqu'au
+            # rechargement de la page ; le client passe maintenant à la famille suivante.
+            return jsonify({"words": [], "decision": decision, "already_sorted": True,
+                            "lexicon_export": None})
         store.append(words, decision)
-        return jsonify({"words": words, "decision": decision, "lexicon_export": _export_if_milestone()})
+        return jsonify({"words": words, "decision": decision, "already_sorted": False,
+                        "lexicon_export": _export_if_milestone()})
 
     @app.get("/api/families")
     def families():
         """File des familles : un lemme, sa fréquence, sa définition et ses formes à trier."""
+        suggestion = request.args.get("suggestion") or None
+        if suggestion is not None and suggestion not in QUEUE_SUGGESTIONS:
+            return _error("Suggestion inconnue.", 400)
         state = store.state()
         cards, next_after = repository.families(
             after=_int_arg("after", -1, -1, 10**9),
@@ -299,6 +309,7 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
             min_length=_int_arg("min_length", 2, 2, 99),
             max_length=_int_arg("max_length", 99, 2, 99),
             is_decided=state.__contains__,
+            suggestion=suggestion,
         )
         return jsonify({"families": cards, "next_after": next_after})
 
