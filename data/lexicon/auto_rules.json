@@ -1,0 +1,7 @@
+{
+  "regles": [
+    "formes-composees",
+    "inconnues-sans-definition"
+  ],
+  "commentaire": "Règles automatiques appliquées à l'export et au tri (python -m tools.lexicon autorules)."
+}

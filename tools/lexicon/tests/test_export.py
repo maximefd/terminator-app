@@ -4,7 +4,7 @@ import pytest
 
 from tools.lexicon.build import build_lexicon
 from tools.lexicon.decisions import DELETE, KEEP, append_decisions
-from tools.lexicon.export import export_curated, lexicon_stats
+from tools.lexicon.export import FILTER_MEDIUM, export_curated, lexicon_stats
 
 
 @pytest.fixture
@@ -74,3 +74,63 @@ def test_stats_count_remaining_words_to_review(db_path, tmp_path):
     assert stats["decisions"] == {"delete": 1}
     # Restent à trier (hors « keep » et hors décidés) : OUVRAGE, APRIORI, OUVRAGER, OUVRAGEAMES
     assert stats["to_review_by_length"] == {"2-5": 0, "6-8": 3, "9-11": 1, "12+": 0}
+    assert stats["handled_by_rules"] == 0
+
+
+# --- Filtre positif : ne garder que ce qui a une chance d'être un vrai mot ---
+
+def test_medium_filter_keeps_known_words_and_drops_the_unknown_ones(db_path, tmp_path):
+    out = tmp_path / "lexique_cure.csv"
+
+    counts = export_curated(db_path, tmp_path / "decisions.csv", out, filter_level=FILTER_MEDIUM)
+
+    words = exported_words(out)
+    assert "PORTE" in words          # connu de Lexique
+    assert "OUVRAGER" in words       # défini pour lui-même
+    assert "AABAM" not in words      # ni fréquence, ni définition, ni lemme
+    assert counts["deleted_by_filter"] >= 1
+
+
+def test_the_filter_never_removes_a_word_kept_by_the_author(db_path, tmp_path):
+    decisions = tmp_path / "decisions.csv"
+    append_decisions(decisions, ["AABAM"], KEEP)
+    out = tmp_path / "lexique_cure.csv"
+
+    export_curated(db_path, decisions, out, filter_level=FILTER_MEDIUM)
+
+    assert "AABAM" in exported_words(out)
+
+
+def test_an_unknown_filter_is_refused(db_path, tmp_path):
+    with pytest.raises(ValueError, match="filtre inconnu"):
+        export_curated(db_path, tmp_path / "decisions.csv", tmp_path / "out.csv", filter_level="severe")
+
+
+# --- Règles automatiques ---
+
+def test_enabled_rules_remove_their_words_from_the_export(db_path, tmp_path):
+    out = tmp_path / "lexique_cure.csv"
+
+    counts = export_curated(db_path, tmp_path / "decisions.csv", out, auto_rules=["formes-composees"])
+
+    assert "APRIORI" not in exported_words(out)  # « a priori »
+    assert counts["deleted_by_rule"] == 1
+
+
+def test_a_word_kept_by_the_author_survives_a_rule(db_path, tmp_path):
+    decisions = tmp_path / "decisions.csv"
+    append_decisions(decisions, ["APRIORI"], KEEP)
+    out = tmp_path / "lexique_cure.csv"
+
+    counts = export_curated(db_path, decisions, out, auto_rules=["formes-composees"])
+
+    assert "APRIORI" in exported_words(out)
+    assert "deleted_by_rule" not in counts
+
+
+def test_stats_count_words_handled_by_rules_apart(db_path, tmp_path):
+    stats = lexicon_stats(db_path, tmp_path / "decisions.csv", auto_rules=["formes-composees"])
+
+    assert stats["handled_by_rules"] == 1                      # APRIORI
+    assert stats["to_review_by_length"]["6-8"] == 2            # sans APRIORI
+    assert stats["auto_rules"] == ["formes-composees"]

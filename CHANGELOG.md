@@ -58,6 +58,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Modèles de PR et d'issues GitHub.
 - Dependabot.
 - CI frontend : ESLint et vérification TypeScript.
+- Règles automatiques, filtre positif et révision des décisions ([ADR 0008](docs/adr/0008-regles-automatiques-et-revision.md)) :
+  - `python -m tools.lexicon autorules` : aperçu (sans rien écrire), activation et désactivation des règles décrivant les classes de mots jamais gardées au tri — `formes-composees` (119 triées, 119 supprimées), `inconnues-sans-definition` (94,6 % de suppressions) et `flexions-rares-longues` (sur demande) ; activées dans `data/lexicon/auto_rules.json`, jamais écrites dans `decisions.csv`, et toujours battues par une décision « garder » ;
+  - `python -m tools.lexicon export --filtre moyen` : ne garde que les mots connus de Lexique, définis pour eux-mêmes ou formés sur un lemme de fréquence zipf ≥ 2 (191 709 mots de 11 lettres ou moins, contre 393 720) ;
+  - `python -m tools.lexicon revision` : décisions douteuses (famille jugée à l'opposé, mot courant supprimé, rafale de décisions dans la même seconde) ; confirmer ou corriger écrit un lot marqué `revision`, et le mot ne revient plus ;
+  - `stats` compte à part les mots traités par les règles (`handled_by_rules`).
 
 ### Modifié
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
