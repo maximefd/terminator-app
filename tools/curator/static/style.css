@@ -608,25 +608,43 @@ kbd {
 .forms-title { margin: 1rem 0 0.5rem; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 
 .family-forms {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 0.4rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .family-forms .form {
+  border: 1px solid var(--border);
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+.family-forms .form.decided { opacity: 0.6; }
+.family-forms .form.protected { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); }
+.family-forms .form.decided .form-text { text-decoration: line-through; }
+.family-forms .form small { font-size: 0.72rem; }
+
+/* Toute la ligne est une cible tactile : elle ouvre la définition de cette forme */
+.form-head {
   display: flex;
   align-items: baseline;
-  gap: 0.35rem;
-  padding: 0.3rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 0.9rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  font-size: 0.95rem;
 }
-.family-forms .form.decided { opacity: 0.55; text-decoration: line-through; }
-.family-forms .form small { font-size: 0.7rem; }
 .form-text { font-weight: 600; }
+
+.form-details { display: grid; gap: 0.6rem; padding: 0 0.75rem 0.75rem; }
+.form-definition { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--muted); }
+.form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+button.small { min-height: 2.5rem; padding: 0 0.9rem; font-size: 0.85rem; }
 
 .explanation { margin: 0 0 0.6rem; font-size: 0.95rem; line-height: 1.5; }
 

@@ -64,8 +64,14 @@
 
   // --- Liste des décisions à revoir ---
 
-  function load() {
-    if (state.loading) return state.loading;
+  function load(reset = false) {
+    if (reset) {
+      state.buffer = [];
+      state.exhausted = false;
+      state.loading = null;
+    } else if (state.loading) {
+      return state.loading;
+    }
     state.loading = api(`/api/revisions?${new URLSearchParams({ limit: FETCH_SIZE })}`)
       .then((data) => {
         const known = new Set(state.buffer.map((item) => item.norm));
@@ -105,7 +111,7 @@
     $("card").hidden = !item;
     $("loading").hidden = Boolean(item) || state.exhausted;
     $("empty").hidden = Boolean(item) || !state.exhausted;
-    for (const id of ["btn-invert", "btn-confirm", "btn-skip"]) $(id).disabled = !item;
+    for (const id of ["btn-delete", "btn-keep", "btn-skip"]) $(id).disabled = !item;
     $("stat-remaining").textContent = number(Math.max(state.remaining, 0));
     renderReasons();
 
@@ -122,7 +128,7 @@
     $("card-explanation").textContent = item.explanation;
 
     const current = $("card-current");
-    current.textContent = item.decision === "delete" ? "Décision actuelle : supprimé" : "Décision actuelle : gardé";
+    current.textContent = item.decision === "delete" ? "Vous aviez supprimé ce mot" : "Vous aviez gardé ce mot";
     current.dataset.decision = item.decision;
 
     const definition = $("card-definition");
@@ -142,20 +148,19 @@
     if (state.buffer.length < BUFFER_MIN && !state.exhausted) load();
   }
 
-  // --- Actions ---
+  // --- Actions : les mêmes qu'au tri (← supprimer, → garder) ---
 
-  function answer(decision) {
+  function decide(decision) {
     const item = state.buffer.shift();
     if (!item) return;
     state.remaining = Math.max(0, state.remaining - 1);
     render();
     enqueue(() => post("/api/revisions", { words: [item.norm], decision }))
       .then(() => {
-        const kept = decision === "keep";
         const changed = decision !== item.decision;
-        toast(changed
-          ? `« ${item.form} » ${kept ? "finalement gardé" : "finalement supprimé"}`
-          : `« ${item.form} » confirmé ${kept ? "gardé" : "supprimé"}`);
+        const verb = decision === "keep" ? "gardé" : "supprimé";
+        toast(changed ? `« ${item.form} » finalement ${verb} · ↓ pour annuler`
+          : `« ${item.form} » reste ${verb} · ↓ pour annuler`);
       })
       .catch((error) => {
         state.buffer.unshift(item);
@@ -165,9 +170,6 @@
       });
   }
 
-  const confirm = () => state.buffer[0] && answer(state.buffer[0].decision);
-  const invert = () => state.buffer[0] && answer(state.buffer[0].decision === "delete" ? "keep" : "delete");
-
   function skip() {
     const item = state.buffer.shift();
     if (!item) return;
@@ -175,11 +177,31 @@
     render();
   }
 
-  // --- Clavier (AZERTY : flèches) ---
+  function undo() {
+    enqueue(() => post("/api/undo"))
+      .then((data) => {
+        if (!data.words.length) {
+          toast("Rien à annuler");
+          return;
+        }
+        // La décision annulée redevient douteuse : on relit la liste depuis le serveur
+        toast(`Annulé : ${data.words.join(", ")}`);
+        return load(true).then(render);
+      })
+      .catch((error) => toast(error.message, true));
+  }
+
+  // --- Clavier (AZERTY : flèches, Retour arrière) ---
 
   document.addEventListener("keydown", (event) => {
     if (event.target.closest("select, input, textarea, a")) return;
-    const handlers = { ArrowLeft: invert, ArrowRight: confirm, ArrowUp: skip };
+    const handlers = {
+      ArrowLeft: () => decide("delete"),
+      ArrowRight: () => decide("keep"),
+      ArrowUp: skip,
+      ArrowDown: undo,
+      Backspace: undo,
+    };
     const handler = handlers[event.key];
     if (!handler) return;
     event.preventDefault();
@@ -187,9 +209,10 @@
     handler();
   });
 
-  $("btn-invert").addEventListener("click", invert);
-  $("btn-confirm").addEventListener("click", confirm);
+  $("btn-delete").addEventListener("click", () => decide("delete"));
+  $("btn-keep").addEventListener("click", () => decide("keep"));
   $("btn-skip").addEventListener("click", skip);
+  $("btn-undo").addEventListener("click", undo);
 
   render();
 })();

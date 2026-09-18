@@ -36,8 +36,9 @@
 
   <main class="workspace">
     <p class="intro-line muted">
-      Un verbe et ses conjugaisons se décident ensemble : une décision ici vaut pour toutes les formes
-      qui restent à trier. Les mots courants et ceux déjà décidés ne sont jamais touchés.
+      Un verbe et ses conjugaisons se décident ensemble. Une famille compte au moins trois formes à
+      trier : en dessous, les mots restent dans <a href="/">Trier les mots</a>.
+      Si une famille mélange deux mots différents, touchez une forme pour la trier à part.
     </p>
 
     <article id="card" class="card family-card" aria-live="polite" aria-label="Famille à trier">
@@ -51,7 +52,7 @@
         <div><dt>Fréquence</dt><dd><span class="freq" aria-hidden="true"><span id="card-freq-bar"></span></span> <span id="card-freq-label"></span></dd></div>
         <div><dt>Catégorie</dt><dd id="card-pos"></dd></div>
       </dl>
-      <h2 class="forms-title">Formes de la famille</h2>
+      <h2 class="forms-title">Formes de la famille <span class="muted">— touchez un mot pour voir sa définition et le trier seul</span></h2>
       <ul id="card-forms" class="family-forms"></ul>
       <p id="card-more" class="muted" hidden></p>
     </article>
@@ -69,7 +70,7 @@
     <p class="legend muted">
       Clavier : <kbd>←</kbd> supprimer toute la famille · <kbd>→</kbd> la garder ·
       <kbd>↑</kbd> passer · <kbd>↓</kbd> ou <kbd>⌫</kbd> annuler la dernière action.
-      Pour juger forme par forme, utilisez <a href="/">Trier les mots</a>.
+      Les mots très courants (comme « hier ») sont gardés d'office et ne sont jamais supprimés avec la famille.
     </p>
   </main>
 

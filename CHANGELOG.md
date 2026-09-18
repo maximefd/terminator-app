@@ -64,11 +64,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - `python -m tools.lexicon revision` : décisions douteuses (famille jugée à l'opposé, mot courant supprimé, rafale de décisions dans la même seconde) ; confirmer ou corriger écrit un lot marqué `revision`, et le mot ne revient plus ;
   - `stats` compte à part les mots traités par les règles (`handled_by_rules`).
 - Curateur : deux nouveaux onglets ([ADR 0008](docs/adr/0008-regles-automatiques-et-revision.md)) :
-  - **Familles** (`/familles`) : une carte par lemme (définition, fréquence, toutes ses formes), une décision pour toute la famille (`←` supprimer, `→` garder, `↑` passer, `↓` annuler) ; les formes déjà décidées et les mots très courants ne sont jamais touchés ;
-  - **Révision** (`/revision`) : les décisions douteuses reproposées une par une, à confirmer (`→`) ou inverser (`←`) ; un mot revu ne revient plus ;
+  - **Familles** (`/familles`) : une carte par lemme (définition, fréquence, toutes ses formes), une décision pour toute la famille (`←` supprimer, `→` garder, `↑` passer, `↓` annuler) ; les formes déjà décidées et les mots très courants ne sont jamais touchés ; une famille doit compter au moins trois formes à trier, et toucher une forme montre sa définition pour la trier seule (les familles qui mélangent deux mots, comme l'adverbe « hier » et le verbe « hier ») ;
+  - **Révision** (`/revision`) : les décisions douteuses reproposées une par une, avec les touches du tri (`←` supprimer, `→` garder, `↑` passer, `↓` annuler) ; redonner la même réponse suffit à sortir le mot de la liste ;
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- Règle `formes-composees` : toutes les graphies d'un mot sont examinées, plus seulement la première. 774 mots comme `cava` (« ça va »), `aras` (« à ras ») ou `etal` (« et al. ») passaient au travers et pouvaient former des familles.
 - Anciens documents de cadrage (`READMESDD.md`, `amelioration-generate.md`) archivés dans `docs/archive/`.
 - Layouts déplacés de `backend/templates/<L>x<H>/template_01.txt` vers `backend/layouts/<L>x<H>/001.txt` ; le champ `layout` de la grille générée et les clés du benchmark deviennent `6x7-001`. Variable de configuration `TEMPLATES_DIR` renommée `LAYOUTS_DIR`.
 - Modèle d'issue « Nouveau layout » : grille au format v1, sans champ source.

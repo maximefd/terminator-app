@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-from tools.lexicon.autorules import condition
+from tools.lexicon.autorules import COMPOSED_FORM, condition
 
 # Les requêtes joignent le lemme : les règles automatiques en ont besoin, et la carte « famille »
 # affiche la fréquence du lemme.
@@ -17,6 +17,11 @@ QUEUE_SUGGESTIONS = ("likely_delete", "review", "likely_keep")
 SCAN_BATCH = 500
 # Une famille montre au plus ce nombre de formes : au-delà, la carte ne se lit plus
 MAX_FAMILY_FORMS = 40
+# En deçà, ce n'est pas une famille : un nom et son pluriel se jugent aussi vite mot à mot.
+# Mesure sur le lexique : 91 188 « familles » de 1 ou 2 formes contre 19 190 vraies familles.
+MIN_FAMILY_FORMS = 3
+# `COMPOSED_FORM` (importé plus haut) : les formes en plusieurs mots (« à eau », « as de ») ne font
+# jamais famille, même quand les règles automatiques sont désactivées.
 
 
 class LexiconRepository:
@@ -83,8 +88,11 @@ class LexiconRepository:
                  is_decided: Callable[[str], bool]) -> tuple[list[dict], int]:
         """Prochaines familles à trier : un lemme, sa définition, sa fréquence et ses formes.
 
-        Une famille est proposée dès qu'il lui reste une forme à trier dans la tranche de longueur
-        demandée. Elle est rangée comme le premier de ses mots dans la file (les plus courts
+        Une famille doit avoir au moins `MIN_FAMILY_FORMS` formes encore à trier : en dessous,
+        les mots restent dans le tri mot à mot, où ils se jugent aussi vite. Les formes en
+        plusieurs mots (« abeille charpentière ») ne font jamais famille.
+
+        Les familles sont rangées comme le premier de leurs mots dans la file (les plus courts
         d'abord), ce qui garde la même position de reprise que le tri mot à mot.
         """
         families: list[dict] = []
@@ -93,7 +101,7 @@ class LexiconRepository:
             rows = self.connection().execute(
                 f"SELECT COALESCE(w.lemma_norm, w.norm) AS family, MIN(w.queue_order) AS family_order "
                 f"FROM {FROM_WORDS} WHERE w.queue_order > ? AND w.suggestion != 'keep' "
-                f"AND w.length BETWEEN ? AND ? AND {self._not_ruled_out} "
+                f"AND w.length BETWEEN ? AND ? AND NOT {COMPOSED_FORM} AND {self._not_ruled_out} "
                 f"GROUP BY family ORDER BY family_order LIMIT {SCAN_BATCH}",
                 [cursor, min_length, max_length],
             ).fetchall()
@@ -110,10 +118,15 @@ class LexiconRepository:
         return families, cursor
 
     def family_card(self, family: str, is_decided: Callable[[str], bool]) -> dict | None:
-        """Carte d'une famille, ou None s'il n'y reste rien à trier."""
+        """Carte d'une famille, ou None si elle n'a pas assez de formes à trier.
+
+        Chaque forme porte sa propre définition : c'est ce qui permet de voir qu'une famille
+        mélange deux mots (« hier », l'adverbe, et « hier », le verbe qui damait les pavés) et de
+        les trier séparément.
+        """
         rows = self.connection().execute(
             f"SELECT {FIELDS} FROM {FROM_WORDS} "
-            f"WHERE (w.lemma_norm = ? OR w.norm = ?) AND {self._not_ruled_out} "
+            f"WHERE (w.lemma_norm = ? OR w.norm = ?) AND NOT {COMPOSED_FORM} AND {self._not_ruled_out} "
             f"ORDER BY w.length, w.norm",
             [family, family],
         ).fetchall()
@@ -122,7 +135,7 @@ class LexiconRepository:
 
         forms = [self._card(row) for row in rows]
         pending = [form for form in forms if form["suggestion"] != "keep" and not is_decided(form["norm"])]
-        if not pending:
+        if len(pending) < MIN_FAMILY_FORMS:
             return None
 
         head = next((form for form in forms if form["norm"] == family), None) or pending[0]
@@ -136,7 +149,9 @@ class LexiconRepository:
             "pos": head["pos"],
             "zipf": lemma_zipf,
             "forms": [{"norm": form["norm"], "form": form["forms"][0], "length": form["length"],
-                       "suggestion": form["suggestion"], "decided": is_decided(form["norm"])}
+                       "suggestion": form["suggestion"], "decided": is_decided(form["norm"]),
+                       "protected": form["suggestion"] == "keep", "definition": form["definition"],
+                       "zipf": form["zipf"]}
                       for form in forms[:MAX_FAMILY_FORMS]],
             "total_forms": len(forms),
             "pending": [form["norm"] for form in pending],
