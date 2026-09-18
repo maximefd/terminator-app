@@ -4,7 +4,10 @@ Décisions de curation : data/lexicon/decisions.csv (versionné, en ajout seul).
 Format : `mot;decision;date;lot`
 - `mot` : forme normalisée (celle des grilles), ex. `OUVRAGEAMES`
 - `decision` : `keep`, `delete` ou `undo`
-- `lot` : identifiant commun aux mots décidés en une seule action (ex. un mot et toutes ses formes)
+- `lot` : identifiant commun aux mots décidés en une seule action (ex. un mot et toutes ses formes).
+  Le lot dit aussi d'où vient la décision : `20260915083000-3f9a1c` pour le tri courant,
+  `20260915083000-revision.3f9a1c` pour un deuxième regard (voir `review.py`). Les anciens lots,
+  sans mention, sont du tri.
 
 Une ligne `undo` annule tout son lot. La décision effective d'un mot est la dernière qui
 n'appartient pas à un lot annulé : annuler un « garder » fait revenir un « supprimer » antérieur.
@@ -24,6 +27,11 @@ VALID_DECISIONS = (KEEP, DELETE, UNDO)
 FIELDS = ["mot", "decision", "date", "lot"]
 NORMALIZED_WORD = re.compile(r"[A-Z0-9]{2,}")
 
+# Origine d'un lot : tri courant, ou deuxième regard sur une décision déjà prise
+TRI = "tri"
+REVISION = "revision"
+BATCH_KINDS = (TRI, REVISION)
+
 
 @dataclass(frozen=True)
 class DecisionRow:
@@ -31,6 +39,12 @@ class DecisionRow:
     decision: str
     date: str
     batch: str
+
+
+def batch_kind(batch: str) -> str:
+    """Origine du lot : `revision` pour un deuxième regard, `tri` sinon (y compris anciens lots)."""
+    kind, separator, _ = batch.partition("-")[2].partition(".")
+    return kind if separator and kind in BATCH_KINDS else TRI
 
 
 def read_decisions(path) -> list[DecisionRow]:
@@ -50,14 +64,29 @@ def _undone_batches(rows: list[DecisionRow]) -> set[str]:
     return {row.batch for row in rows if row.decision == UNDO}
 
 
-def effective_decisions(rows: list[DecisionRow]) -> dict[str, str]:
-    """Mot -> `keep` ou `delete` (les mots sans décision sont absents)."""
+def effective_rows(rows: list[DecisionRow]) -> dict[str, DecisionRow]:
+    """Mot -> la ligne qui fait foi (date et lot compris) ; les mots sans décision sont absents."""
     undone = _undone_batches(rows)
-    state: dict[str, str] = {}
+    state: dict[str, DecisionRow] = {}
     for row in rows:
         if row.decision != UNDO and row.batch not in undone:
-            state[row.word] = row.decision
+            state[row.word] = row
     return state
+
+
+def effective_decisions(rows: list[DecisionRow]) -> dict[str, str]:
+    """Mot -> `keep` ou `delete` (les mots sans décision sont absents)."""
+    return {word: row.decision for word, row in effective_rows(rows).items()}
+
+
+def batch_sizes(rows: list[DecisionRow]) -> dict[str, int]:
+    """Nombre de mots par lot encore actif : 1 = décision prise mot à mot."""
+    undone = _undone_batches(rows)
+    sizes: dict[str, int] = {}
+    for row in rows:
+        if row.decision != UNDO and row.batch not in undone:
+            sizes[row.batch] = sizes.get(row.batch, 0) + 1
+    return sizes
 
 
 def _append_rows(path: Path, rows: list[DecisionRow]) -> None:
@@ -74,17 +103,25 @@ def _now(now: datetime | None) -> datetime:
     return now or datetime.now(timezone.utc)
 
 
-def append_decisions(path, words: list[str], decision: str, now: datetime | None = None) -> str:
+def _batch_id(moment: datetime, kind: str) -> str:
+    token = uuid.uuid4().hex[:6]
+    return f"{moment:%Y%m%d%H%M%S}-{token}" if kind == TRI else f"{moment:%Y%m%d%H%M%S}-{kind}.{token}"
+
+
+def append_decisions(path, words: list[str], decision: str, now: datetime | None = None,
+                     kind: str = TRI) -> str:
     """Enregistre la même décision pour un ou plusieurs mots ; renvoie l'identifiant du lot."""
     if decision not in (KEEP, DELETE):
         raise ValueError(f"décision invalide : {decision}")
+    if kind not in BATCH_KINDS:
+        raise ValueError(f"origine de lot invalide : {kind}")
     if not words:
         raise ValueError("aucun mot à enregistrer")
     for word in words:
         if not NORMALIZED_WORD.fullmatch(word):
             raise ValueError(f"mot non normalisé : {word!r}")
     moment = _now(now)
-    batch = f"{moment:%Y%m%d%H%M%S}-{uuid.uuid4().hex[:6]}"
+    batch = _batch_id(moment, kind)
     date = moment.isoformat(timespec="seconds")
     _append_rows(Path(path), [DecisionRow(word, decision, date, batch) for word in dict.fromkeys(words)])
     return batch

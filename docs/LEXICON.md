@@ -91,6 +91,46 @@ AABAM;undo;2026-09-15T08:30:09+00:00;20260915083000-3f9a1c
 
 - Par défaut, seuls les mots **supprimés par l'auteur** sont retirés.
 - `python -m tools.lexicon export --exclude-suggested-deletes` retire aussi les mots suggérés `likely_delete` que l'auteur n'a pas gardés explicitement.
+- `python -m tools.lexicon export --filtre moyen` ne garde que les mots **connus de Lexique, définis pour eux-mêmes, ou formés sur un lemme de fréquence zipf ≥ 2** : 191 709 mots de 11 lettres ou moins, contre 393 720 aujourd'hui.
+- Les [règles automatiques](#les-règles-automatiques) activées s'appliquent aussi (`--sans-regles` pour les ignorer).
+- **Un mot gardé explicitement n'est jamais retiré**, quelle que soit l'option.
+
+Mesure (5 layouts × 5 seeds) : avec le lexique complet, 24 grilles sur 25 ; avec un lexique filtré à 251 639 puis 164 870 mots, 25 sur 25, et les petites grilles quatre fois plus rapides. 25 grilles ne consomment que ~700 mots distincts : la qualité tient aux mots courts et courants, pas au nombre d'entrées.
+
+### Les règles automatiques
+
+Certaines classes de mots n'ont **jamais** été gardées lors du tri à la main. Plutôt que de les trier une par une, on les décrit une fois ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)). Une règle n'écrit rien dans `decisions.csv` : elle est activée dans `data/lexicon/auto_rules.json` (versionné) et appliquée à l'export comme à la file de tri. Une décision « garder » l'emporte toujours sur une règle.
+
+| Règle | Ce qu'elle vise | Mesure sur les décisions prises à la main | Mots (dont ≤ 11 lettres) | Conseillée |
+|-------|-----------------|-------------------------------------------|--------------------------|------------|
+| `formes-composees` | Formes en plusieurs mots ou avec apostrophe (« lot de », « aux WC ») | 119 triées, 119 supprimées | 100 239 (15 521) | Oui |
+| `inconnues-sans-definition` | 6 lettres et plus, absentes de Lexique, sans définition ni lemme | 94,6 % de suppressions (100 % à partir de 6 lettres) | 150 482 (41 925) | Oui |
+| `flexions-rares-longues` | 9 lettres et plus, formes fléchies de verbes rares ou inconnus | Aucune forme de 7 lettres ou plus gardée (22 jugements) | 415 065 (157 071) | Non : classe très large, à regarder avant |
+
+```bash
+python -m tools.lexicon autorules                    # aperçu : mots visés, exemples, rien n'est écrit
+python -m tools.lexicon autorules --activer          # active les règles conseillées
+python -m tools.lexicon autorules --activer flexions-rares-longues
+python -m tools.lexicon autorules --aucune           # tout désactiver (les mots reviennent)
+```
+
+`formes-composees` retire aussi des locutions qui pourraient servir en grille (`APRIORI`, `EXNIHILO`) : les garder explicitement suffit à les récupérer.
+
+### Revoir ses décisions
+
+Trier vite fatigue, et la fatigue laisse des traces dans `decisions.csv` : sur les 4 958 premières décisions, **11,6 % des familles jugées forme par forme se contredisent** (`BITA` supprimé, `BITAI` gardé à quelques secondes d'écart). Le module `tools/lexicon/review.py` retrouve ces décisions :
+
+| Raison | Ce qui la déclenche |
+|--------|---------------------|
+| `famille-incoherente` | Deux formes du même lemme jugées à l'opposé, chacune mot à mot |
+| `mot-courant-supprime` | Mot de fréquence zipf ≥ 2,5 supprimé |
+| `decision-eclair` | Au moins 3 décisions dans la même seconde : un mot est peut-être passé sans être lu |
+
+```bash
+python -m tools.lexicon revision        # la liste, la plus parlante d'abord
+```
+
+Les suppressions par famille ne sont jamais remises en cause : c'est un geste volontaire. Confirmer ou corriger une décision écrit une ligne dans un lot marqué `revision` (`20260918120000-revision.3f9a1c`), donc **un mot revu ne revient plus dans la liste**, même si la décision ne change pas.
 
 ## La mini-app de curation (Phase 1b)
 
