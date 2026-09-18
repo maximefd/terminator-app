@@ -1,7 +1,7 @@
 # DANS backend/routes.py
 
 import unicodedata
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, abort, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
@@ -213,6 +213,15 @@ def generate_grid():
         active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
         if active_dict:
             wish_words.extend(word.mot for word in active_dict.words if 2 <= len(word.mot) <= longest)
+
+    # Dictionnaires thématiques demandés : ceux de l'utilisateur connecté, et eux seuls. Un
+    # dictionnaire qui ne lui appartient pas répond 404 comme partout ailleurs — on ne révèle pas
+    # son existence (ADR 0007).
+    for dictionary_id in payload.wish_dictionary_ids:
+        if not user:
+            abort(404)
+        theme = get_owned_dictionary(user, dictionary_id)
+        wish_words.extend(word.mot for word in theme.words if 2 <= len(word.mot) <= longest)
 
     # Un mot obligatoire est aussi souhaité : inutile de le répéter dans les deux listes (ADR 0007)
     must_words = sorted({normalize_pattern(word) for word in payload.must_words})

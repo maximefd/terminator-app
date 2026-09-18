@@ -111,6 +111,10 @@ class GenerateRequest(ApiModel):
     # backend/benchmarks/README.md). `None` : réglage du solveur.
     # Les valeurs doivent rester celles de engine.grid_solver.FREQUENCY_MODES (vérifié par un test).
     frequency_mode: Literal["none", "exact", "band", "known", "tiebreak"] | None = None
+    # Dictionnaires thématiques de l'auteur, versés au pool « souhaité » (ADR 0007). Plafond de
+    # garde ; l'appartenance est vérifiée dans la route, qui répond 404 pour tout autre dictionnaire.
+    wish_dictionary_ids: Annotated[list[Annotated[int, Field(ge=1)]], Field(max_length=10)] = Field(
+        default_factory=list)
 
 
 # --- Conversion des erreurs ---
@@ -132,6 +136,7 @@ FIELD_LABELS = {
     "must_words": "mots obligatoires",
     "wish_words": "mots souhaités",
     "frequency_mode": "tri par fréquence",
+    "wish_dictionary_ids": "dictionnaires thématiques",
 }
 
 

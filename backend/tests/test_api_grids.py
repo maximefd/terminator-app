@@ -127,6 +127,78 @@ def test_the_schema_offers_exactly_the_modes_the_solver_knows():
     assert set(get_args(literal)) == set(FREQUENCY_MODES)
 
 
+# --- Dictionnaires thématiques (ADR 0007) ---
+
+def wish_words_sent(client, monkeypatch, body, headers=None):
+    """Mots souhaités réellement transmis au générateur pour cette requête."""
+    captured = []
+    real_generator = routes.GridGenerator
+
+    def spy(*args, **kwargs):
+        captured.append(kwargs["wish_words"])
+        return real_generator(*args, **kwargs)
+
+    monkeypatch.setattr(routes, "GridGenerator", spy)
+    response = post_generate(client, body, headers)
+    return response, captured
+
+
+def test_a_themed_dictionary_feeds_the_wished_pool(grid_app, client, monkeypatch):
+    headers = auth_headers(client)
+    default_id = default_dictionary_id(client, headers)
+    theme_id = client.post("/api/dictionaries", json={"name": "Cuisine"}, headers=headers).get_json()["id"]
+    client.post(f"/api/dictionaries/{theme_id}/words", json={"mot": "Zorgl"}, headers=headers)
+    # Le dictionnaire actif redevient celui par défaut : le mot ne peut venir que du thème demandé
+    client.patch(f"/api/dictionaries/{default_id}", json={"is_active": True}, headers=headers)
+
+    response, captured = wish_words_sent(
+        client, monkeypatch,
+        {"size": {"width": 5, "height": 5}, "seed": 42, "wish_dictionary_ids": [theme_id]}, headers)
+
+    assert response.status_code == 200, response.get_json()
+    assert captured[0] == ["ZORGL"]
+
+
+def test_a_theme_that_is_not_asked_for_stays_out(grid_app, client, monkeypatch):
+    headers = auth_headers(client)
+    default_id = default_dictionary_id(client, headers)
+    theme_id = client.post("/api/dictionaries", json={"name": "Cuisine"}, headers=headers).get_json()["id"]
+    client.post(f"/api/dictionaries/{theme_id}/words", json={"mot": "Zorgl"}, headers=headers)
+    client.patch(f"/api/dictionaries/{default_id}", json={"is_active": True}, headers=headers)
+
+    response, captured = wish_words_sent(
+        client, monkeypatch, {"size": {"width": 5, "height": 5}, "seed": 42}, headers)
+
+    assert response.status_code == 200
+    assert captured[0] == []
+
+
+def test_the_dictionary_of_another_user_is_not_reachable(grid_app, client):
+    """Autorisation : un dictionnaire qui n'est pas le sien répond 404, jamais 403."""
+    owner = auth_headers(client)
+    theme_id = client.post("/api/dictionaries", json={"name": "Cuisine"}, headers=owner).get_json()["id"]
+    intruder = auth_headers(client)
+
+    response = post_generate(client, {"size": {"width": 5, "height": 5},
+                                      "wish_dictionary_ids": [theme_id]}, intruder)
+
+    assert response.status_code == 404
+
+
+def test_a_guest_cannot_ask_for_a_themed_dictionary(grid_app, client):
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "wish_dictionary_ids": [1]}).status_code == 404
+
+
+def test_the_themed_dictionaries_are_validated(grid_app, client):
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "wish_dictionary_ids": list(range(1, 12))}).status_code == 400
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "wish_dictionary_ids": [0]}).status_code == 400
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "wish_dictionary_ids": "deux"}).status_code == 400
+
+
 def test_generate_unknown_format_returns_available_formats(grid_app, client):
     response = post_generate(client, {"size": {"width": 9, "height": 9}})
 
