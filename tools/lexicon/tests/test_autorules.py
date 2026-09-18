@@ -1,5 +1,9 @@
+import gzip
+import json
+
 import pytest
 
+from tools.conftest import WIKTIONARY_RECORDS
 from tools.lexicon.autorules import (
     DEFAULT_RULES,
     UnknownRuleError,
@@ -16,21 +20,33 @@ from tools.lexicon.decisions import KEEP, append_decisions
 EXTRA_DELA = [
     "AABAMESQUE;aabamesque;Forme fléchie de 'aabamesque'",
     "ZORFLIQUE;zorflique;Forme fléchie de 'zorflique'",
+    # Deuxième graphie seulement en deux mots : le piège que la règle laissait passer
+    "CAVA;cava;Forme fléchie de 'cava'",
+    "CAVA;ça va;Forme fléchie de 'ça va'",
 ]
 
 
 @pytest.fixture
-def db_path(dela_file, lexique_file, wiktionary_file, tmp_path):
+def db_path(dela_file, lexique_file, tmp_path):
     dela = tmp_path / "dela_plus.csv"
     dela.write_text(dela_file.read_text(encoding="utf-8") + "\n".join(EXTRA_DELA) + "\n", encoding="utf-8")
+    wiktionary = tmp_path / "wiktionary.jsonl.gz"
+    with gzip.open(wiktionary, "wt", encoding="utf-8") as f:
+        for record in WIKTIONARY_RECORDS:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
     path = tmp_path / "lexicon.sqlite"
-    build_lexicon(dela, lexique_file, path, wiktionary_file, log=lambda _: None)
+    build_lexicon(dela, lexique_file, path, wiktionary, log=lambda _: None)
     return path
 
 
 def test_composed_forms_are_matched_by_their_displayed_form(db_path):
     assert "APRIORI" in matches(db_path, ["formes-composees"])  # « a priori »
     assert "PORTE" not in matches(db_path, ["formes-composees"])
+
+
+def test_a_space_in_any_spelling_is_enough(db_path):
+    # « cava » s'écrit aussi « ça va » : la deuxième graphie suffit à en faire une forme composée
+    assert "CAVA" in matches(db_path, ["formes-composees"])
 
 
 def test_unknown_words_without_definition_are_matched_from_six_letters(db_path):
@@ -75,7 +91,7 @@ def test_preview_counts_words_and_shows_examples_without_writing(db_path, tmp_pa
     report = preview(db_path, decisions, sample=5)
 
     composed = report["formes-composees"]
-    assert composed["words"] == 0  # le seul mot visé est gardé explicitement
+    assert composed["words"] == 1  # APRIORI est gardé explicitement, CAVA reste visé
     assert composed["kept_by_author"] == 1
     unknown = report["inconnues-sans-definition"]
     assert unknown["words"] == 2

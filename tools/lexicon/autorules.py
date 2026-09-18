@@ -19,7 +19,11 @@ from pathlib import Path
 
 # Les règles parlent du mot (`w`) et de son lemme (`l`)
 FROM_CLAUSE = "words w LEFT JOIN words l ON l.norm = w.lemma_norm"
-FIRST_FORM = "json_extract(w.display_forms, '$[0]')"
+# Un mot a plusieurs graphies (`["a priori", "à priori"]`) : il suffit que **l'une** d'elles soit
+# en plusieurs mots pour que le mot en soit un. Ne regarder que la première en laissait passer.
+COMPOSED_FORM = ("EXISTS (SELECT 1 FROM json_each(w.display_forms) "
+                 "WHERE json_each.value LIKE '% %' OR json_each.value LIKE '%''%' "
+                 "OR json_each.value LIKE '%’%')")
 
 
 @dataclass(frozen=True)
@@ -36,7 +40,7 @@ RULES = (
         id="formes-composees",
         label="Formes en plusieurs mots ou avec apostrophe (« a priori », « aux WC »)",
         evidence="119 mots de cette classe triés à la main : 119 supprimés, aucun gardé.",
-        sql=f"({FIRST_FORM} LIKE '% %' OR {FIRST_FORM} LIKE '%''%' OR {FIRST_FORM} LIKE '%’%')",
+        sql=COMPOSED_FORM,
         default=True,
     ),
     Rule(
@@ -132,8 +136,8 @@ def preview(db_path, decisions_path, ids=None, sample: int = 10) -> dict:
             if ids is not None and rule.id not in ids:
                 continue
             rows = connection.execute(
-                f"SELECT w.norm, w.length, {FIRST_FORM} FROM {FROM_CLAUSE} WHERE {rule.sql} "
-                f"ORDER BY w.queue_order"
+                f"SELECT w.norm, w.length, json_extract(w.display_forms, '$[0]') FROM {FROM_CLAUSE} "
+                f"WHERE {rule.sql} ORDER BY w.queue_order"
             ).fetchall()
             concerned = [row for row in rows if row[0] not in kept]
             report[rule.id] = {

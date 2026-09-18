@@ -12,7 +12,7 @@
   };
 
   const $ = (id) => document.getElementById(id);
-  const state = { buffer: [], after: -1, exhausted: false, fetching: null, handled: new Set(), decided: 0 };
+  const state = { buffer: [], after: -1, exhausted: false, fetching: null, handled: new Set(), decided: 0, open: null };
   let serverChain = Promise.resolve();
 
   // --- Utilitaires ---
@@ -112,6 +112,44 @@
     return "très courant";
   }
 
+  // --- Une forme de la famille, triable seule ---
+
+  function formNode(card, form) {
+    const item = element("li", "form");
+    if (form.protected) item.classList.add("protected");
+    if (form.decided) item.classList.add("decided");
+
+    const head = element("button", "form-head");
+    head.type = "button";
+    head.append(element("span", "form-text", form.form));
+    if (form.protected) head.append(element("small", "muted", "mot courant, gardé d'office"));
+    else if (form.decided) head.append(element("small", "muted", "déjà décidé"));
+    else head.append(element("small", "muted", `${form.length} lettres`));
+    head.addEventListener("click", () => {
+      state.open = state.open === form.norm ? null : form.norm;
+      render();
+    });
+    item.append(head);
+
+    if (state.open === form.norm) {
+      const details = element("div", "form-details");
+      details.append(element("p", "form-definition", form.definition || "Aucune définition trouvée dans le Wiktionnaire."));
+      if (!form.protected && !form.decided) {
+        const actions = element("div", "form-actions");
+        const remove = element("button", "danger small", "Supprimer ce mot");
+        remove.type = "button";
+        remove.addEventListener("click", () => decideOne(card, form, "delete"));
+        const keep = element("button", "success small", "Garder ce mot");
+        keep.type = "button";
+        keep.addEventListener("click", () => decideOne(card, form, "keep"));
+        actions.append(remove, keep);
+        details.append(actions);
+      }
+      item.append(details);
+    }
+    return item;
+  }
+
   function render() {
     const card = state.buffer[0];
     $("card").hidden = !card;
@@ -143,12 +181,7 @@
     const pos = card.pos ? card.pos.split(":")[0] : null;
     $("card-pos").textContent = pos ? (POS_LABELS[pos] || card.pos) : "—";
 
-    $("card-forms").replaceChildren(...card.forms.map((form) => {
-      const item = element("li", form.decided ? "form decided" : "form");
-      item.append(element("span", "form-text", form.form));
-      item.append(element("small", "muted", form.decided ? "déjà décidé" : `${form.length} lettres`));
-      return item;
-    }));
+    $("card-forms").replaceChildren(...card.forms.map((form) => formNode(card, form)));
     const hidden = card.total_forms - card.forms.length;
     $("card-more").hidden = hidden <= 0;
     if (hidden > 0) $("card-more").textContent = `… et ${plural(hidden, "autre forme")}.`;
@@ -158,11 +191,35 @@
 
   // --- Actions ---
 
+  function decideOne(card, form, decision) {
+    form.decided = true;
+    card.pending = card.pending.filter((norm) => norm !== form.norm);
+    card.pending_count = card.pending.length;
+    state.open = null;
+    // Une famille vidée forme par forme n'a plus lieu d'être affichée
+    if (!card.pending_count) {
+      state.buffer.shift();
+      state.handled.add(card.family);
+    }
+    render();
+    enqueue(() => post("/api/decisions", { words: [form.norm], decision }))
+      .then(() => toast(`« ${form.form} » ${decision === "keep" ? "gardé" : "supprimé"} · ↓ pour annuler`))
+      .catch((error) => {
+        form.decided = false;
+        card.pending.push(form.norm);
+        card.pending_count = card.pending.length;
+        if (state.buffer[0] !== card) state.buffer.unshift(card);
+        render();
+        toast(error.message, true);
+      });
+  }
+
   function decide(decision) {
     const card = state.buffer.shift();
     if (!card) return;
     state.handled.add(card.family);
     state.decided += 1;
+    state.open = null;
     render();
     enqueue(() => post("/api/decisions/family", { word: card.norm, decision }))
       .then((data) => {
@@ -181,6 +238,7 @@
   function skip() {
     const card = state.buffer.shift();
     if (!card) return;
+    state.open = null;
     state.buffer.push(card);
     render();
   }
@@ -197,6 +255,7 @@
         state.buffer = [];
         state.after = -1;
         state.exhausted = false;
+        state.open = null;
         state.handled.clear();
         render();
         toast(`Annulé : ${plural(data.words.length, "mot")}`);
@@ -207,7 +266,7 @@
   // --- Clavier (AZERTY : flèches et Retour arrière) ---
 
   document.addEventListener("keydown", (event) => {
-    if (event.target.closest("select, input, textarea, a")) return;
+    if (event.target.closest("select, input, textarea, a, .form-details")) return;
     const handlers = {
       ArrowLeft: () => decide("delete"),
       ArrowRight: () => decide("keep"),
@@ -233,6 +292,7 @@
     state.buffer = [];
     state.after = -1;
     state.exhausted = false;
+    state.open = null;
     render();
   });
 

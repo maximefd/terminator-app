@@ -181,17 +181,23 @@ Un verbe et ses conjugaisons se décident ensemble : c'est le bon niveau de déc
 | Annuler la dernière action | `↓` ou `⌫` | bouton |
 
 - La décision porte sur **les formes qui restent à trier** : les mots déjà décidés et les mots très courants ne sont jamais touchés.
+- **Une famille compte au moins trois formes à trier.** En dessous (un nom et son pluriel), les mots restent dans « Trier les mots », où ils se jugent aussi vite. Sur le lexique : 91 188 groupes de une ou deux formes contre 19 190 vraies familles.
+- **Les formes en plusieurs mots ne font jamais famille** (« abeille charpentière »), même quand les règles automatiques sont désactivées.
+- **Une famille peut mélanger deux mots différents.** Le Wiktionnaire donne le même lemme à l'adverbe « hier » et au verbe « hier » (damer le pavé) : la famille contient donc `hie`, `hies`, `hiérons`… Toucher une forme montre **sa** définition et permet de la garder ou de la supprimer seule, sans toucher au reste.
 - Les familles arrivent dans l'ordre de la file (les plus courtes d'abord) et le filtre de longueur s'applique à leurs formes : commencer par « 2 à 5 lettres » traite la tranche qui remplit la moitié des emplacements du catalogue.
 
 ### Revoir ses décisions (onglet « Révision »)
 
-La liste des [décisions douteuses](#revoir-ses-décisions) devient une file de cartes : le mot, la décision prise, la date, et pourquoi elle est signalée.
+La liste des [décisions douteuses](#revoir-ses-décisions) devient une file de cartes : le mot, la décision prise, la date, et pourquoi elle est signalée. **Les touches sont celles du tri** : rien de nouveau à apprendre.
 
 | Action | Clavier | Effet |
 |--------|---------|-------|
-| Confirmer | `→` | La décision ne change pas, mais elle est marquée comme revue |
-| Inverser | `←` | La décision contraire est enregistrée |
+| Supprimer | `←` | Le mot est supprimé, qu'il l'ait déjà été ou non |
+| Garder | `→` | Le mot est gardé, qu'il l'ait déjà été ou non |
 | Passer | `↑` | La carte revient en fin de file |
+| Annuler la dernière action | `↓` ou `⌫` | La décision revient à son état précédent et le mot réapparaît dans la liste |
+
+Redonner la même réponse qu'avant suffit à sortir le mot de la liste : la décision ne change pas, mais elle est marquée comme revue.
 
 Dans les deux premiers cas, la décision est écrite dans un lot `revision` : **le mot ne revient plus dans cette liste**.
 

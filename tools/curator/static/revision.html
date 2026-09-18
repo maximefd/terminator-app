@@ -27,7 +27,8 @@
     <p class="intro-line muted">
       Trier vite fatigue. Ces décisions-là méritent un deuxième regard : elles contredisent une autre
       décision de la même famille, portent sur un mot courant, ou sont parties en rafale.
-      Confirmer les laisse telles quelles ; dans les deux cas, elles ne reviendront plus ici.
+      Les touches sont les mêmes qu'au tri : <kbd>←</kbd> supprimer, <kbd>→</kbd> garder.
+      Redonner la même réponse qu'avant suffit à sortir le mot de cette liste.
     </p>
 
     <ul id="reasons" class="reason-counts" aria-label="Décisions à revoir par raison"></ul>
@@ -52,13 +53,15 @@
     <p id="empty" class="empty" hidden>Aucune décision à revoir 🎉</p>
 
     <div class="actions">
-      <button id="btn-invert" class="danger" type="button"><span class="key">←</span> Inverser</button>
-      <button id="btn-confirm" class="success" type="button">Confirmer <span class="key">→</span></button>
+      <button id="btn-delete" class="danger" type="button"><span class="key">←</span> Supprimer</button>
+      <button id="btn-keep" class="success" type="button">Garder <span class="key">→</span></button>
       <button id="btn-skip" type="button"><span class="key">↑</span> Passer</button>
+      <button id="btn-undo" type="button"><span class="key">↓</span> Annuler</button>
     </div>
 
     <p class="legend muted">
-      Clavier : <kbd>→</kbd> confirmer la décision · <kbd>←</kbd> l'inverser · <kbd>↑</kbd> passer.
+      Clavier : <kbd>←</kbd> supprimer · <kbd>→</kbd> garder · <kbd>↑</kbd> passer ·
+      <kbd>↓</kbd> ou <kbd>⌫</kbd> annuler la dernière action.
       Les suppressions faites par famille ne sont jamais remises en cause : c'est un geste volontaire.
     </p>
   </main>
