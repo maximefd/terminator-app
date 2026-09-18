@@ -12,6 +12,7 @@ from flask import Flask, jsonify, redirect, request, send_from_directory, sessio
 
 from tools.lexicon.autorules import load_enabled
 from tools.lexicon.decisions import DELETE, KEEP, NORMALIZED_WORD
+from tools.lexicon.export import FILTER_NONE
 from tools.lexicon.review import counts_by_reason, suspicious
 
 from .exporter import DEFAULT_EXPORT_EVERY, LexiconExporter
@@ -130,9 +131,13 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
     guard = PinGuard()
     build_dir = Path(db_path).parent
     lookup = lookup or LookupService.from_environment(build_dir / "lookup-cache.json")
+    # L'export automatique applique les mêmes règles que la file de tri : un mot retiré du tri
+    # doit aussi quitter le lexique de Terminator, sinon il continue de remplir les grilles.
     exporter = exporter or LexiconExporter(
         db_path, decisions_path, build_dir / "lexique_cure.csv",
         every=int(os.environ.get("CURATOR_EXPORT_EVERY") or DEFAULT_EXPORT_EVERY),
+        auto_rules=auto_rules,
+        filter_level=os.environ.get("CURATOR_EXPORT_FILTER") or FILTER_NONE,
     )
     exporter.prime(len(store.state()))
     terminator_url = terminator_url or os.environ.get("TERMINATOR_URL") or "http://localhost:3000/grid"

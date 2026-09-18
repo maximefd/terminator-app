@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import Callable
 
-from tools.lexicon.autorules import COMPOSED_FORM, condition
+from tools.lexicon.autorules import ANY_COMPOSED_FORM, condition
 
 # Les requêtes joignent le lemme : les règles automatiques en ont besoin, et la carte « famille »
 # affiche la fréquence du lemme.
@@ -20,8 +20,9 @@ MAX_FAMILY_FORMS = 40
 # En deçà, ce n'est pas une famille : un nom et son pluriel se jugent aussi vite mot à mot.
 # Mesure sur le lexique : 91 188 « familles » de 1 ou 2 formes contre 19 190 vraies familles.
 MIN_FAMILY_FORMS = 3
-# `COMPOSED_FORM` (importé plus haut) : les formes en plusieurs mots (« à eau », « as de ») ne font
-# jamais famille, même quand les règles automatiques sont désactivées.
+# `ANY_COMPOSED_FORM` (importé plus haut) : un mot dont **une** graphie est en plusieurs mots ne fait
+# jamais famille (« à eau », « as de »), même règles désactivées. Écarter une carte ne supprime rien,
+# ce test peut donc être large là où la règle de suppression reste sur la graphie affichée.
 
 
 class LexiconRepository:
@@ -101,7 +102,7 @@ class LexiconRepository:
             rows = self.connection().execute(
                 f"SELECT COALESCE(w.lemma_norm, w.norm) AS family, MIN(w.queue_order) AS family_order "
                 f"FROM {FROM_WORDS} WHERE w.queue_order > ? AND w.suggestion != 'keep' "
-                f"AND w.length BETWEEN ? AND ? AND NOT {COMPOSED_FORM} AND {self._not_ruled_out} "
+                f"AND w.length BETWEEN ? AND ? AND NOT {ANY_COMPOSED_FORM} AND {self._not_ruled_out} "
                 f"GROUP BY family ORDER BY family_order LIMIT {SCAN_BATCH}",
                 [cursor, min_length, max_length],
             ).fetchall()
@@ -126,7 +127,7 @@ class LexiconRepository:
         """
         rows = self.connection().execute(
             f"SELECT {FIELDS} FROM {FROM_WORDS} "
-            f"WHERE (w.lemma_norm = ? OR w.norm = ?) AND NOT {COMPOSED_FORM} AND {self._not_ruled_out} "
+            f"WHERE (w.lemma_norm = ? OR w.norm = ?) AND NOT {ANY_COMPOSED_FORM} AND {self._not_ruled_out} "
             f"ORDER BY w.length, w.norm",
             [family, family],
         ).fetchall()

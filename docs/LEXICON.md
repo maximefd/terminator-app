@@ -116,6 +116,10 @@ python -m tools.lexicon autorules --aucune           # tout désactiver (les mot
 
 `formes-composees` retire aussi des locutions qui pourraient servir en grille (`APRIORI`, `EXNIHILO`) : les garder explicitement suffit à les récupérer.
 
+**Les mots très courants (`keep`, zipf ≥ 3,5) sont hors d'atteinte des règles**, sinon `aujourd'hui`, `quelqu'un` ou `parce que` disparaîtraient. La règle ne regarde que la **graphie affichée** — celle qui part dans le lexique : l'étendre aux graphies secondaires viserait « avoir » (« à voir ») ou « savoir » (« s'avoir »). Le regroupement par famille, lui, peut être large : écarter une carte ne supprime rien.
+
+**L'export automatique du curateur applique les mêmes règles que la file de tri** : un mot retiré du tri doit aussi quitter le lexique de Terminator, sinon il resterait invisible tout en continuant de remplir les grilles. Le filtre positif, lui, reste facultatif : `CURATOR_EXPORT_FILTER=moyen` dans `.env` l'active pour les exports du curateur.
+
 ### Revoir ses décisions
 
 Trier vite fatigue, et la fatigue laisse des traces dans `decisions.csv` : sur les 4 958 premières décisions, **11,6 % des familles jugées forme par forme se contredisent** (`BITA` supprimé, `BITAI` gardé à quelques secondes d'écart). Le module `tools/lexicon/review.py` retrouve ces décisions :
