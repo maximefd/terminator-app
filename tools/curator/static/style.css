@@ -607,42 +607,52 @@ kbd {
 
 .forms-title { margin: 1rem 0 0.5rem; font-size: 0.85rem; color: var(--muted); font-weight: 600; }
 
+/* Nuage de formes : une famille de trente conjugaisons tient en quelques lignes, et les boutons
+   de décision restent atteignables sans faire défiler la page. */
 .family-forms {
-  display: grid;
-  gap: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.family-forms .form {
+.family-forms .form { display: flex; }
+
+.form-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  padding: 0.3rem 0.75rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+.form-chip small { font-size: 0.7rem; }
+.form-text { font-weight: 600; }
+.family-forms .form.decided .form-chip { opacity: 0.6; }
+.family-forms .form.decided .form-text { text-decoration: line-through; }
+.family-forms .form.protected .form-chip { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); }
+.family-forms .form.open .form-chip {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+/* Le détail s'ouvre sous le nuage : un seul bloc, au lieu d'une liste qui s'allonge à chaque clic */
+.form-detail {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 0.8rem;
-  overflow: hidden;
 }
-.family-forms .form.decided { opacity: 0.6; }
-.family-forms .form.protected { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); }
-.family-forms .form.decided .form-text { text-decoration: line-through; }
-.family-forms .form small { font-size: 0.72rem; }
-
-/* Toute la ligne est une cible tactile : elle ouvre la définition de cette forme */
-.form-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.75rem;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  text-align: left;
-  font-size: 0.95rem;
-}
-.form-text { font-weight: 600; }
-
-.form-details { display: grid; gap: 0.6rem; padding: 0 0.75rem 0.75rem; }
-.form-definition { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--muted); }
+.form-detail p { margin: 0; }
+.form-detail-word { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-size: 1rem; }
+.form-definition { font-size: 0.85rem; line-height: 1.45; color: var(--muted); }
 .form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 button.small { min-height: 2.5rem; padding: 0 0.9rem; font-size: 0.85rem; }
 

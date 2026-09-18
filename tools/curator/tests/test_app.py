@@ -182,8 +182,14 @@ def test_family_deletion_spares_kept_and_common_words(logged, paths):
     response = logged.post("/api/decisions/family", json={"word": "OUVRAGEAMES"}, headers=API)
 
     assert response.get_json()["words"] == ["OUVRAGEAMES"]
-    # PORTE et PORTES sont très courants (keep) : jamais supprimés par famille
-    assert logged.post("/api/decisions/family", json={"word": "PORTES"}, headers=API).status_code == 400
+
+    # PORTE et PORTES sont très courants (keep) : jamais supprimés par famille. Il n'y a donc rien
+    # à trier, ce qui n'est pas une erreur — simplement une décision qui n'écrit rien.
+    spared = logged.post("/api/decisions/family", json={"word": "PORTES"}, headers=API)
+
+    assert spared.status_code == 200
+    assert spared.get_json()["words"] == [] and spared.get_json()["already_sorted"] is True
+    assert "PORTE" not in decisions(paths) and "PORTES" not in decisions(paths)
 
 
 # --- Statistiques ---
