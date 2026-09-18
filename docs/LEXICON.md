@@ -167,6 +167,33 @@ Une carte par mot : le mot et ses graphies, la définition (signalée quand ce n
 - **Suppression par famille** : le mot, son lemme et toutes les formes du même lemme. Les mots gardés et les mots très courants (`keep`) ne sont jamais supprimés de cette façon.
 - **Ordre de la file** : mots les plus courts d'abord ; dans une longueur, `likely_delete`, puis `review`, puis `likely_keep`, du moins fréquent au plus fréquent. Filtres par longueur et par suggestion.
 - **En haut de l'écran** : niveau, série de jours consécutifs, badges, mots restant à trier et objectif du jour.
+- Les mots visés par une [règle automatique](#les-règles-automatiques) ne sont plus proposés, ni comptés dans le reste à trier.
+
+### Trier par famille (onglet « Familles »)
+
+Un verbe et ses conjugaisons se décident ensemble : c'est le bon niveau de décision, et c'est 30 à 40 fois moins de gestes. La carte montre le lemme, sa définition, sa fréquence et toutes ses formes (celles déjà décidées sont barrées).
+
+| Action | Clavier | Téléphone |
+|--------|---------|-----------|
+| Supprimer toute la famille | `←` | bouton |
+| Garder toute la famille | `→` | bouton |
+| Passer | `↑` | bouton |
+| Annuler la dernière action | `↓` ou `⌫` | bouton |
+
+- La décision porte sur **les formes qui restent à trier** : les mots déjà décidés et les mots très courants ne sont jamais touchés.
+- Les familles arrivent dans l'ordre de la file (les plus courtes d'abord) et le filtre de longueur s'applique à leurs formes : commencer par « 2 à 5 lettres » traite la tranche qui remplit la moitié des emplacements du catalogue.
+
+### Revoir ses décisions (onglet « Révision »)
+
+La liste des [décisions douteuses](#revoir-ses-décisions) devient une file de cartes : le mot, la décision prise, la date, et pourquoi elle est signalée.
+
+| Action | Clavier | Effet |
+|--------|---------|-------|
+| Confirmer | `→` | La décision ne change pas, mais elle est marquée comme revue |
+| Inverser | `←` | La décision contraire est enregistrée |
+| Passer | `↑` | La carte revient en fin de file |
+
+Dans les deux premiers cas, la décision est écrite dans un lot `revision` : **le mot ne revient plus dans cette liste**.
 
 ### Chercher un mot
 

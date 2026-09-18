@@ -10,7 +10,9 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, request, send_from_directory, session
 
+from tools.lexicon.autorules import load_enabled
 from tools.lexicon.decisions import DELETE, KEEP, NORMALIZED_WORD
+from tools.lexicon.review import counts_by_reason, suspicious
 
 from .exporter import DEFAULT_EXPORT_EVERY, LexiconExporter
 from .gamification import DEFAULT_DAILY_GOAL
@@ -29,7 +31,7 @@ MAX_WORDS_PER_DECISION = 50
 CSRF_HEADER = "X-Curator"
 # Routes qui lisent la base du lexique : indisponibles tant qu'elle n'est pas construite
 LEXICON_API_PREFIXES = ("/api/queue", "/api/cards", "/api/decisions", "/api/undo", "/api/stats",
-                        "/api/lookup", "/api/lexicon")
+                        "/api/lookup", "/api/lexicon", "/api/families", "/api/revisions")
 
 PUBLIC_PATHS = {"/login", "/static/login.js", "/static/style.css", "/static/icon.svg", "/manifest.webmanifest"}
 
@@ -96,9 +98,12 @@ def _word_list(value) -> list[str] | None:
 def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None, testing: bool = False,
                daily_goal: int = DEFAULT_DAILY_GOAL, lookup: LookupService | None = None,
                exporter: LexiconExporter | None = None, terminator_url: str | None = None,
-               layouts_dir=None) -> Flask:
+               layouts_dir=None, auto_rules=None) -> Flask:
     """`lookup`, `exporter` et `terminator_url` se configurent par défaut depuis l'environnement
     (SERPER_API_KEY, CURATOR_EXPORT_EVERY, TERMINATOR_URL) ; les tests les fournissent.
+
+    `auto_rules` : règles automatiques activées (par défaut celles de `auto_rules.json`, à côté des
+    décisions). Les mots qu'elles visent ne sont plus proposés au tri.
 
     Sans base du lexique, le curateur démarre quand même : l'éditeur de layouts reste utilisable et
     le tri des mots s'active dès que la base existe (`make lexicon-build`), sans redémarrage.
@@ -118,7 +123,9 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
         MAX_CONTENT_LENGTH=16 * 1024,
         TESTING=testing,
     )
-    repository = LexiconRepository(db_path)
+    if auto_rules is None:
+        auto_rules = load_enabled(Path(decisions_path).parent / "auto_rules.json")
+    repository = LexiconRepository(db_path, auto_rules)
     store = DecisionStore(decisions_path)
     guard = PinGuard()
     build_dir = Path(db_path).parent
@@ -190,6 +197,18 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
             return redirect("/layouts")
         return send_from_directory(STATIC_DIR, "index.html")
 
+    @app.get("/familles")
+    def families_page():
+        if not Path(db_path).exists():
+            return redirect("/layouts")
+        return send_from_directory(STATIC_DIR, "familles.html")
+
+    @app.get("/revision")
+    def revision_page():
+        if not Path(db_path).exists():
+            return redirect("/layouts")
+        return send_from_directory(STATIC_DIR, "revision.html")
+
     @app.get("/layouts")
     def layouts_page():
         return send_from_directory(STATIC_DIR, "layouts.html")
@@ -250,15 +269,55 @@ def create_app(db_path, decisions_path, pin: str, secret_key: str | None = None,
                 if suggestion != "keep" and state.get(norm) not in (KEEP, DELETE)]
 
     @app.post("/api/decisions/family")
-    def delete_family():
-        word = (request.get_json(silent=True) or {}).get("word")
+    def decide_family():
+        """Une décision pour toute une famille : c'est le bon niveau pour un verbe et ses formes."""
+        body = request.get_json(silent=True) or {}
+        word = body.get("word")
+        decision = body.get("decision", DELETE)
         if not isinstance(word, str) or not NORMALIZED_WORD.fullmatch(word):
             return _error("Mot invalide.", 400)
+        if decision not in (KEEP, DELETE):
+            return _error("Décision invalide.", 400)
         words = _family_to_delete(word, store.state())
         if not words:
-            return _error("Aucun mot à supprimer dans cette famille.", 400)
-        store.append(words, DELETE)
-        return jsonify({"words": words, "lexicon_export": _export_if_milestone()})
+            return _error("Aucun mot à trier dans cette famille.", 400)
+        store.append(words, decision)
+        return jsonify({"words": words, "decision": decision, "lexicon_export": _export_if_milestone()})
+
+    @app.get("/api/families")
+    def families():
+        """File des familles : un lemme, sa fréquence, sa définition et ses formes à trier."""
+        state = store.state()
+        cards, next_after = repository.families(
+            after=_int_arg("after", -1, -1, 10**9),
+            limit=_int_arg("limit", 10, 1, 30),
+            min_length=_int_arg("min_length", 2, 2, 99),
+            max_length=_int_arg("max_length", 99, 2, 99),
+            is_decided=state.__contains__,
+        )
+        return jsonify({"families": cards, "next_after": next_after})
+
+    @app.get("/api/revisions")
+    def revisions():
+        """Décisions douteuses à confirmer ou corriger (voir tools/lexicon/review.py)."""
+        # Les comptes portent sur toutes les décisions à revoir, la liste renvoyée est une page
+        items = suspicious(db_path, decisions_path)
+        page = items[:_int_arg("limit", 50, 1, 200)]
+        return jsonify({"items": page, "counts": counts_by_reason(items), "total": len(items)})
+
+    @app.post("/api/revisions")
+    def revise():
+        body = request.get_json(silent=True) or {}
+        words = _word_list(body.get("words"))
+        if words is None:
+            return _error("Liste de mots invalide.", 400)
+        if body.get("decision") not in (KEEP, DELETE):
+            return _error("Décision invalide.", 400)
+        if repository.existing(words) != set(words):
+            return _error("Mot inconnu du lexique.", 400)
+        store.revise(words, body["decision"])
+        return jsonify({"words": words, "decision": body["decision"],
+                        "lexicon_export": _export_if_milestone()})
 
     @app.post("/api/undo")
     def undo():

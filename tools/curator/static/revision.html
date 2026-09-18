@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>Révision — Curateur Terminator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="/static/icon.svg">
+  <link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">🧩 Curateur</span>
+    <nav class="nav" aria-label="Sections">
+      <a href="/">Trier les mots</a>
+      <a href="/familles">Familles</a>
+      <a href="/revision" aria-current="page">Révision</a>
+      <a href="/layouts">Layouts</a>
+    </nav>
+    <p class="stats" aria-live="polite">
+      <span>à revoir <strong id="stat-remaining">…</strong></span>
+    </p>
+  </header>
+
+  <main class="workspace">
+    <p class="intro-line muted">
+      Trier vite fatigue. Ces décisions-là méritent un deuxième regard : elles contredisent une autre
+      décision de la même famille, portent sur un mot courant, ou sont parties en rafale.
+      Confirmer les laisse telles quelles ; dans les deux cas, elles ne reviendront plus ici.
+    </p>
+
+    <ul id="reasons" class="reason-counts" aria-label="Décisions à revoir par raison"></ul>
+
+    <article id="card" class="card revision-card" aria-live="polite" aria-label="Décision à revoir">
+      <div class="card-top">
+        <span id="card-reason" class="badge"></span>
+        <span id="card-length" class="muted"></span>
+      </div>
+      <h1 id="card-word" class="word"></h1>
+      <p id="card-explanation" class="explanation"></p>
+      <p id="card-current" class="current-decision"></p>
+      <p id="card-definition" class="definition"></p>
+      <dl class="meta">
+        <div><dt>Fréquence</dt><dd><span class="freq" aria-hidden="true"><span id="card-freq-bar"></span></span> <span id="card-freq-label"></span></dd></div>
+        <div><dt>Lemme</dt><dd id="card-lemma"></dd></div>
+        <div><dt>Décidé le</dt><dd id="card-date"></dd></div>
+      </dl>
+    </article>
+
+    <p id="loading" class="empty">Recherche des décisions douteuses…</p>
+    <p id="empty" class="empty" hidden>Aucune décision à revoir 🎉</p>
+
+    <div class="actions">
+      <button id="btn-invert" class="danger" type="button"><span class="key">←</span> Inverser</button>
+      <button id="btn-confirm" class="success" type="button">Confirmer <span class="key">→</span></button>
+      <button id="btn-skip" type="button"><span class="key">↑</span> Passer</button>
+    </div>
+
+    <p class="legend muted">
+      Clavier : <kbd>→</kbd> confirmer la décision · <kbd>←</kbd> l'inverser · <kbd>↑</kbd> passer.
+      Les suppressions faites par famille ne sont jamais remises en cause : c'est un geste volontaire.
+    </p>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/revision.js"></script>
+</body>
+</html>

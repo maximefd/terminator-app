@@ -4,6 +4,7 @@ import threading
 from pathlib import Path
 
 from tools.lexicon.decisions import (
+    REVISION,
     DecisionRow,
     append_decisions,
     effective_decisions,
@@ -43,6 +44,17 @@ class DecisionStore:
     def append(self, words: list[str], decision: str) -> str:
         with self._lock:
             batch = append_decisions(self.path, words, decision)
+            self._signature = None
+            return batch
+
+    def revise(self, words: list[str], decision: str) -> str:
+        """Deuxième regard : même écriture, dans un lot marqué « revision ».
+
+        Le mot ne revient plus dans la liste des décisions à revoir, même si la décision
+        ne change pas (voir tools/lexicon/review.py).
+        """
+        with self._lock:
+            batch = append_decisions(self.path, words, decision, kind=REVISION)
             self._signature = None
             return batch
 

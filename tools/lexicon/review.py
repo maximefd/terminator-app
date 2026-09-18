@@ -94,8 +94,12 @@ def _flash_decisions(rows, solo: dict[str, str]) -> set[str]:
     return {word for words in by_second.values() if len(words) >= FLASH_BURST for word in words}
 
 
-def suspicious(db_path, decisions_path, limit: int = 200) -> list[dict]:
-    """Décisions à revoir, les plus parlantes d'abord (déjà revues : exclues)."""
+def suspicious(db_path, decisions_path, limit: int | None = None) -> list[dict]:
+    """Décisions à revoir, les plus parlantes d'abord (déjà revues : exclues).
+
+    Sans `limit`, la liste est complète : c'est elle qui donne le compte à afficher. Tronquer
+    avant de compter donnerait « 5 décisions à revoir » au lieu du vrai total.
+    """
     rows = read_decisions(decisions_path)
     current = effective_rows(rows)
     sizes = batch_sizes(rows)
@@ -137,7 +141,7 @@ def suspicious(db_path, decisions_path, limit: int = 200) -> list[dict]:
                       "decided_at": current[word].date})
 
     found.sort(key=lambda item: (REASONS.index(item["reason"]), item["norm"]))
-    return found[:limit]
+    return found if limit is None else found[:limit]
 
 
 def counts_by_reason(items: list[dict]) -> dict[str, int]:
@@ -174,11 +178,11 @@ def family_of(db_path, word: str, decisions: dict[str, str]) -> list[dict]:
 
 
 def report(db_path, decisions_path, limit: int = 200) -> dict:
-    """Résumé pour la ligne de commande."""
-    items = suspicious(db_path, decisions_path, limit=limit)
+    """Résumé pour la ligne de commande : les comptes portent sur tout, la liste est tronquée."""
+    items = suspicious(db_path, decisions_path)
     return {"total": len(items), "by_reason": counts_by_reason(items),
             "items": [{key: item[key] for key in ("norm", "form", "decision", "reason", "explanation")}
-                      for item in items]}
+                      for item in items[:limit]]}
 
 
 def default_paths(repo_root: Path) -> tuple[Path, Path]:
