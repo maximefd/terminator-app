@@ -19,6 +19,8 @@ Le budget de 20 s correspond au budget par défaut de l'API (`GENERATION_TIME_BU
 
 `--restart-unit N` fixe l'unité des redémarrages en appels récursifs (`0` : un seul essai, comme avant la Phase 3). Sans l'option, le réglage du générateur s'applique (`DEFAULT_RESTART_UNIT_CALLS`). Le nombre d'essais de chaque seed est dans le champ `attempts`.
 
+Autres réglages, tous facultatifs (sans l'option, le solveur applique son défaut) : `--min-safe-candidates` (seuil du forward checking), `--max-candidates` (candidats essayés par emplacement), `--frequency-mode` (place de la fréquence dans le tri : `none`, `exact`, `band`, `known`, `tiebreak`) et `--frequency-band`. Mesurer la fréquence exige `--dictionary` avec un lexique qui en porte une : `dela_clean.csv` n'a pas cette colonne.
+
 ## Lire les résultats
 
 Pour chaque layout : taux de succès dans le budget, temps p50 / p95 / max, nombre de timeouts, backtracks moyens, puis le détail de chaque seed.
@@ -31,19 +33,19 @@ Pour chaque layout : taux de succès dans le budget, temps p50 / p95 / max, nomb
 
 Machine : Docker (Python 3.11, 8 CPU, 4 Go), dictionnaire `dela_clean.csv` complet, 20 seeds, budget 20 s, exécution seule.
 
-**Les 21 layouts du catalogue réussissent 20 fois sur 20** : 420 générations, 420 réussites.
+**Les 21 layouts du catalogue réussissent 20 fois sur 20** : 420 générations, 420 réussites (plafond de candidats à 300).
 
 | Layout | Mots | Succès | p50 | p95 |
 |--------|------|--------|-----|-----|
-| 6x7-001 à 005 | 12-13 | 20/20 | 0,05 à 0,08 s | 0,13 à 0,15 s |
-| 7x9-001 | 20 | 20/20 | 0,19 s | 0,45 s |
-| 11x6-001 | 21 | 20/20 | 0,41 s | 1,09 s |
-| 11x9-001 | 33 | 20/20 | 0,70 s | 1,29 s |
-| 14x9-001 | 38 | 20/20 | 1,55 s | 3,75 s |
-| 10x13-001 à 006 | 41-43 | 20/20 | 0,58 à 1,09 s | 0,93 à 3,44 s |
-| 11x17-001 et 002 | 61-62 | 20/20 | 1,50 à 1,79 s | 4,62 à 9,89 s |
-| 13x16-001 à 003 | 61-64 | 20/20 | 1,03 à 3,27 s | 2,58 à 12,72 s |
-| 13x18-001 | 81 | 20/20 | 1,99 s | 14,57 s |
+| 6x7-001 à 005 | 12-13 | 20/20 | 0,05 à 0,06 s | 0,10 à 0,19 s |
+| 7x9-001 | 20 | 20/20 | 0,16 s | 0,44 s |
+| 11x6-001 | 21 | 20/20 | 0,33 s | 1,09 s |
+| 11x9-001 | 33 | 20/20 | 0,78 s | 3,32 s |
+| 14x9-001 | 38 | 20/20 | 1,29 s | 3,41 s |
+| 10x13-001 à 006 | 41-43 | 20/20 | 0,47 à 0,84 s | 1,49 à 5,53 s |
+| 11x17-001 et 002 | 61-62 | 20/20 | 0,89 à 1,24 s | 3,44 à 3,67 s |
+| 13x16-001 à 003 | 61-64 | 20/20 | 0,79 à 2,51 s | 2,87 à 10,08 s |
+| 13x18-001 | 81 | 20/20 | 2,19 s | 8,72 s |
 
 Historique sur les deux layouts d'origine :
 
@@ -95,6 +97,36 @@ Le seuil est passé à **2**, le minimum imposé par l'invariant du solveur (un 
 | **2 (retenu)** | **420/420** | **1,99 s** | **0,127 s** |
 
 Aucun layout n'est dégradé, et **tout accélère**, y compris les petits formats qui n'avaient aucun problème : un seuil élevé ne protégeait pas la recherche, il l'envoyait explorer des branches plus longues.
+
+## Fréquence des mots et plafond de candidats (Phase 3, septembre 2026)
+
+Le lexique curé porte une quatrième colonne, la fréquence zipf, que `DictionnaireTrie` jetait. La roadmap demandait de trier les candidats par fréquence pour obtenir des mots plus naturels. Deux pièges ont failli fausser la mesure :
+
+- **le benchmark était aveugle** : il tourne sur `dela_clean.csv`, qui n'a pas de colonne de fréquence. Le tri par fréquence y est rigoureusement sans effet. Les mesures ci-dessous utilisent donc `--dictionary` avec le lexique curé ;
+- **le taux de succès ne dit rien de la qualité**, qui est justement le sujet. Le harness rapporte désormais `mean_zipf` (fréquence moyenne des mots placés) et `unknown_share` (part de mots absents des corpus). Une première tentative comparait un lexique amputé de sa colonne de fréquence à un lexique complet : les deux conditions différaient par l'ordre **et** par l'instrument de mesure, le résultat ne voulait rien dire. D'où `--frequency-mode`, qui change l'ordre sans toucher aux données.
+
+Mesures sur 7 layouts (6×7, 11×9, 13×18), 20 seeds, budget 20 s, lexique curé :
+
+| Mode | Succès | Zipf moyen | Inconnus | p50 11×9 | p50 13×18 |
+|------|--------|-----------|----------|----------|-----------|
+| `none` | 140/140 | 2,58 | 33,4 % | 0,49 s | 2,77 s |
+| `exact` | 139/140 | 3,73 | 15,4 % | 1,23 s | 10,73 s |
+| `band` 1,0 | 138/140 | 3,64 | 16,1 % | 0,85 s | 6,93 s |
+| `band` 0,5 | 135/140 | 3,69 | 16,1 % | 0,75 s | 5,32 s |
+| `known` | 137/140 | 3,10 | 14,1 % | 0,73 s | 9,10 s |
+| `tiebreak` | 140/140 | 2,66 | 32,3 % | 0,47 s | 3,02 s |
+
+Deux hypothèses réfutées : **les paliers** ne restaurent pas la solvabilité (0,5 descend même à 15/20), et **le classement binaire connu/inconnu** non plus — `known` est dominé par `exact` en succès comme en zipf. `tiebreak` (score de lettres d'abord) ne coûte rien mais n'apporte rien. Le constat qui reste : dès que la fréquence passe devant le score de lettres, quelle qu'en soit la finesse, la recherche se ferme. Le score de lettres n'est pas décoratif, il garde les croisements ouverts.
+
+### Le plafond de candidats, lui, était bien en cause — à moitié
+
+Trié par fréquence, le « top 100 » d'un emplacement devient « les 100 mots les plus courants », qui ne sont pas forcément ceux qui s'emboîtent. Élargir le plafond ramène le 13×18 de 10,73 s à 5,97 s sans perte de qualité (500 n'apporte rien de plus). **Et c'est un gain sec même sans fréquence** : sur les 21 layouts avec le DELA brut, 420/420 dans les deux cas, mais médiane 0,91 s → 0,71 s et p95 du 13×18 de 14,57 s à 8,72 s. `MAX_CANDIDATES_PER_SLOT` passe donc de 100 à **300**.
+
+### Pourquoi le tri par fréquence n'est pas activé par défaut
+
+Sur les **21 layouts** (et non les 7 du sondage), `exact` avec le plafond à 300 donne 409/420 : sept layouts sous 20/20, dont 13x16-002 à 17/20 (85 %) et les deux 11×17 à 18/20 (90 %). Le critère de sortie de la Phase 3 — ≥ 95 % par layout — n'est pas tenu. Le sondage à sept layouts ne le montrait pas : il annonçait 19/20 sur le seul layout en difficulté.
+
+Le tri reste disponible (`frequency_mode` dans la requête, `--frequency-mode` au benchmark) pour qui accepte l'échange : deux fois moins de mots absents des corpus contre des grandes grilles qui échouent une fois sur six.
 
 ## Index des candidats (#20, septembre 2026)
 

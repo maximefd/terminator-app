@@ -11,6 +11,9 @@ class DictionnaireTrie:
     def __init__(self):
         self.root = TrieNode()
         self.words = set()
+        # Fréquence (zipf) par mot normalisé, quand le lexique la donne (4e colonne du lexique curé).
+        # Absente du DELA brut : le mot vaut alors 0, et le solveur retombe sur le score de lettres.
+        self.frequencies: dict[str, float] = {}
         logging.info("Initialisation du DictionnaireTrie.")
 
     @staticmethod
@@ -22,12 +25,16 @@ class DictionnaireTrie:
                     if unicodedata.category(c) != 'Mn' and c.isalnum())
         return s.strip()
 
-    def insert(self, mot_affiche):
-        """Insère un mot dans le Trie, en ignorant les expressions composées."""
+    def insert(self, mot_affiche) -> str | None:
+        """Insère un mot dans le Trie, en ignorant les expressions composées.
+
+        Renvoie la forme normalisée retenue, ou None si le mot a été ignoré : le chargeur en a
+        besoin pour ranger la fréquence sous la même clé que le mot.
+        """
         mot_normalise = self._normalize(mot_affiche)
         
         if not mot_normalise or len(mot_normalise) < 2:
-            return
+            return None
 
         node = self.root
         for char in mot_normalise:
@@ -38,6 +45,7 @@ class DictionnaireTrie:
         if not node.is_end_of_word:
             node.is_end_of_word = True
             self.words.add(mot_normalise)
+        return mot_normalise
 
     def load_dela_csv(self, file_path):
         """Charge le CSV directement dans le set et le Trie."""
@@ -48,8 +56,17 @@ class DictionnaireTrie:
                 count = 0
                 for row in reader:
                     if row:
-                        self.insert(row[0]) # On n'insère que la première colonne
+                        norm = self.insert(row[0])  # Le mot est dans la première colonne
                         count += 1
+                        # 4e colonne du lexique curé : la fréquence zipf. Plusieurs lignes peuvent
+                        # porter le même mot normalisé (graphies) : on garde la plus élevée.
+                        if norm and len(row) > 3 and row[3]:
+                            try:
+                                zipf = float(row[3])
+                            except ValueError:
+                                continue
+                            if zipf > self.frequencies.get(norm, 0.0):
+                                self.frequencies[norm] = zipf
                 logging.info(f"DELA CSV chargé. {count} lignes lues. {len(self.words)} mots valides (sans espaces) stockés.")
         except Exception as e:
             logging.error(f"Erreur lors de la lecture du CSV: {e}")
@@ -85,6 +102,10 @@ class DictionnaireTrie:
     def get_all_words(self) -> list[str]:
         """Retourne une liste de tous les mots du set."""
         return list(self.words)
+
+    def frequency(self, mot_normalise: str) -> float:
+        """Fréquence zipf du mot (0 si le lexique chargé n'en donne pas)."""
+        return self.frequencies.get(mot_normalise, 0.0)
 
 class Mot:
     # Cette classe n'est plus utilisée par le Trie, mais on la garde au cas où

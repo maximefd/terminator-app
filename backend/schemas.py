@@ -7,7 +7,7 @@ invalide est rejetée avec une erreur 400 et un message en français, sans jamai
 renvoyer la valeur reçue (pour ne pas refléter de mot de passe ou de contenu hostile).
 """
 
-from typing import Annotated, TypeVar
+from typing import Annotated, Literal, TypeVar
 
 from email_validator import EmailNotValidError, validate_email
 from flask import request
@@ -106,6 +106,11 @@ class GenerateRequest(ApiModel):
     # Plafonds de garde uniquement : la vraie limite est le layout, vérifiée avant de résoudre (ADR 0007)
     must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
     wish_words: Annotated[list[GridWord], Field(max_length=500)] = Field(default_factory=list)
+    # Réglage de moteur, désactivé par défaut : trier les candidats par fréquence donne des mots
+    # plus courants mais fait échouer les plus grandes grilles plus souvent (mesures dans
+    # backend/benchmarks/README.md). `None` : réglage du solveur.
+    # Les valeurs doivent rester celles de engine.grid_solver.FREQUENCY_MODES (vérifié par un test).
+    frequency_mode: Literal["none", "exact", "band", "known", "tiebreak"] | None = None
 
 
 # --- Conversion des erreurs ---
@@ -126,6 +131,7 @@ FIELD_LABELS = {
     "use_global": "dictionnaire commun",
     "must_words": "mots obligatoires",
     "wish_words": "mots souhaités",
+    "frequency_mode": "tri par fréquence",
 }
 
 

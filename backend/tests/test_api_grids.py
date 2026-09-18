@@ -1,7 +1,10 @@
 import json
+from typing import get_args
 
 import pytest
 import routes
+from engine.grid_solver import FREQUENCY_MODES
+from schemas import GenerateRequest
 
 from tests.helpers import auth_headers, default_dictionary_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
@@ -107,6 +110,21 @@ def test_a_must_word_is_validated_like_any_other_input(grid_app, client):
     assert post_generate(client, {"size": {"width": 5, "height": 5}, "must_words": "PORTE"}).status_code == 400
     assert post_generate(client, {"size": {"width": 5, "height": 5},
                                   "must_words": ["MOT"] * 51}).status_code == 400
+
+
+def test_the_frequency_mode_can_be_chosen_per_request(grid_app, client):
+    """Désactivé par défaut, activable à la demande : l'auteur arbitre qualité contre fiabilité."""
+    assert post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42,
+                                  "frequency_mode": "exact"}).status_code == 200
+    assert post_generate(client, {"size": {"width": 5, "height": 5},
+                                  "frequency_mode": "zorglub"}).status_code == 400
+
+
+def test_the_schema_offers_exactly_the_modes_the_solver_knows():
+    """Les deux listes doivent rester identiques : une valeur acceptée mais inconnue ferait une 500."""
+    literal, _none = get_args(GenerateRequest.model_fields["frequency_mode"].annotation)
+
+    assert set(get_args(literal)) == set(FREQUENCY_MODES)
 
 
 def test_generate_unknown_format_returns_available_formats(grid_app, client):

@@ -10,6 +10,9 @@ from .word_repository import WordRepository
 
 logger = logging.getLogger(__name__)
 
+# Places possibles de la fréquence dans le tri des candidats (voir GridSolver.FREQUENCY_MODE)
+FREQUENCY_MODES = ("none", "exact", "band", "known", "tiebreak")
+
 
 class SolverBudgetExceeded(Exception):
     """Levée quand le solveur dépasse son budget de temps (`reason="time"`) ou d'appels récursifs (`"calls"`)."""
@@ -22,13 +25,29 @@ class SolverBudgetExceeded(Exception):
 class GridSolver:
 
     # --- CONSTANTE ---
-    MAX_CANDIDATES_PER_SLOT = 100  # Réduit pour accélérer le backtracking
+    # Candidats essayés par emplacement. Mesuré sur les 21 layouts : passer de 100 à 300 garde
+    # 420/420 et accélère (médiane 0,91 s → 0,71 s, p95 du 13×18 de 14,6 s à 8,7 s). Au-delà,
+    # 500 n'apporte plus rien.
+    MAX_CANDIDATES_PER_SLOT = 300
     # Nombre minimum de candidats pour considérer un slot "sûr" (Forward Checking).
     # Mesuré (#61) : à 3, les grandes grilles atteignaient 62 mots sur 64 puis se voyaient interdire
     # la clôture, parce qu'en fin de grille presque tous les emplacements restants ont peu de
     # candidats. À 2 — le minimum autorisé par l'invariant ci-dessous — les 21 layouts du catalogue
     # réussissent 20/20 (contre 411/420) et les temps baissent partout, petits formats compris.
     MIN_SAFE_CANDIDATES = 2
+    # Place de la fréquence dans le tri des candidats (mesuré au benchmark) :
+    #   "none"     : pas de fréquence, seulement le score de lettres (état d'avant la Phase 3)
+    #   "exact"    : classement complet par fréquence, score de lettres en départage
+    #   "band"     : classement par paliers de FREQUENCY_BAND, score en départage
+    #   "known"    : les mots connus des corpus d'abord, classement fin laissé au score de lettres
+    #   "tiebreak" : score de lettres d'abord, fréquence en départage
+    # Le score de lettres n'est pas décoratif : il garde les croisements ouverts, donc plus la
+    # fréquence passe devant, plus la recherche se ferme sur les grandes grilles.
+    # Mesuré sur les 21 layouts : le tri par fréquence divise par deux les mots absents des corpus
+    # (33 % → 17 % des mots placés) mais fait tomber sept layouts sous 20/20, dont 13x16-002 à
+    # 85 % — sous le critère de la Phase 3. Désactivé par défaut, activable par requête.
+    FREQUENCY_MODE = "none"
+    FREQUENCY_BAND = 1.0
     # ---------------------------------------------
 
     LETTER_SCORES = {
@@ -49,6 +68,9 @@ class GridSolver:
         min_safe_candidates: int = MIN_SAFE_CANDIDATES,
         rng: random.Random | None = None,
         must_words=(),
+        frequency_mode: str | None = None,
+        frequency_band: float | None = None,
+        max_candidates: int | None = None,
     ):
         # Générateur aléatoire propre à cette résolution : reproductible et sans état global partagé
         self.rng = rng or random.Random()
@@ -87,6 +109,15 @@ class GridSolver:
         self.must_words = list(must_words)
         self._pending_must = list(self.must_words)
         self.unplaced_must = list(self.must_words)
+        # Permet de mesurer l'effet du tri par fréquence sans changer de lexique : les deux
+        # conditions voient exactement les mêmes mots, seul l'ordre des candidats diffère.
+        self.frequency_mode = self.FREQUENCY_MODE if frequency_mode is None else frequency_mode
+        self.frequency_band = self.FREQUENCY_BAND if frequency_band is None else frequency_band
+        if self.frequency_mode not in FREQUENCY_MODES:
+            raise ValueError(f"mode de fréquence inconnu : {self.frequency_mode}")
+        # Trié par fréquence, le « top 100 » devient « les 100 mots les plus courants », qui ne sont
+        # pas forcément les plus commodes aux croisements : le plafond se règle donc avec le mode.
+        self.max_candidates = self.MAX_CANDIDATES_PER_SLOT if max_candidates is None else max_candidates
         
         # NOUVEAU : Système de nogoods pour éviter les boucles
         # Format: {slot_id: {pattern1, pattern2, ...}}
@@ -231,15 +262,21 @@ class GridSolver:
             self._record_nogood(slot_id, pattern)
             return False
         
-        # Tri des candidats par pool puis par score (heuristique) - les meilleurs en premier.
-        # Le pool passe avant le score : un mot souhaité est essayé avant un mot du lexique commun,
-        # et survit donc à la troncature à MAX_CANDIDATES_PER_SLOT (ADR 0007). À pool égal, l'ordre
-        # est exactement celui d'avant les pools (tri stable sur le score décroissant).
-        scored_candidates = [(self.repository.priority_of(w), self._score_word(w), w) for w in candidates]
-        scored_candidates.sort(key=lambda item: (item[0], -item[1]))
+        # Tri des candidats : pool, puis fréquence, puis score de lettres (roadmap Phase 3).
+        # Le pool d'abord : un mot souhaité est essayé avant un mot du lexique commun, et survit
+        # donc à la troncature à MAX_CANDIDATES_PER_SLOT (ADR 0007). La fréquence ensuite : à pool
+        # égal, un mot courant vaut mieux qu'une forme rare, c'est ce qui fait la qualité d'une
+        # grille. Le score de lettres ne tranche plus que les ex æquo.
+        # Un lexique sans fréquence (DELA brut) met tout à 0 : l'ordre redevient exactement celui
+        # d'avant, donc la baseline mesurée sur ce lexique reste comparable.
+        scored_candidates = []
+        for candidate in candidates:
+            score = self._score_word(candidate)
+            scored_candidates.append((self._sort_key(candidate, score), score, candidate))
+        scored_candidates.sort(key=lambda item: item[0])
 
         # Limiter le nombre de candidats pour accélérer le backtracking
-        scored_candidates = scored_candidates[:self.MAX_CANDIDATES_PER_SLOT]
+        scored_candidates = scored_candidates[:self.max_candidates]
         
         # OPTIMISATION : Ajouter un peu d'aléatoire uniquement dans le top 20%
         # pour éviter de toujours essayer les mêmes mots en premier
@@ -249,10 +286,10 @@ class GridSolver:
             self.rng.shuffle(top_candidates)
             scored_candidates = top_candidates + scored_candidates[top_20_percent:]
 
-        logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.MAX_CANDIDATES_PER_SLOT}, top 20% aléatoire).")
+        logging.debug(f"   {len(scored_candidates)} candidats (limité à {self.max_candidates}, top 20% aléatoire).")
 
         # 4. Boucle de test des candidats
-        for i, (_priority, score, word) in enumerate(scored_candidates):
+        for i, (_key, score, word) in enumerate(scored_candidates):
             self.metrics['candidates_tested'] += 1
             
             logging.debug(f"    Tentative {i+1}/{len(scored_candidates)} : mot '{word}' (Score: {score})")
@@ -539,6 +576,22 @@ class GridSolver:
     def _score_word(self, word: str) -> int:
         """Calcule le 'score d'utilité' d'un mot."""
         return sum(self.LETTER_SCORES.get(char, 0) for char in word)
+
+    def _sort_key(self, word: str, score: int) -> tuple:
+        """Clé de tri d'un candidat : le pool d'abord, puis la fréquence selon le mode retenu."""
+        pool = self.repository.priority_of(word)
+        if self.frequency_mode == "none":
+            return (pool, -score)
+        frequency = self.repository.frequency_of(word)
+        if self.frequency_mode == "tiebreak":
+            return (pool, -score, -frequency)
+        if self.frequency_mode == "known":
+            rank = 1.0 if frequency > 0 else 0.0
+        elif self.frequency_mode == "band":
+            rank = frequency // self.frequency_band
+        else:
+            rank = frequency
+        return (pool, -rank, -score)
     
     # ===================================================================
     # NOUVEAU : Système de Nogoods pour éviter les boucles

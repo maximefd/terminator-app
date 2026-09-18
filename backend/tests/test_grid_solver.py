@@ -116,6 +116,72 @@ def test_a_wish_word_absent_from_the_lexicon_is_placed_before_the_common_ones():
     assert [(word["text"], word["source"]) for word in solver.placed_words] == [("ZUT", "wish")]
 
 
+def test_the_most_frequent_candidate_is_tried_first():
+    """Mode « exact » : à pool égal, la fréquence l'emporte sur le score de lettres."""
+    template = GridTemplate.from_rows(["---"])  # une seule rangée : un unique emplacement
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    trie = DictionnaireTrie()
+    for word in ("ASE", "ZUT"):
+        trie.insert(word)
+    # ASE a un bien meilleur score de lettres (A+S+E = 30 contre Z+U+T = 14), mais reste rare
+    trie.frequencies = {"ZUT": 4.0}
+    repository = WordRepository.from_words(trie, ["ASE", "ZUT"])
+
+    solver = GridSolver(template, repository, finder, frequency_mode="exact")
+
+    assert solver.solve()
+    assert [word["text"] for word in solver.placed_words] == ["ZUT"]
+
+
+def test_frequency_ordering_is_off_by_default():
+    """Mesuré : trier par fréquence fait tomber sept layouts sous 20/20 (benchmarks/README.md)."""
+    template = GridTemplate.from_rows(["---"])
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    trie = DictionnaireTrie()
+    for word in ("ASE", "ZUT"):
+        trie.insert(word)
+    trie.frequencies = {"ZUT": 4.0}
+    repository = WordRepository.from_words(trie, ["ASE", "ZUT"])
+
+    solver = GridSolver(template, repository, finder)
+
+    assert solver.frequency_mode == "none"
+    assert solver.solve()
+    assert [word["text"] for word in solver.placed_words] == ["ASE"]
+
+
+def test_an_unknown_frequency_mode_is_refused():
+    template = GridTemplate.from_rows(["---"])
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+
+    with pytest.raises(ValueError, match="mode de fréquence"):
+        GridSolver(template, repository=None, finder=finder, frequency_mode="zorglub")
+
+
+def test_the_measured_candidate_cap_is_the_default():
+    """300 : mesuré 420/420 comme 100, mais plus rapide (médiane 0,91 s → 0,71 s)."""
+    assert GridSolver.MAX_CANDIDATES_PER_SLOT == 300
+
+
+def test_without_frequencies_the_letter_score_still_decides():
+    """Un lexique sans fréquence (DELA brut) doit rendre exactement l'ordre d'avant la mesure."""
+    template = GridTemplate.from_rows(["---"])
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    trie = DictionnaireTrie()
+    for word in ("ASE", "ZUT"):
+        trie.insert(word)
+    repository = WordRepository.from_words(trie, ["ASE", "ZUT"])
+
+    solver = GridSolver(template, repository, finder)
+
+    assert solver.solve()
+    assert [word["text"] for word in solver.placed_words] == ["ASE"]
+
+
 def test_forward_checking_threshold_below_two_is_rejected():
     template = GridTemplate.from_rows(["..", ".."])
     finder = SlotFinder(template)
