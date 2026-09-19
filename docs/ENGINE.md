@@ -63,6 +63,19 @@ flowchart TD
 - **Mots obligatoires** : une grille n'est renvoyée que si **tous** sont placés. Un mot qui n'entre pas dans le layout est refusé **avant toute résolution** (`reason: "must_words"`, avec le problème mot par mot et des layouts où ils tiennent) ; un mot que la recherche n'a pas su placer donne `reason: "must_words_unplaced"` et la liste des mots restants.
 - **Portabilité** : `backend/engine/` n'importe ni Flask ni la base de données. Il pourra un jour tourner côté client (voir [ADR 0002](adr/0002-moteur-pur-et-deterministe.md)).
 
+## Dire le coût avant de chercher
+
+`engine/difficulty.py` estime ce que coûte une demande de mots imposés **sans générer**, à partir de 4 700 générations mesurées ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) :
+
+| Mots | Longueur max | Lettre rare | Réussite mesurée |
+|------|--------------|-------------|------------------|
+| 1 | 2-5 | non | 100 % |
+| 2 | 6-7 | oui | 73 % |
+| 3 | 6-7 | non | 61 % |
+| 3 | 10+ | oui | 13 % |
+
+Trois facteurs, dans cet ordre : la **longueur** du mot le plus long, la présence d'une **lettre rare** (`Z`, `W`, `K`, `X`, `Q`, `Y`, `J`), et le **nombre** de mots. L'estimation nomme le mot qui pèse le plus et propose de le passer en mot **souhaité** — placé s'il rentre, sans faire échouer la grille.
+
 ## Mesurer : le benchmark
 
 Toute modification du moteur doit être mesurée :

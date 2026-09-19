@@ -117,6 +117,11 @@ class GenerateRequest(ApiModel):
         default_factory=list)
 
 
+class DifficultyRequest(ApiModel):
+    """Estimation de la difficulté d'une demande, sans générer : appelée à chaque frappe."""
+    must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
+
+
 # --- Conversion des erreurs ---
 
 FIELD_LABELS = {

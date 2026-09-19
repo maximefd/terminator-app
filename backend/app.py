@@ -30,6 +30,8 @@ DEFAULT_SETTINGS = dict(
     RATELIMIT_REFRESH='30 per minute',
     RATELIMIT_SEARCH='120 per minute',
     RATELIMIT_GENERATE='10 per minute',
+    # Appelé à chaque frappe de l'auteur, et sans génération : plafond de la recherche, pas de la génération
+    RATELIMIT_DIFFICULTY='120 per minute',
     LEXICON_PATH=None,  # Lexique curé ; à défaut, le DELA complet (backend/dela_clean.csv)
     LEXICON_RELOAD_INTERVAL_S=30,  # Vérification des changements du lexique (0 : pas de rechargement à chaud)
 )
