@@ -68,6 +68,12 @@ def parse_args():
     parser.add_argument("--max-layouts", type=int, default=None, metavar="N",
                         help="Nombre de layouts que le moteur peut essayer par format "
                              "(1 : comportement d'avant le correctif ; défaut : tous).")
+    parser.add_argument("--layout-order", default=None, choices=["seed", "crossings"],
+                        help="Ordre des layouts candidats avec mots imposés (défaut : réglage du générateur).")
+    parser.add_argument("--must-max-length", type=int, default=None, metavar="N",
+                        help="Plafonne la longueur des mots imposés tirés. Indispensable pour "
+                             "comparer des formats : sans plafond, les grands reçoivent des mots "
+                             "plus longs, donc plus durs.")
     parser.add_argument("--must-words", type=int, default=0, metavar="N",
                         help="Imposer N mots courants par grille, de longueurs distinctes tirées "
                              "selon la seed (0 : aucun, génération libre).")
@@ -102,14 +108,20 @@ def common_words_by_length(words, trie, min_zipf: float = MUST_WORD_MIN_ZIPF) ->
             for length, group in by_length.items()}
 
 
-def pick_must_words(slot_lengths, pool_by_length, count: int, rng: random.Random) -> list[str]:
+def pick_must_words(slot_lengths, pool_by_length, count: int, rng: random.Random,
+                    max_length: int | None = None) -> list[str]:
     """`count` mots courants, de longueurs **distinctes** présentes dans ce layout.
 
     Longueurs distinctes à dessein : la vérification préalable refuse plus de mots d'une longueur
     qu'il n'y a d'emplacements de cette longueur. En variant les longueurs, le benchmark mesure le
     solveur et non cette validation.
+
+    `max_length` plafonne la longueur tirée. Sans lui, comparer des formats est **faussé** : un
+    13×18 se voit imposer des mots jusqu'à 13 lettres là où un 6×7 n'en reçoit jamais plus de 7,
+    et la longueur est un facteur de difficulté mesuré. À demande égale, il faut le même plafond.
     """
-    lengths = sorted({length for length in slot_lengths if pool_by_length.get(length)})
+    lengths = sorted({length for length in slot_lengths if pool_by_length.get(length)
+                      and (max_length is None or length <= max_length)})
     rng.shuffle(lengths)
     return [rng.choice(pool_by_length[length]) for length in lengths[:count]]
 
@@ -146,7 +158,8 @@ def percentile(values, pct):
 
 def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None,
                min_safe_candidates=None, frequency_mode=None, frequency_band=None,
-               max_candidates=None, must_count=0, must_pool=None, max_layouts=None):
+               max_candidates=None, must_count=0, must_pool=None, max_layouts=None,
+               must_max_length=None, layout_order=None):
     """Génère une grille par seed et collecte les mesures.
 
     `layout_path` à None : mode « par format », le moteur choisit lui-même son layout parmi ceux du
@@ -167,6 +180,8 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         restart["max_candidates"] = max_candidates
     if max_layouts is not None:
         restart["max_layouts"] = max_layouts
+    if layout_order is not None:
+        restart["layout_order"] = layout_order
     if by_format:
         restart["layouts_dir"] = DEFAULT_LAYOUTS_DIR
     if not must_count:
@@ -179,7 +194,8 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         # Tirage dérivé du nom du layout et de la seed : reproductible d'une machine à l'autre
         # (une chaîne est hachée de façon déterministe par random, contrairement à un tuple).
         must_words = pick_must_words(lengths, must_pool or {}, must_count,
-                                     random.Random(f"{layout_name}:{seed}")) if must_count else []
+                                     random.Random(f"{layout_name}:{seed}"),
+                                     must_max_length) if must_count else []
         print(f"  {layout_name} seed={seed}"
               f"{' ' + '+'.join(must_words) if must_words else ''}...", end="", flush=True)
         start = time.perf_counter()
@@ -367,6 +383,8 @@ def main():
                    "frequency_band": args.frequency_band,
                    "max_candidates": args.max_candidates,
                    "must_words_per_grid": args.must_words,
+                   "must_max_length": args.must_max_length,
+                   "layout_order": args.layout_order,
                    "by_format": args.by_format, "max_layouts": args.max_layouts},
         "layouts": [],
     }
@@ -391,7 +409,8 @@ def main():
                                        args.seeds, args.time_budget, args.restart_unit,
                                        args.min_safe_candidates, args.frequency_mode,
                                        args.frequency_band, args.max_candidates,
-                                       args.must_words, must_pool, args.max_layouts)
+                                       args.must_words, must_pool, args.max_layouts,
+                                       args.must_max_length, args.layout_order)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 

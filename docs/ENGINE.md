@@ -97,7 +97,7 @@ Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **red
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| **Mots obligatoires** : un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %** | Une demande courante (`NEZ`, `TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | [#73](https://github.com/maximefd/terminator-app/issues/73). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien. Le changement de layout améliore le cas où le format compte plusieurs layouts, sans résoudre le fond |
+| **Mots obligatoires** : c'est la **longueur** des mots qui décide. Trois mots de 6 lettres au plus réussissent 67 % du temps, contre 39 % sans plafond ; un seul mot imposé, 92 % | Un mot long ou portant une lettre rare (`TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | [#73](https://github.com/maximefd/terminator-app/issues/73). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien. Le changement de layout améliore le cas où le format compte plusieurs layouts, sans résoudre le fond |
 | **Qualité des mots** : un tiers des mots placés sont absents de tout corpus | Grilles avec des formes rares | Le tri par fréquence les ramène à 17 %, mais fait échouer les grandes grilles : disponible par requête (`frequency_mode: "exact"`), pas par défaut. Le vrai levier reste la **curation du lexique** |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |

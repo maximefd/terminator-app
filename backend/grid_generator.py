@@ -20,6 +20,37 @@ logger = logging.getLogger(__name__)
 DEFAULT_RESTART_UNIT_CALLS = 300
 
 
+# Ordres possibles des layouts candidats quand des mots sont imposés
+LAYOUT_ORDERS = ("seed", "crossings")
+
+
+def crossing_load(finder: SlotFinder, length: int) -> float | None:
+    """Part minimale de lettres croisées parmi les emplacements de cette longueur (None : aucun).
+
+    Un mot dont chaque lettre doit se croiser est bien plus contraint qu'un mot dont une lettre
+    tombe en cul-de-sac. Mesuré sur les cas connus (#73), le critère sépare parfaitement les layouts
+    qui accueillent « TAQUINER » de ceux qui le refusent — mais ne distingue rien sur « NEZ ».
+    """
+    occupe: dict[tuple[int, int], set] = {}
+    for slot in finder.slots:
+        for i in range(slot['length']):
+            x = slot['x'] + (i if slot['direction'] == 'across' else 0)
+            y = slot['y'] + (0 if slot['direction'] == 'across' else i)
+            occupe.setdefault((x, y), set()).add(slot['direction'])
+
+    charges = []
+    for slot in finder.slots:
+        if slot['length'] != length:
+            continue
+        croisees = 0
+        for i in range(slot['length']):
+            x = slot['x'] + (i if slot['direction'] == 'across' else 0)
+            y = slot['y'] + (0 if slot['direction'] == 'across' else i)
+            croisees += len(occupe[(x, y)]) > 1
+        charges.append(croisees / slot['length'])
+    return min(charges) if charges else None
+
+
 class LayoutNotFoundError(RuntimeError):
     """Aucun layout n'existe pour le format demandé."""
 
@@ -57,6 +88,7 @@ class GridGenerator:
         frequency_band: float | None = None,
         max_candidates: int | None = None,
         max_layouts: int | None = None,
+        layout_order: str = "seed",
     ):
         """
         Initialise le générateur.
@@ -76,6 +108,8 @@ class GridGenerator:
             frequency_band (float, optional): Largeur des paliers de fréquence (None : réglage du solveur).
             max_candidates (int, optional): Candidats essayés par emplacement (None : réglage du solveur).
             max_layouts (int, optional): Layouts que les redémarrages peuvent essayer (None : tous).
+            layout_order (str): Ordre des layouts candidats — « seed » (tirage) ou « crossings »
+                (les moins contraints pour les mots imposés d'abord).
             wish_words (list[str], optional): Mots souhaités (dictionnaires personnels et thématiques),
                 essayés avant le lexique commun et valides aux croisements même s'ils n'y sont pas (#17).
             must_words (list[str], optional): Mots obligatoires, essayés avant tous les autres.
@@ -91,6 +125,9 @@ class GridGenerator:
         self.frequency_band = frequency_band
         self.max_candidates = max_candidates
         self.max_layouts = max_layouts
+        if layout_order not in LAYOUT_ORDERS:
+            raise ValueError(f"ordre de layouts inconnu : {layout_order}")
+        self.layout_order = layout_order
         self.attempts: list[dict] = []
         self._timed_out = False
         # Doublons écartés, ordre stable : le placement des mots obligatoires doit rester reproductible
@@ -187,6 +224,11 @@ class GridGenerator:
                 continue
             usable.append((path, template, finder))
         if usable:
+            if self.layout_order == "crossings":
+                # Le moins contraint d'abord : somme, sur les mots imposés, de la part minimale de
+                # lettres croisées. Le chemin départage, pour rester déterministe.
+                usable.sort(key=lambda entree: (
+                    sum(crossing_load(entree[2], len(mot)) or 0 for mot in self.must_words), entree[0]))
             return [], usable
         # Aucun layout n'accueille ces mots : on garde le premier pour la forme de la réponse
         template = GridTemplate(self.width, self.height, candidates[0])

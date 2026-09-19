@@ -61,3 +61,14 @@ def test_the_draw_is_reproducible():
 
     assert first == second
     assert first != other or len(set(pool[3])) == 1  # une autre seed doit pouvoir tirer autre chose
+
+
+def test_the_length_cap_makes_formats_comparable():
+    """Sans plafond, un grand format reçoit des mots plus longs, donc plus durs : comparaison faussée."""
+    pool = {3: ["OUI"], 5: ["PORTE"], 10: ["IMPOSSIBLE"]}
+
+    sans = pick_must_words([3, 5, 10], pool, 3, random.Random("x"))
+    avec = pick_must_words([3, 5, 10], pool, 3, random.Random("x"), max_length=5)
+
+    assert sorted(len(m) for m in sans) == [3, 5, 10]
+    assert sorted(len(m) for m in avec) == [3, 5]
