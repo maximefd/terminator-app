@@ -156,6 +156,37 @@ La majorité des échecs sont des **mots non placés**, pas des dépassements de
 
 Sur le lexique curé, la génération libre donne **418/420** : `13x16-002` (seed 4) et `13x18-001` (seed 17) dépassent le budget. La baseline versionnée, mesurée sur `dela_clean.csv`, donne 420/420. Les deux sont exacts — le lexique curé est plus petit, donc plus contraint. C'est le curé que charge l'API.
 
+## Changer de layout quand la recherche est épuisée (#73, septembre 2026)
+
+L'enquête sur les mots obligatoires a montré que **la géométrie décide** : `NEZ` est impossible sur `6x7-001` et trivial sur les trois autres 6×7 ; `TAQUINER` échoue sur le 13×18 de 81 emplacements et réussit sur un 11×9 de 33. Or le générateur tirait **un** layout au hasard dans le format et n'en changeait jamais.
+
+### Mesurer ce correctif demandait un nouvel instrument
+
+Le harness pilote le moteur **layout par layout** (`layout_path` explicite) : un correctif qui agit au niveau du **format** y est rigoureusement invisible. D'où `--by-format`, qui laisse le moteur choisir comme le fait l'API, et `--max-layouts N` pour rejouer l'ancien comportement. Sans ces deux options, la première mesure montrait un effet nul — non parce que le correctif était faux, mais parce que l'instrument ne pouvait pas le voir.
+
+### Deux politiques réfutées avant la bonne
+
+| Politique | Résultat mesuré |
+|-----------|-----------------|
+| Changer de layout **à chaque essai** | Effet nul : la boucle sortait avant d'y arriver (un mot introuvable épuise la recherche, `stop_reason` à `None`, ce qui terminait la boucle) |
+| Idem, boucle corrigée | **Négatif** : 165/180 → 162/180 sur un mot imposé. Sauter d'un layout à l'autre détruit les redémarrages de Luby, qui ont besoin de plusieurs trajectoires sur une **même** géométrie |
+| **Changer seulement quand la recherche est épuisée** | Retenu, voir ci-dessous |
+
+### Résultat (9 formats, 20 seeds, budget 10 s, lexique curé, mode `--by-format`)
+
+| | Un seul layout | Tous | Formats à layout unique |
+|---|---|---|---|
+| 1 mot imposé | 165/180 | **166/180** | 90 → **90** |
+| 3 mots imposés | 64/180 | **70/180** | 36 → **36** |
+
+Le gain est concentré là où plusieurs layouts existent (6×7 : 6/20 → 11/20 à trois mots ; mots non placés de 11 à 6), et les formats à layout unique ne bougent **pas d'une grille** — le changement n'agit que quand une autre géométrie est disponible.
+
+**Sans mot imposé, les 420 trajectoires de la baseline sont identiques** (mêmes appels récursifs et retours arrière, seed par seed) : un seul layout est retenu, donc aucune rotation ne peut se produire.
+
+### Ce que ce correctif ne fait pas
+
+Il ne résout pas #73 : trois mots imposés restent à ~39 % de succès. Son gain est borné par le catalogue — cinq formats sur neuf n'ont qu'un layout — et grandira à mesure qu'il s'étoffe. Son autre apport, moins visible, est que le **refus devient exact** : un mot n'est plus refusé parce qu'il n'entre pas dans le layout tiré, mais seulement s'il n'entre dans aucun layout du format.
+
 ## Index des candidats (#20, septembre 2026)
 
 Le profil d'une génération 11×6 montrait 94 % du temps dans `get_candidates` : parcours du Trie par motif (5,9 millions de nœuds visités pour 1 295 recherches), puis filtrage des mots disponibles, avec un cache vidé à chaque placement. L'index par (position, lettre) en ensembles de bits (`engine/pattern_index.py`) calcule les mêmes candidats, **dans le même ordre**, par ET binaire ; le solveur ne fait que les compter pour choisir le slot et pour le forward checking.

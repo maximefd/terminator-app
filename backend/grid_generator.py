@@ -6,6 +6,7 @@ import random
 import time
 
 from engine.grid_template import GridTemplate
+from engine.must_words import check_must_words
 from engine.slot_finder import SlotFinder
 from engine.word_repository import WordRepository
 from engine.grid_solver import GridSolver
@@ -55,6 +56,7 @@ class GridGenerator:
         frequency_mode: str | None = None,
         frequency_band: float | None = None,
         max_candidates: int | None = None,
+        max_layouts: int | None = None,
     ):
         """
         Initialise le générateur.
@@ -73,6 +75,7 @@ class GridGenerator:
             frequency_mode (str, optional): Place de la fréquence dans le tri (None : réglage du solveur).
             frequency_band (float, optional): Largeur des paliers de fréquence (None : réglage du solveur).
             max_candidates (int, optional): Candidats essayés par emplacement (None : réglage du solveur).
+            max_layouts (int, optional): Layouts que les redémarrages peuvent essayer (None : tous).
             wish_words (list[str], optional): Mots souhaités (dictionnaires personnels et thématiques),
                 essayés avant le lexique commun et valides aux croisements même s'ils n'y sont pas (#17).
             must_words (list[str], optional): Mots obligatoires, essayés avant tous les autres.
@@ -87,11 +90,16 @@ class GridGenerator:
         self.frequency_mode = frequency_mode
         self.frequency_band = frequency_band
         self.max_candidates = max_candidates
+        self.max_layouts = max_layouts
         self.attempts: list[dict] = []
         self._timed_out = False
         # Doublons écartés, ordre stable : le placement des mots obligatoires doit rester reproductible
         self.must_words = sorted(set(must_words))
         self.unplaced_must_words = list(self.must_words)
+        # Rempli à la construction : mots imposés qui n'entrent dans aucun layout candidat
+        self.must_word_problems: list[dict] = []
+        # Layout courant parmi ceux retenus ; n'avance que sur une recherche épuisée
+        self._layout_index = 0
         # Générateur aléatoire dédié : même seed ⇒ même grille, sans toucher à l'état global
         # (plusieurs générations peuvent coexister dans le même processus).
         self.rng = random.Random(seed)
@@ -99,18 +107,19 @@ class GridGenerator:
         self.prebuilt_trie = prebuilt_trie
         self.layouts_dir = layouts_dir or DEFAULT_LAYOUTS_DIR
 
-        # 1. Charger le layout
-        self.layout_path = layout_path or self._find_layout_path(width, height)
-        if not self.layout_path:
+        # 1. Choisir les layouts candidats, puis écarter ceux qui n'accueillent pas les mots imposés
+        candidates = self._layout_candidates(width, height, layout_path)
+        if not candidates:
             raise LayoutNotFoundError(f"Aucun layout trouvé pour la taille {width}x{height}.")
-        self.template = GridTemplate(width, height, self.layout_path)
+        self.must_word_problems, self._layouts = self._usable_layouts(candidates)
+        if self.max_layouts is not None:
+            self._layouts = self._layouts[:max(1, self.max_layouts)]
 
         # 2. Préparer le dictionnaire (utilise le Trie et les mots pré-filtrés)
         self.repository = self._create_repository(valid_words, wish_words, must_words)
 
-        # 3. Trouver les slots
-        self.finder = SlotFinder(self.template)
-        self.finder.find_all_slots()
+        # 3. Layout, gabarit et emplacements du premier essai
+        self.layout_path, self.template, self.finder = self._layouts[0]
 
         # 4. Initialiser le solveur du premier essai (même trajectoire qu'avant les redémarrages)
         self.solver = self._new_solver(self.rng, time_budget_s, attempt=1)
@@ -123,6 +132,11 @@ class GridGenerator:
         return self._timed_out
 
     def _new_solver(self, rng: random.Random, time_budget_s: float | None, attempt: int) -> GridSolver:
+        # Le layout ne change QUE lorsque la recherche a été épuisée sur le précédent (voir
+        # `generate`). Changer à chaque essai détruit l'intérêt des redémarrages de Luby, qui
+        # reposent sur plusieurs trajectoires d'une même géométrie : mesuré, cela faisait perdre
+        # 3 points sur un mot imposé au lieu d'en gagner.
+        self.layout_path, self.template, self.finder = self._layouts[self._layout_index]
         max_calls = None if self.restart_unit_calls is None else self.restart_unit_calls * luby(attempt)
         threshold = {} if self.min_safe_candidates is None else {"min_safe_candidates": self.min_safe_candidates}
         return GridSolver(self.template, self.repository, self.finder, time_budget_s=time_budget_s,
@@ -130,14 +144,55 @@ class GridGenerator:
                           frequency_mode=self.frequency_mode, frequency_band=self.frequency_band,
                           max_candidates=self.max_candidates, **threshold)
 
-    def _find_layout_path(self, width: int, height: int) -> str | None:
-        """Trouve un fichier de layout au hasard pour la taille donnée."""
+    def _layout_candidates(self, width: int, height: int, layout_path: str | None) -> list[str]:
+        """Layouts à essayer, dans l'ordre.
+
+        Sans mot imposé, on garde le comportement d'origine : **un** tirage, et la même consommation
+        du générateur aléatoire — les grilles produites restent identiques, donc la baseline reste
+        comparable. Avec des mots imposés, tous les layouts du format sont candidats, dans un ordre
+        dérivé du seed.
+        """
+        if layout_path:
+            return [layout_path]
         format_dir = os.path.join(self.layouts_dir, f"{width}x{height}")
         if not os.path.isdir(format_dir):
-            return None
+            return []
         # Tri pour que le tirage dépende uniquement du seed, pas de l'ordre du système de fichiers
         layouts = sorted(f for f in os.listdir(format_dir) if f.endswith('.txt'))
-        return os.path.join(format_dir, self.rng.choice(layouts)) if layouts else None
+        if not layouts:
+            return []
+        if not self.must_words:
+            return [os.path.join(format_dir, self.rng.choice(layouts))]
+        order = [os.path.join(format_dir, name) for name in layouts]
+        self.rng.shuffle(order)
+        return order
+
+    def _usable_layouts(self, candidates: list[str]) -> tuple[list[dict], list[tuple]]:
+        """Écarte les layouts où un mot imposé n'entre pas, et renvoie (problèmes, layouts retenus).
+
+        La vérification porte sur **chaque** candidat : un mot qui n'entre pas dans un layout du
+        format peut très bien entrer dans un autre, et refuser la demande sur le premier venu serait
+        faux. Les problèmes renvoyés sont ceux du premier candidat examiné, pour l'explication à
+        l'auteur quand aucun layout ne convient.
+        """
+        first_problems: list[dict] = []
+        usable = []
+        for path in candidates:
+            template = GridTemplate(self.width, self.height, path)
+            finder = SlotFinder(template)
+            finder.find_all_slots()
+            problems = check_must_words(finder.slots, self.must_words)
+            if problems:
+                first_problems = first_problems or problems
+                continue
+            usable.append((path, template, finder))
+        if usable:
+            return [], usable
+        # Aucun layout n'accueille ces mots : on garde le premier pour la forme de la réponse
+        template = GridTemplate(self.width, self.height, candidates[0])
+        finder = SlotFinder(template)
+        finder.find_all_slots()
+        return first_problems, [(candidates[0], template, finder)]
 
     def _create_repository(self, valid_words: list[str], wish_words, must_words) -> WordRepository:
         """
@@ -155,21 +210,35 @@ class GridGenerator:
         La réussite dépend surtout de la trajectoire aléatoire (profil « vite ou jamais », voir
         benchmarks/README.md) : plusieurs essais courts valent mieux qu'un seul long.
         """
+        if self.must_word_problems:
+            return False  # aucun layout n'accueille ces mots : inutile de chercher
         start = time.monotonic()
         attempt = 1
         while True:
             success = self.solver.solve()
             self.attempts.append({"attempt": attempt, "stop_reason": self.solver.stop_reason,
+                                  "layout": layout_id(self.layout_path),
                                   "metrics": self.solver.metrics.copy()})
             # On garde l'essai qui est allé le plus loin : c'est lui qui explique le mieux l'échec
             if len(self.solver.unplaced_must) < len(self.unplaced_must_words):
                 self.unplaced_must_words = list(self.solver.unplaced_must)
-            if success or self.restart_unit_calls is None or self.solver.stop_reason != "calls":
-                # Réussite, redémarrages désactivés, absence de solution (recherche épuisée) ou budget temps dépassé
+            # « Recherche épuisée sur CE layout » ne veut pas dire « épuisée partout » : mesuré
+            # (#73), un mot impossible sur un layout est souvent trivial sur un autre du même
+            # format. On ne change de géométrie que dans ce cas précis — celui qui terminait la
+            # boucle auparavant —, jamais tant que les redémarrages progressent sur la courante.
+            epuise = self.solver.stop_reason != "calls"
+            change_de_layout = (epuise and self.solver.stop_reason != "time"
+                                and self._layout_index + 1 < len(self._layouts))
+            if change_de_layout:
+                self._layout_index += 1
+            if success or (not change_de_layout
+                           and (self.restart_unit_calls is None or epuise)):
+                # Réussite, redémarrages désactivés, absence de solution ou budget temps dépassé
                 self._timed_out = self.solver.stop_reason == "time"
                 break
             remaining = None if self.time_budget_s is None else self.time_budget_s - (time.monotonic() - start)
-            if remaining is not None and remaining <= 0:
+            if self.solver.stop_reason == "time" or (remaining is not None and remaining <= 0):
+                # Le temps manque : changer de géométrie n'y changerait rien
                 self._timed_out = True
                 break
             attempt += 1

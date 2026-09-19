@@ -62,6 +62,12 @@ def parse_args():
                              "(0 : valeur exacte ; défaut : réglage du solveur).")
     parser.add_argument("--max-candidates", type=int, default=None,
                         help="Candidats essayés par emplacement (défaut : réglage du solveur).")
+    parser.add_argument("--by-format", action="store_true",
+                        help="Mesurer par format : le moteur choisit son layout, comme l'API "
+                             "(défaut : une mesure par layout, base de la baseline).")
+    parser.add_argument("--max-layouts", type=int, default=None, metavar="N",
+                        help="Nombre de layouts que le moteur peut essayer par format "
+                             "(1 : comportement d'avant le correctif ; défaut : tous).")
     parser.add_argument("--must-words", type=int, default=0, metavar="N",
                         help="Imposer N mots courants par grille, de longueurs distinctes tirées "
                              "selon la seed (0 : aucun, génération libre).")
@@ -115,6 +121,20 @@ def slot_lengths_of(width: int, height: int, layout_path: str) -> list[int]:
     return [slot["length"] for slot in finder.slots]
 
 
+def format_slot_lengths(width: int, height: int) -> list[int]:
+    """Longueurs d'emplacement présentes dans **au moins un** layout du format.
+
+    C'est la bonne base pour tirer un mot imposé en mode « par format » : l'auteur choisit un mot,
+    et c'est au moteur de trouver un layout qui l'accueille.
+    """
+    lengths: set[int] = set()
+    format_dir = os.path.join(DEFAULT_LAYOUTS_DIR, f"{width}x{height}")
+    for name in sorted(os.listdir(format_dir)):
+        if name.endswith(".txt"):
+            lengths.update(slot_lengths_of(width, height, os.path.join(format_dir, name)))
+    return sorted(lengths)
+
+
 def percentile(values, pct):
     """Percentile au rang le plus proche (suffisant pour de petits échantillons)."""
     if not values:
@@ -126,10 +146,16 @@ def percentile(values, pct):
 
 def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None,
                min_safe_candidates=None, frequency_mode=None, frequency_band=None,
-               max_candidates=None, must_count=0, must_pool=None):
-    """Génère une grille par seed pour un layout et collecte les mesures."""
+               max_candidates=None, must_count=0, must_pool=None, max_layouts=None):
+    """Génère une grille par seed et collecte les mesures.
+
+    `layout_path` à None : mode « par format », le moteur choisit lui-même son layout parmi ceux du
+    format — c'est le chemin que prend l'API. Le mode par layout (défaut) mesure une géométrie
+    précise ; lui seul sert de baseline, car il ne dépend pas du tirage.
+    """
     runs, grids = [], []
-    layout_name = layout_id(layout_path)
+    by_format = layout_path is None
+    layout_name = f"{width}x{height}" if by_format else layout_id(layout_path)
     restart = {} if restart_unit is None else {"restart_unit_calls": restart_unit or None}
     if min_safe_candidates is not None:
         restart["min_safe_candidates"] = min_safe_candidates
@@ -139,7 +165,16 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         restart["frequency_band"] = frequency_band
     if max_candidates is not None:
         restart["max_candidates"] = max_candidates
-    lengths = slot_lengths_of(width, height, layout_path) if must_count else []
+    if max_layouts is not None:
+        restart["max_layouts"] = max_layouts
+    if by_format:
+        restart["layouts_dir"] = DEFAULT_LAYOUTS_DIR
+    if not must_count:
+        lengths = []
+    elif by_format:
+        lengths = format_slot_lengths(width, height)
+    else:
+        lengths = slot_lengths_of(width, height, layout_path)
     for seed in range(seeds):
         # Tirage dérivé du nom du layout et de la seed : reproductible d'une machine à l'autre
         # (une chaîne est hachée de façon déterministe par random, contrairement à un tuple).
@@ -151,6 +186,7 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         generator = GridGenerator(width, height, words, prebuilt_trie=trie, seed=seed,
                                   layout_path=layout_path, time_budget_s=time_budget,
                                   must_words=must_words, **restart)
+        chosen = layout_id(generator.layout_path)
         success = generator.generate()
         elapsed = time.perf_counter() - start
 
@@ -169,6 +205,7 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
             "mean_zipf": round(statistics.mean(zipfs), 3) if zipfs else None,
             "unknown_share": round(sum(1 for z in zipfs if z == 0) / len(zipfs), 3) if zipfs else None,
             "must_words": must_words,
+            "layout": chosen,  # en mode par format, le layout que le moteur a retenu
             # Distinguer « le solveur n'a pas su placer ce mot » de « le budget a expiré » :
             # c'est toute la différence entre une demande trop dure et une machine trop lente.
             "must_unplaced": list(generator.unplaced_must_words) if not success else [],
@@ -329,7 +366,8 @@ def main():
                    "frequency_mode": args.frequency_mode,
                    "frequency_band": args.frequency_band,
                    "max_candidates": args.max_candidates,
-                   "must_words_per_grid": args.must_words},
+                   "must_words_per_grid": args.must_words,
+                   "by_format": args.by_format, "max_layouts": args.max_layouts},
         "layouts": [],
     }
     grids_by_layout = {}
@@ -347,14 +385,13 @@ def main():
         must_pool = common_words_by_length(format_words, format_trie) if args.must_words else None
         print(f"\n--- Format {width}x{height} : {len(format_words)} mots ---")
 
-        for w, h, layout_path in layouts:
-            if (w, h) != (width, height):
-                continue
+        chemins = [None] if args.by_format else [p for w, h, p in layouts if (w, h) == (width, height)]
+        for layout_path in chemins:
             result, grids = run_layout(width, height, layout_path, format_words, format_trie,
                                        args.seeds, args.time_budget, args.restart_unit,
                                        args.min_safe_candidates, args.frequency_mode,
                                        args.frequency_band, args.max_candidates,
-                                       args.must_words, must_pool)
+                                       args.must_words, must_pool, args.max_layouts)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 
