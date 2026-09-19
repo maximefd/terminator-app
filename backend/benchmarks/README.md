@@ -128,6 +128,34 @@ Sur les **21 layouts** (et non les 7 du sondage), `exact` avec le plafond à 300
 
 Le tri reste disponible (`frequency_mode` dans la requête, `--frequency-mode` au benchmark) pour qui accepte l'échange : deux fois moins de mots absents des corpus contre des grandes grilles qui échouent une fois sur six.
 
+## Mots obligatoires : la mesure qui manquait (Phase 3, septembre 2026)
+
+L'ADR 0007 demandait que la baseline comporte des cas avec mots obligatoires. Elle n'en avait aucun : le moteur des mots imposés, raison d'être de la Phase 3, n'avait jamais été mesuré au budget.
+
+**Protocole.** `--must-words N` impose N mots par grille, tirés selon la seed parmi les mots **courants** (zipf ≥ 3) du lexique, à des longueurs **distinctes** présentes dans le layout. Trois choix délibérés :
+
+- des mots *courants*, parce que c'est ce qu'un auteur impose — tirer au hasard dans 700 000 formes mesurerait des demandes que personne n'écrirait ;
+- des longueurs *distinctes*, sinon la vérification préalable refuserait la demande et on mesurerait cette validation au lieu du solveur ;
+- des mots tirés *par seed*, pour mesurer une distribution et non un coup de chance. Le tirage dérive d'une chaîne (`layout:seed`), donc reproductible d'une machine à l'autre.
+
+**Résultats** (21 layouts, 20 seeds, budget 20 s, lexique curé, exécutions seules) :
+
+| Mots imposés | Succès | Échecs par mot non placé | Layouts sous 20/20 |
+|--------------|--------|--------------------------|--------------------|
+| 0 (témoin) | 418/420 — 99,5 % | 0 | 2 |
+| 1 | 402/420 — 96 % | 11 | 12 |
+| **3** | **169/420 — 40 %** | **139** | **21** |
+
+**Un seul mot imposé coûte déjà 4 points ; trois font s'effondrer la génération à 40 %**, et aucun layout ne tient le critère. Le 11×6 descend à 2/20, le 10x13-003 à 1/20.
+
+Les mots en cause sont ordinaires : `NEZ` refusé sur un 6×7, `TAQUINER`, `EXPLICITE`, `BIBLIOTHEQUES` sur des 10×13. Ce ne sont pas des demandes absurdes, c'est l'usage normal de la fonctionnalité.
+
+La majorité des échecs sont des **mots non placés**, pas des dépassements de budget : le solveur ne trouve pas de grille contenant le mot, il ne manque pas de temps. Allonger le budget n'y changerait donc rien.
+
+### Le témoin n'est pas à 420/420
+
+Sur le lexique curé, la génération libre donne **418/420** : `13x16-002` (seed 4) et `13x18-001` (seed 17) dépassent le budget. La baseline versionnée, mesurée sur `dela_clean.csv`, donne 420/420. Les deux sont exacts — le lexique curé est plus petit, donc plus contraint. C'est le curé que charge l'API.
+
 ## Index des candidats (#20, septembre 2026)
 
 Le profil d'une génération 11×6 montrait 94 % du temps dans `get_candidates` : parcours du Trie par motif (5,9 millions de nœuds visités pour 1 295 recherches), puis filtrage des mots disponibles, avec un cache vidé à chaque placement. L'index par (position, lettre) en ensembles de bits (`engine/pattern_index.py`) calcule les mêmes candidats, **dans le même ordre**, par ET binaire ; le solveur ne fait que les compter pour choisir le slot et pour le forward checking.

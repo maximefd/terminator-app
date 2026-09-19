@@ -20,14 +20,21 @@ import json
 import logging
 import os
 import platform
+import random
 import statistics
 import subprocess
 import time
 from datetime import datetime, timezone
 
+from engine.grid_template import GridTemplate
+from engine.slot_finder import SlotFinder
 from grid_generator import GridGenerator
 from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from trie_engine import DictionnaireTrie
+
+# Un mot « courant » au sens de l'auteur : c'est ce qu'on impose à une grille. En dessous, on
+# imposerait des formes que personne n'écrirait, et on mesurerait autre chose.
+MUST_WORD_MIN_ZIPF = 3.0
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DICTIONARY = os.path.join(BACKEND_DIR, "dela_clean.csv")
@@ -55,6 +62,9 @@ def parse_args():
                              "(0 : valeur exacte ; défaut : réglage du solveur).")
     parser.add_argument("--max-candidates", type=int, default=None,
                         help="Candidats essayés par emplacement (défaut : réglage du solveur).")
+    parser.add_argument("--must-words", type=int, default=0, metavar="N",
+                        help="Imposer N mots courants par grille, de longueurs distinctes tirées "
+                             "selon la seed (0 : aucun, génération libre).")
     return parser.parse_args()
 
 
@@ -72,6 +82,39 @@ def list_layouts(formats_filter):
     return layouts
 
 
+def common_words_by_length(words, trie, min_zipf: float = MUST_WORD_MIN_ZIPF) -> dict[int, list[str]]:
+    """Mots par longueur, réduits aux mots courants quand le lexique porte des fréquences.
+
+    Sans colonne de fréquence (DELA brut), toutes les fréquences valent 0 : on garde alors tous les
+    mots de la longueur, faute de mieux — mais la mesure perd son sens d'« un mot que l'auteur
+    connaît ».
+    """
+    by_length: dict[int, list[str]] = {}
+    for word in words:
+        by_length.setdefault(len(word), []).append(word)
+    return {length: [w for w in group if trie.frequency(w) >= min_zipf] or group
+            for length, group in by_length.items()}
+
+
+def pick_must_words(slot_lengths, pool_by_length, count: int, rng: random.Random) -> list[str]:
+    """`count` mots courants, de longueurs **distinctes** présentes dans ce layout.
+
+    Longueurs distinctes à dessein : la vérification préalable refuse plus de mots d'une longueur
+    qu'il n'y a d'emplacements de cette longueur. En variant les longueurs, le benchmark mesure le
+    solveur et non cette validation.
+    """
+    lengths = sorted({length for length in slot_lengths if pool_by_length.get(length)})
+    rng.shuffle(lengths)
+    return [rng.choice(pool_by_length[length]) for length in lengths[:count]]
+
+
+def slot_lengths_of(width: int, height: int, layout_path: str) -> list[int]:
+    template = GridTemplate(width, height, layout_path)
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    return [slot["length"] for slot in finder.slots]
+
+
 def percentile(values, pct):
     """Percentile au rang le plus proche (suffisant pour de petits échantillons)."""
     if not values:
@@ -83,7 +126,7 @@ def percentile(values, pct):
 
 def run_layout(width, height, layout_path, words, trie, seeds, time_budget, restart_unit=None,
                min_safe_candidates=None, frequency_mode=None, frequency_band=None,
-               max_candidates=None):
+               max_candidates=None, must_count=0, must_pool=None):
     """Génère une grille par seed pour un layout et collecte les mesures."""
     runs, grids = [], []
     layout_name = layout_id(layout_path)
@@ -96,11 +139,18 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         restart["frequency_band"] = frequency_band
     if max_candidates is not None:
         restart["max_candidates"] = max_candidates
+    lengths = slot_lengths_of(width, height, layout_path) if must_count else []
     for seed in range(seeds):
-        print(f"  {layout_name} seed={seed}...", end="", flush=True)
+        # Tirage dérivé du nom du layout et de la seed : reproductible d'une machine à l'autre
+        # (une chaîne est hachée de façon déterministe par random, contrairement à un tuple).
+        must_words = pick_must_words(lengths, must_pool or {}, must_count,
+                                     random.Random(f"{layout_name}:{seed}")) if must_count else []
+        print(f"  {layout_name} seed={seed}"
+              f"{' ' + '+'.join(must_words) if must_words else ''}...", end="", flush=True)
         start = time.perf_counter()
         generator = GridGenerator(width, height, words, prebuilt_trie=trie, seed=seed,
-                                  layout_path=layout_path, time_budget_s=time_budget, **restart)
+                                  layout_path=layout_path, time_budget_s=time_budget,
+                                  must_words=must_words, **restart)
         success = generator.generate()
         elapsed = time.perf_counter() - start
 
@@ -118,6 +168,10 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
             # (0 si le lexique n'a pas de fréquence), et part de mots totalement absents des corpus.
             "mean_zipf": round(statistics.mean(zipfs), 3) if zipfs else None,
             "unknown_share": round(sum(1 for z in zipfs if z == 0) / len(zipfs), 3) if zipfs else None,
+            "must_words": must_words,
+            # Distinguer « le solveur n'a pas su placer ce mot » de « le budget a expiré » :
+            # c'est toute la différence entre une demande trop dure et une machine trop lente.
+            "must_unplaced": list(generator.unplaced_must_words) if not success else [],
             "recursive_calls": metrics["recursive_calls"],
             "backtracks": metrics["backtracks"],
             "candidates_tested": metrics["candidates_tested"],
@@ -144,6 +198,8 @@ def run_layout(width, height, layout_path, words, trie, seeds, time_budget, rest
         "mean_backtracks": round(statistics.mean(r["backtracks"] for r in runs), 1) if runs else None,
         "mean_zipf": round(statistics.mean(quality), 3) if quality else None,
         "unknown_share": round(statistics.mean(unknown), 3) if unknown else None,
+        "must_words_per_grid": must_count,
+        "failed_on_must_words": sum(1 for r in runs if r["must_unplaced"]),
     }
     return {"layout": layout_name, "width": width, "height": height, "summary": summary, "runs": runs}, grids
 
@@ -272,7 +328,8 @@ def main():
                    "min_safe_candidates": args.min_safe_candidates,
                    "frequency_mode": args.frequency_mode,
                    "frequency_band": args.frequency_band,
-                   "max_candidates": args.max_candidates},
+                   "max_candidates": args.max_candidates,
+                   "must_words_per_grid": args.must_words},
         "layouts": [],
     }
     grids_by_layout = {}
@@ -287,6 +344,7 @@ def main():
         # Le Trie du format est reconstruit mot à mot : sans ce report, il perdrait les fréquences
         # du lexique, et le benchmark mesurerait un moteur privé de son critère de qualité.
         format_trie.frequencies = {word: dictionary.frequency(word) for word in format_words}
+        must_pool = common_words_by_length(format_words, format_trie) if args.must_words else None
         print(f"\n--- Format {width}x{height} : {len(format_words)} mots ---")
 
         for w, h, layout_path in layouts:
@@ -295,7 +353,8 @@ def main():
             result, grids = run_layout(width, height, layout_path, format_words, format_trie,
                                        args.seeds, args.time_budget, args.restart_unit,
                                        args.min_safe_candidates, args.frequency_mode,
-                                       args.frequency_band, args.max_candidates)
+                                       args.frequency_band, args.max_candidates,
+                                       args.must_words, must_pool)
             report["layouts"].append(result)
             grids_by_layout[result["layout"]] = grids
 
@@ -307,6 +366,8 @@ def main():
     for layout in report["layouts"]:
         s = layout["summary"]
         quality = "" if s["mean_zipf"] is None else f", zipf moyen {s['mean_zipf']}, inconnus {s['unknown_share']:.0%}"
+        if s["must_words_per_grid"]:
+            quality += f", {s['must_words_per_grid']} mot(s) impose(s), {s['failed_on_must_words']} non place(s)"
         print(f"  {layout['layout']}: succès {s['success_rate']:.0%}, p50 {s['time_p50_s']}s, "
               f"p95 {s['time_p95_s']}s, timeouts {s['timeouts']}{quality}")
 
