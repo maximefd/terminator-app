@@ -72,7 +72,7 @@ make bench
 
 Résultats et méthode : [`backend/benchmarks/README.md`](../backend/benchmarks/README.md).
 
-**Baseline actuelle** (20 seeds, budget 20 s, redémarrages et index des candidats) :
+**Baseline actuelle** (20 seeds, budget 20 s, `dela_clean.csv`, **sans mot imposé**) :
 
 Les **21 layouts du catalogue réussissent 20 fois sur 20** (420 générations, 420 réussites), du 6×7 (12 mots) au 13×18 (81 mots) :
 
@@ -88,12 +88,15 @@ Les **21 layouts du catalogue réussissent 20 fois sur 20** (420 générations, 
 | 13×16 (3 layouts) | 61-64 | 0,79 à 2,51 s | 2,87 à 10,08 s |
 | 13×18 | 81 | 2,19 s | 8,72 s |
 
+Deux réserves sur ce tableau : il est mesuré sur le DELA brut, alors que l'API charge le lexique curé (qui donne 418/420, plus petit donc plus contraint) ; et **sans aucun mot imposé**, cas où le taux s'effondre (voir la limite ci-dessous).
+
 Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`). Enfin, le seuil du forward checking est passé de 3 à 2 : à 3, les grilles de plus de 60 mots arrivaient à deux mots de la fin sans pouvoir conclure (#61). Et le plafond de candidats est passé de 100 à 300, ce qui accélère sans rien changer au taux de succès.
 
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
+| **Mots obligatoires** : un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %** | Une demande courante (`NEZ`, `TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | Mesuré, pas encore corrigé ([mesures](../backend/benchmarks/README.md)). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien |
 | **Qualité des mots** : un tiers des mots placés sont absents de tout corpus | Grilles avec des formes rares | Le tri par fréquence les ramène à 17 %, mais fait échouer les grandes grilles : disponible par requête (`frequency_mode: "exact"`), pas par défaut. Le vrai levier reste la **curation du lexique** |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
