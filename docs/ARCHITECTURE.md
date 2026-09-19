@@ -61,6 +61,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | POST | `/api/search` | optionnelle | Recherche par motif (DELA + dictionnaire personnel actif) |
 | GET | `/api/grids/formats` | — | Formats de grille disponibles |
 | GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
+| POST | `/api/grids/difficulty` | — | Ce que coûtent des mots imposés, **sans générer** ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
 | POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (`must_words`, `wish_words`, `wish_dictionary_ids`, dictionnaire personnel actif) |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 

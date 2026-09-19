@@ -47,6 +47,7 @@ RATE_LIMITED_ENDPOINTS = {
     "auth.register": "RATELIMIT_REGISTER",
     "auth.refresh": "RATELIMIT_REFRESH",
     "main.search_words": "RATELIMIT_SEARCH",
+    "main.grid_difficulty": "RATELIMIT_DIFFICULTY",
     "main.generate_grid": "RATELIMIT_GENERATE",
 }
 

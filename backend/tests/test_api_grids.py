@@ -199,6 +199,45 @@ def test_the_themed_dictionaries_are_validated(grid_app, client):
                                   "wish_dictionary_ids": "deux"}).status_code == 400
 
 
+# --- Difficulté annoncée avant de générer (#73) ---
+
+def post_difficulty(client, body):
+    return client.post("/api/grids/difficulty", data=json.dumps(body), content_type="application/json")
+
+
+def test_the_difficulty_is_told_before_generating(grid_app, client):
+    """L'auteur doit voir le coût de ses mots en les tapant, pas après 20 s d'attente."""
+    response = post_difficulty(client, {"must_words": ["Rue", "Bibliothèques"]})
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["hardest"] == "BIBLIOTHEQUES"  # normalisé comme partout
+    assert 0 < body["success_rate"] < 1
+    assert body["level"] in ("facile", "moyen", "difficile", "très difficile")
+    assert "souhaité" in body["advice"]
+
+
+def test_the_chosen_grid_size_changes_the_estimate(grid_app, client):
+    """Le pourcentage affiché doit dépendre de la taille choisie : c'est ce que l'auteur compare."""
+    sans = post_difficulty(client, {"must_words": ["Rue", "Sel"]}).get_json()
+    avec = post_difficulty(client, {"must_words": ["Rue", "Sel"],
+                                    "size": {"width": 5, "height": 5}}).get_json()
+
+    assert sans["size_class"] is None
+    assert avec["size_class"] == "petite"  # le layout de test compte 8 emplacements
+
+
+def test_no_word_is_no_difficulty(grid_app, client):
+    body = post_difficulty(client, {"must_words": []}).get_json()
+
+    assert body["success_rate"] == 1.0 and body["advice"] is None
+
+
+def test_the_difficulty_request_is_validated(grid_app, client):
+    assert post_difficulty(client, {"must_words": ["A"]}).status_code == 400
+    assert post_difficulty(client, {"must_words": ["MOT"] * 51}).status_code == 400
+
+
 def test_generate_unknown_format_returns_available_formats(grid_app, client):
     response = post_generate(client, {"size": {"width": 9, "height": 9}})
 

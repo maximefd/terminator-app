@@ -6,10 +6,12 @@ from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord
+from engine.difficulty import request_difficulty
 from grid_generator import GridGenerator, LayoutNotFoundError
-from layout_catalog import available_formats, catalog, suggest_layouts_for
+from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
 from schemas import (
     DictionaryCreateRequest,
+    DifficultyRequest,
     DictionaryUpdateRequest,
     GenerateRequest,
     SearchRequest,
@@ -185,6 +187,21 @@ def list_grid_formats():
 def list_layouts():
     """Catalogue des layouts valides, par format : identifiant, grille (x / -) et statistiques."""
     return jsonify({"formats": catalog(current_app.config.get('LAYOUTS_DIR'))}), 200
+
+@main_bp.route('/grids/difficulty', methods=['POST'])
+def grid_difficulty():
+    """Ce que coûtent des mots imposés, **sans générer** : réponse immédiate, à chaque frappe.
+
+    Les taux viennent de 4 700 générations mesurées (voir engine/difficulty.py). Donner ce chiffre
+    avant de chercher vaut mieux que de laisser l'auteur attendre 20 s pour un échec.
+    """
+    payload = parse_body(DifficultyRequest)
+    words = [normalize_pattern(word) for word in payload.must_words]
+    slots = None
+    if payload.size:
+        slots = format_slot_count(payload.size.width, payload.size.height,
+                                  current_app.config.get('LAYOUTS_DIR'))
+    return jsonify(request_difficulty(words, slots)), 200
 
 @main_bp.route('/grids/generate', methods=['POST'])
 @jwt_required(optional=True)
