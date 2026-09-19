@@ -6,7 +6,6 @@ from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord
-from engine.must_words import check_must_words
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, suggest_layouts_for
 from schemas import (
@@ -250,8 +249,9 @@ def generate_grid():
             "available_formats": formats,
         }), 400
 
-    # Refus AVANT toute résolution : inutile de chercher pendant 20 s un mot qui n'entre nulle part
-    problems = check_must_words(generator.finder.slots, must_words)
+    # Refus AVANT toute résolution : inutile de chercher 20 s un mot qui n'entre dans aucun layout
+    # du format. Le générateur a examiné tous les candidats, pas seulement celui qu'il a tiré.
+    problems = generator.must_word_problems
     if problems:
         return jsonify({
             "error": "Ces mots obligatoires n'entrent pas dans ce layout.",

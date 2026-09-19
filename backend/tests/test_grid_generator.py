@@ -8,6 +8,7 @@ from engine.slot_finder import SlotFinder
 from grid_generator import GridGenerator, LayoutNotFoundError, luby
 from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
+from trie_engine import DictionnaireTrie
 
 
 def test_available_formats_lists_only_formats_with_layouts(tmp_path):
@@ -135,6 +136,87 @@ def test_the_forward_checking_threshold_reaches_the_solver(small_words, small_tr
 
     assert default.solver.min_safe_candidates == GridSolver.MIN_SAFE_CANDIDATES == 2
     assert tuned.solver.min_safe_candidates == 5
+
+
+# --- Choix du layout quand des mots sont imposés (#73) ---
+
+# Deux layouts 3x3 aux géométries incompatibles : l'un n'a que des emplacements de 3 lettres,
+# l'autre que des emplacements de 2. Un mot imposé ne peut donc entrer que dans l'un des deux.
+LAYOUT_DE_TROIS = "---\n---\n---\n"
+LAYOUT_DE_DEUX = "--x\n--x\nxxx\n"
+
+
+def two_layouts(tmp_path):
+    (tmp_path / "3x3").mkdir(parents=True)
+    (tmp_path / "3x3" / "001.txt").write_text(LAYOUT_DE_TROIS, encoding="utf-8")
+    (tmp_path / "3x3" / "002.txt").write_text(LAYOUT_DE_DEUX, encoding="utf-8")
+    return str(tmp_path)
+
+
+def tiny_trie(*words):
+    trie = DictionnaireTrie()
+    for word in words:
+        trie.insert(word)
+    return trie
+
+
+def generator_3x3(tmp_path, **kwargs):
+    trie = tiny_trie("ABC", "DEF", "AD", "BE", "CF")
+    return GridGenerator(3, 3, ["ABC", "DEF", "AD", "BE", "CF"], prebuilt_trie=trie,
+                         layouts_dir=two_layouts(tmp_path), seed=1, **kwargs)
+
+
+def test_without_imposed_words_a_single_layout_is_drawn(tmp_path):
+    """Comportement d'origine préservé : la baseline doit rester comparable."""
+    generator = generator_3x3(tmp_path)
+
+    assert len(generator._layouts) == 1
+
+
+def test_only_the_layouts_that_host_the_word_are_kept(tmp_path):
+    """La vérification porte sur tous les candidats : un mot refusé ici peut entrer là."""
+    trois = generator_3x3(tmp_path / "a", must_words=["ABC"])
+    deux = generator_3x3(tmp_path / "b", must_words=["AD"])
+
+    assert [path.endswith("001.txt") for path, _, _ in trois._layouts] == [True]
+    assert [path.endswith("002.txt") for path, _, _ in deux._layouts] == [True]
+    assert trois.must_word_problems == [] and deux.must_word_problems == []
+
+
+def test_a_word_that_fits_no_layout_is_explained_without_searching(tmp_path):
+    generator = generator_3x3(tmp_path, must_words=["ABCD"])
+
+    assert not generator.generate()
+    assert generator.must_word_problems
+    assert generator.must_word_problems[0]["word"] == "ABCD"
+    assert generator.attempts == []  # aucune résolution lancée
+
+
+def test_generate_really_tries_the_other_layouts(tmp_path):
+    """Le test doit passer par generate() : la rotation savait tourner, mais la boucle sortait avant.
+
+    Un mot imposé introuvable épuise la recherche (`stop_reason` à None) au lieu d'atteindre le seuil
+    d'appels ; la condition de sortie renvoyait alors la main sans jamais changer de géométrie.
+    """
+    (tmp_path / "3x3").mkdir()
+    (tmp_path / "3x3" / "001.txt").write_text(LAYOUT_DE_TROIS, encoding="utf-8")
+    (tmp_path / "3x3" / "002.txt").write_text("x-x\n---\n---\n", encoding="utf-8")
+    mots = ["ABC", "DEF", "AD", "BE", "CF"]
+    generator = GridGenerator(3, 3, mots, prebuilt_trie=tiny_trie(*mots), layouts_dir=str(tmp_path),
+                              seed=1, must_words=["ZZZ"], time_budget_s=5)
+
+    assert len(generator._layouts) == 2
+    assert not generator.generate()  # « ZZZ » ne se croise nulle part
+    assert len({essai["layout"] for essai in generator.attempts}) == 2
+
+
+def test_a_single_layout_keeps_the_previous_stop_condition(small_words, small_trie):
+    """Sans autre géométrie à essayer, la boucle s'arrête comme avant : la baseline reste comparable."""
+    generator = make_generator(small_words, small_trie, seed=3, restart_unit_calls=None)
+    generator.solver.max_recursive_calls = 1
+
+    assert not generator.generate()
+    assert len(generator.attempts) == 1
 
 
 def test_each_placed_word_reports_its_pool(small_words, small_trie):

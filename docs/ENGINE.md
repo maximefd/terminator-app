@@ -53,6 +53,7 @@ flowchart TD
 | **Validation croisée** | Un mot est refusé s'il forme, dans l'autre sens, un mot **terminé** qui n'existe pas. Une suite de lettres encore ouverte (« AB » au milieu d'un emplacement de 5 cases) n'est qu'un mot en cours d'écriture : elle n'est pas vérifiée | `_is_placement_valid` |
 | **Forward checking** | Refuser un mot qui laisserait un slot croisé sans candidat de rechange. Exiger davantage paraît prudent mais interdit les clôtures de fin de grille (#61) | `MIN_SAFE_CANDIDATES = 2` (minimum imposé par l'invariant) |
 | **Nogoods** | Mémoriser les motifs sans aucun mot pour ne pas les recréer | invalidés au retour arrière |
+| **Changement de layout** | Quand des mots sont imposés et qu'un format est demandé, passer au layout suivant du format une fois la recherche **épuisée** sur le courant. Mesuré (#73) : la géométrie décide bien plus que la trajectoire — mais en changer à chaque essai détruit les redémarrages et fait perdre des grilles | `_layouts`, `_layout_index` |
 | **Redémarrages** | Plusieurs essais courts plutôt qu'un long : l'essai n°i s'arrête après `unité × luby(i)` appels récursifs (1, 1, 2, 1, 1, 2, 4…), puis repart avec une nouvelle trajectoire dérivée du seed, tant que le budget temps le permet. Les mots consommés par un essai interrompu sont rendus au dépôt | `DEFAULT_RESTART_UNIT_CALLS = 300` (`grid_generator.py`) |
 
 ## Garanties
@@ -96,7 +97,7 @@ Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **red
 
 | Limite | Conséquence | Prévu |
 |--------|-------------|-------|
-| **Mots obligatoires** : un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %** | Une demande courante (`NEZ`, `TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | Mesuré, pas encore corrigé ([mesures](../backend/benchmarks/README.md)). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien |
+| **Mots obligatoires** : un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %** | Une demande courante (`NEZ`, `TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | [#73](https://github.com/maximefd/terminator-app/issues/73). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien. Le changement de layout améliore le cas où le format compte plusieurs layouts, sans résoudre le fond |
 | **Qualité des mots** : un tiers des mots placés sont absents de tout corpus | Grilles avec des formes rares | Le tri par fréquence les ramène à 17 %, mais fait échouer les grandes grilles : disponible par requête (`frequency_mode: "exact"`), pas par défaut. Le vrai levier reste la **curation du lexique** |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
 | Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
