@@ -5,7 +5,7 @@ import pytest
 from engine.grid_solver import GridSolver
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
-from grid_generator import GridGenerator, LayoutNotFoundError, luby
+from grid_generator import GridGenerator, LayoutNotFoundError, crossing_load, luby
 from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
 from trie_engine import DictionnaireTrie
@@ -136,6 +136,21 @@ def test_the_forward_checking_threshold_reaches_the_solver(small_words, small_tr
 
     assert default.solver.min_safe_candidates == GridSolver.MIN_SAFE_CANDIDATES == 2
     assert tuned.solver.min_safe_candidates == 5
+
+
+def charge_de(rows, length):
+    template = GridTemplate.from_rows(rows)
+    finder = SlotFinder(template)
+    finder.find_all_slots()
+    return crossing_load(finder, length)
+
+
+def test_crossing_load_measures_how_constrained_a_word_would_be():
+    """Critère du classement des layouts : mesuré (#73), il sépare les layouts qui accueillent un
+    mot long de ceux qui le refusent."""
+    assert charge_de(["---"], 3) == 0.0  # une seule rangée : aucune lettre à croiser
+    assert charge_de(["---", "---", "---"], 3) == 1.0  # chaque lettre est croisée
+    assert charge_de(["---"], 5) is None  # aucun emplacement de cette longueur
 
 
 # --- Choix du layout quand des mots sont imposés (#73) ---

@@ -187,6 +187,36 @@ Le gain est concentré là où plusieurs layouts existent (6×7 : 6/20 → 11/20
 
 Il ne résout pas #73 : trois mots imposés restent à ~39 % de succès. Son gain est borné par le catalogue — cinq formats sur neuf n'ont qu'un layout — et grandira à mesure qu'il s'étoffe. Son autre apport, moins visible, est que le **refus devient exact** : un mot n'est plus refusé parce qu'il n'entre pas dans le layout tiré, mais seulement s'il n'entre dans aucun layout du format.
 
+## Ce qui rend un mot imposé difficile : sa longueur (#73, septembre 2026)
+
+### Un biais de mesure d'abord
+
+Le tirage des mots imposés prenait les longueurs présentes dans le format : un 13×18 recevait des mots jusqu'à 13 lettres, un 6×7 jamais plus de 7. Or la longueur est un facteur de difficulté. **Toute comparaison entre formats était donc faussée** — et concluait que les grandes grilles s'en sortaient mieux. `--must-max-length N` impose la même demande à tous.
+
+### À demande égale, la longueur domine tout
+
+| | Sans plafond | Mots de 6 lettres au plus |
+|---|--------------|---------------------------|
+| 2 mots imposés | 110/180 (61 %) | **155/180 (86 %)** |
+| 3 mots imposés | 70/180 (39 %) | **120/180 (67 %)** |
+
+Et la hiérarchie des formats **s'inverse** : à demande égale, le 7×9 (20 emplacements) fait 18/20 à trois mots quand le 13×18 (81 emplacements) fait 11/20. « Prendre une grille plus grande » aurait été un mauvais conseil, fondé sur un instrument biaisé.
+
+L'escalier complet, sans plafond : 1 mot 166/180 (92 %), 2 mots 110/180 (61 %), 3 mots 70/180 (39 %).
+
+### Classer les layouts par charge de croisements : réfuté
+
+Idée : préférer le layout où le mot imposé aurait le moins de lettres à croiser. Le critère prédit parfaitement les cas connus (`TAQUINER` réussit sur les quatre layouts où une lettre échappe aux croisements, échoue sur les quatre où tout se croise) mais ne distingue rien sur `NEZ`.
+
+Mesuré en A/B (`--layout-order`), 2 mots de ≤ 6 lettres, formats à plusieurs layouts :
+
+| Seeds | Tirage | Croisements |
+|-------|--------|-------------|
+| 20 | 67/80 | 71/80 |
+| 40 | 133/160 | 137/160 |
+
+Le gain absolu reste **+4 quand l'échantillon double** : en proportion il tombe de +5 à +2,5 points, et deux formats sur quatre régressent. À deux mots courts, aucun mot n'est d'ailleurs impossible à placer (0 échec par mot non placé) : tous les échecs sont des dépassements de budget, que ce classement ne peut pas éviter. **Conservé comme réglage de mesure (`layout_order`), pas comme défaut.**
+
 ## Index des candidats (#20, septembre 2026)
 
 Le profil d'une génération 11×6 montrait 94 % du temps dans `get_candidates` : parcours du Trie par motif (5,9 millions de nœuds visités pour 1 295 recherches), puis filtrage des mots disponibles, avec un cache vidé à chaque placement. L'index par (position, lettre) en ensembles de bits (`engine/pattern_index.py`) calcule les mêmes candidats, **dans le même ordre**, par ET binaire ; le solveur ne fait que les compter pour choisir le slot et pour le forward checking.
