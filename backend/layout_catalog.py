@@ -122,6 +122,21 @@ def catalog(layouts_dir: str | None = None) -> list[dict]:
     return [{"width": width, "height": height, "layouts": layouts} for (width, height), layouts in formats.items()]
 
 
+def format_slot_count(width: int, height: int, layouts_dir: str | None = None) -> int | None:
+    """Nombre d'emplacements qu'offre ce format, au mieux de ses layouts (None si le format est vide).
+
+    Sert à situer un format dans une classe de taille pour estimer la difficulté d'une demande.
+    """
+    best = None
+    for fmt in catalog(layouts_dir):
+        if (fmt["width"], fmt["height"]) != (width, height):
+            continue
+        for layout in fmt["layouts"]:
+            words = layout["stats"]["words"]
+            best = words if best is None else max(best, words)
+    return best
+
+
 def suggest_layouts_for(words, layouts_dir: str | None = None, limit: int = 5) -> list[str]:
     """Layouts du catalogue où ces mots tiennent tous, par longueur : de quoi rebondir sur un refus.
 

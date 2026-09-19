@@ -2,6 +2,7 @@
 
 from engine.difficulty import (
     MEASURED_SUCCESS,
+    size_class,
     length_band,
     level_of,
     rare_letters,
@@ -79,9 +80,45 @@ def test_an_unmeasured_rare_cell_is_penalised_not_invented():
 
 def test_no_words_is_no_constraint():
     assert request_difficulty([]) == {"words": [], "success_rate": 1.0, "level": "facile",
-                                      "measured": True, "hardest": None, "advice": None}
+                                      "measured": True, "hardest": None, "advice": None,
+                                      "size_class": None}
 
 
 def test_levels_follow_the_thresholds():
     assert [level_of(r) for r in (1.0, 0.9, 0.75, 0.5, 0.2)] == [
         "facile", "facile", "moyen", "difficile", "très difficile"]
+
+
+# --- La taille de grille choisie change l'estimation (#73) ---
+
+def test_size_classes_follow_the_slot_count():
+    assert [size_class(n) for n in (13, 21, 33, 43, 62, 81)] == [
+        "petite", "petite", "moyenne", "moyenne", "grande", "grande"]
+    assert size_class(None) is None
+
+
+def test_the_best_grid_size_depends_on_the_words():
+    """Mesuré : pour des mots courts la petite grille gagne, pour des mots longs la grande.
+
+    Ce croisement n'était pas devinable — deux autres signaux par format ont été réfutés avant lui.
+    """
+    courts = ["RUE", "SEL"]
+    longs = ["TAQUINER", "BIBLIOTHEQUES", "EMPOIGNANT"]
+
+    assert request_difficulty(courts, slots=13)["success_rate"] > \
+        request_difficulty(courts, slots=81)["success_rate"]
+    assert request_difficulty(longs, slots=13)["success_rate"] < \
+        request_difficulty(longs, slots=81)["success_rate"]
+
+
+def test_without_a_chosen_size_the_estimate_aggregates_every_format():
+    assert request_difficulty(["RUE", "SEL"])["size_class"] is None
+
+
+def test_an_unmeasured_size_cell_falls_back_to_the_aggregate():
+    """Trois mots courts dont un à lettre rare : mesuré pour la petite grille seulement."""
+    grande = request_difficulty(["ZUT", "RUE", "SEL"], slots=81)
+    agrege = request_difficulty(["ZUT", "RUE", "SEL"])
+
+    assert grande["size_class"] == "grande"
+    assert grande["success_rate"] == agrege["success_rate"]

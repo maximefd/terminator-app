@@ -217,6 +217,16 @@ def test_the_difficulty_is_told_before_generating(grid_app, client):
     assert "souhaité" in body["advice"]
 
 
+def test_the_chosen_grid_size_changes_the_estimate(grid_app, client):
+    """Le pourcentage affiché doit dépendre de la taille choisie : c'est ce que l'auteur compare."""
+    sans = post_difficulty(client, {"must_words": ["Rue", "Sel"]}).get_json()
+    avec = post_difficulty(client, {"must_words": ["Rue", "Sel"],
+                                    "size": {"width": 5, "height": 5}}).get_json()
+
+    assert sans["size_class"] is None
+    assert avec["size_class"] == "petite"  # le layout de test compte 8 emplacements
+
+
 def test_no_word_is_no_difficulty(grid_app, client):
     body = post_difficulty(client, {"must_words": []}).get_json()
 

@@ -40,6 +40,31 @@ MEASURED_SUCCESS = {
 # médian observé entre les cases rares et non rares mesurées.
 RARE_PENALTY = 0.85
 
+# Classes de taille, en nombre d'emplacements du format. La taille compte, mais **son effet
+# s'inverse selon la demande** (mesuré) : pour des mots courts la petite grille gagne, pour des
+# mots longs la grande. Un mot long exige un emplacement long, que seuls les grands formats
+# offrent en nombre ; un mot court sur une grande grille signifie surtout beaucoup d'autres mots
+# à placer à côté.
+SIZE_CLASSES = (("petite", 21), ("moyenne", 43), ("grande", 10_000))
+
+# Taux mesurés par (nombre de mots, bande, lettre rare, classe de taille). Bandes regroupées en
+# trois ici : par taille, les cases de « 8-9 » et « 10+ » n'atteignaient pas 30 générations.
+MEASURED_BY_SIZE = {
+    (1, "2-5", False): {"petite": 1.00, "moyenne": 1.00, "grande": 1.00},
+    (1, "6-7", False): {"petite": 0.92, "moyenne": 1.00, "grande": 1.00},
+    (1, "8+", False): {"petite": 0.83, "moyenne": 0.81, "grande": 0.83},
+    (2, "2-5", False): {"petite": 1.00, "moyenne": 0.94, "grande": 0.77},
+    (2, "2-5", True): {"petite": 0.98, "moyenne": 0.97, "grande": 0.74},
+    (2, "6-7", False): {"petite": 0.95, "moyenne": 0.89, "grande": 0.74},
+    (2, "6-7", True): {"petite": 0.78, "grande": 0.61},
+    (3, "2-5", False): {"petite": 0.93, "moyenne": 0.74, "grande": 0.84},
+    (3, "2-5", True): {"petite": 0.67},
+    (3, "6-7", False): {"petite": 0.66, "moyenne": 0.74, "grande": 0.61},
+    (3, "6-7", True): {"petite": 0.35, "moyenne": 0.40, "grande": 0.38},
+    (3, "8+", False): {"petite": 0.33, "moyenne": 0.20, "grande": 0.45},
+    (3, "8+", True): {"petite": 0.13, "moyenne": 0.07, "grande": 0.31},
+}
+
 # Seuils des niveaux, en taux de réussite estimé
 LEVELS = ((0.90, "facile"), (0.70, "moyen"), (0.40, "difficile"), (0.0, "très difficile"))
 
@@ -77,6 +102,28 @@ def success_rate(count: int, band: str, rare: bool) -> tuple[float, bool]:
     return (round(base * RARE_PENALTY, 2), False) if rare else (base, False)
 
 
+def size_class(slots: int | None) -> str | None:
+    """Classe de taille d'un format, d'après son nombre d'emplacements (None si inconnu)."""
+    if not slots:
+        return None
+    return next(name for name, limit in SIZE_CLASSES if slots <= limit)
+
+
+def _wide_band(band: str) -> str:
+    """Bandes regroupées pour la table par taille, où « 8-9 » et « 10+ » manquaient d'échantillon."""
+    return "8+" if band in ("8-9", "10+") else band
+
+
+def success_rate_for_size(count: int, band: str, rare: bool, klass: str | None) -> tuple[float, bool] | None:
+    """Taux mesuré pour cette taille, ou None si la case n'a pas d'échantillon suffisant."""
+    if klass is None:
+        return None
+    cell = MEASURED_BY_SIZE.get((min(count, 3), _wide_band(band), rare))
+    if cell is None or klass not in cell:
+        return None
+    return cell[klass], count <= 3
+
+
 def word_difficulty(word: str) -> dict:
     """Ce que coûte ce mot, **seul**, tel qu'on peut le dire dès qu'il est tapé."""
     band = length_band(len(word))
@@ -92,17 +139,24 @@ def word_difficulty(word: str) -> dict:
             "success_rate": rate, "level": level_of(rate), "measured": measured, "reasons": reasons}
 
 
-def request_difficulty(words) -> dict:
-    """Difficulté de la demande entière, à afficher au fur et à mesure que l'auteur ajoute des mots."""
+def request_difficulty(words, slots: int | None = None) -> dict:
+    """Difficulté de la demande entière, à afficher au fur et à mesure que l'auteur ajoute des mots.
+
+    `slots` : nombre d'emplacements du format visé, quand l'auteur en a choisi un. Le taux en
+    dépend — et pas dans le sens qu'on croirait : pour des mots courts la petite grille gagne,
+    pour des mots longs la grande. Sans taille choisie, l'estimation agrège tous les formats.
+    """
     words = list(words)
     if not words:
         return {"words": [], "success_rate": 1.0, "level": "facile", "measured": True,
-                "hardest": None, "advice": None}
+                "hardest": None, "advice": None, "size_class": size_class(slots)}
 
     details = [word_difficulty(word) for word in words]
     band = length_band(max(len(word) for word in words))
     rare = any(detail["rare_letters"] for detail in details)
-    rate, measured = success_rate(len(words), band, rare)
+    klass = size_class(slots)
+    par_taille = success_rate_for_size(len(words), band, rare, klass)
+    rate, measured = par_taille if par_taille else success_rate(len(words), band, rare)
     hardest = min(details, key=lambda detail: (detail["success_rate"], -detail["length"]))
 
     advice = None
@@ -110,4 +164,4 @@ def request_difficulty(words) -> dict:
         advice = (f"« {hardest['word']} » est ce qui pèse le plus. En mot souhaité plutôt "
                   f"qu'obligatoire, il sera placé s'il rentre, sans faire échouer la grille.")
     return {"words": details, "success_rate": rate, "level": level_of(rate), "measured": measured,
-            "hardest": hardest["word"], "advice": advice}
+            "hardest": hardest["word"], "advice": advice, "size_class": klass}

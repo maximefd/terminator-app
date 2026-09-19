@@ -217,6 +217,21 @@ Mesuré en A/B (`--layout-order`), 2 mots de ≤ 6 lettres, formats à plusieurs
 
 Le gain absolu reste **+4 quand l'échantillon double** : en proportion il tombe de +5 à +2,5 points, et deux formats sur quatre régressent. À deux mots courts, aucun mot n'est d'ailleurs impossible à placer (0 échec par mot non placé) : tous les échecs sont des dépassements de budget, que ce classement ne peut pas éviter. **Conservé comme réglage de mesure (`layout_order`), pas comme défaut.**
 
+## La taille de grille : un effet qui s'inverse (#73, septembre 2026)
+
+Deux signaux par format ont d'abord été **réfutés** : le nombre d'emplacements de la bonne longueur ne prédit rien (2 mots courts : 94 % avec 1-2 emplacements, 83 % avec 6 et plus — non monotone), et classer les layouts par charge de croisements n'apporte pas de gain distinguable du bruit.
+
+En regroupant les formats par **classe de taille**, à demande égale, un effet net apparaît — et il change de sens selon la demande :
+
+| Demande | Petite (≤ 21 empl.) | Moyenne (33-43) | Grande (≥ 61) |
+|---------|---------------------|-----------------|---------------|
+| 2 mots de 2-5 lettres | **100 %** | 94 % | 77 % |
+| 2 mots de 6-7 lettres | **95 %** | 89 % | 74 % |
+| 3 mots de 8+ lettres | 33 % | 20 % | **45 %** |
+| 3 mots de 8+ avec lettre rare | 13 % | 7 % | **31 %** |
+
+Un mot long exige un emplacement long, que seuls les grands formats offrent en nombre ; un mot court sur une grande grille signifie surtout beaucoup d'autres mots à placer à côté. C'est cette table qui alimente l'estimation par taille (`engine/difficulty.py`, [ADR 0009](../../docs/adr/0009-annoncer-la-difficulte.md)).
+
 ## Index des candidats (#20, septembre 2026)
 
 Le profil d'une génération 11×6 montrait 94 % du temps dans `get_candidates` : parcours du Trie par motif (5,9 millions de nœuds visités pour 1 295 recherches), puis filtrage des mots disponibles, avec un cache vidé à chaque placement. L'index par (position, lettre) en ensembles de bits (`engine/pattern_index.py`) calcule les mêmes candidats, **dans le même ordre**, par ET binaire ; le solveur ne fait que les compter pour choisir le slot et pour le forward checking.

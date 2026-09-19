@@ -74,6 +74,15 @@ flowchart TD
 | 3 | 6-7 | non | 61 % |
 | 3 | 10+ | oui | 13 % |
 
+La **taille de grille choisie** entre aussi dans le calcul, et son effet **s'inverse selon la demande** :
+
+| Demande | Petite (≤ 21 empl.) | Grande (≥ 61) |
+|---------|---------------------|---------------|
+| 2 mots courts | **100 %** | 77 % |
+| 3 mots longs + lettre rare | 13 % | **31 %** |
+
+Un mot long exige un emplacement long, que seuls les grands formats offrent en nombre ; un mot court sur une grande grille signifie surtout beaucoup d'autres mots à placer à côté.
+
 Trois facteurs, dans cet ordre : la **longueur** du mot le plus long, la présence d'une **lettre rare** (`Z`, `W`, `K`, `X`, `Q`, `Y`, `J`), et le **nombre** de mots. L'estimation nomme le mot qui pèse le plus et propose de le passer en mot **souhaité** — placé s'il rentre, sans faire échouer la grille.
 
 ## Mesurer : le benchmark
