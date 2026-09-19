@@ -62,18 +62,37 @@ function refreshAccessToken(): Promise<boolean> {
   return pendingRefresh;
 }
 
-async function readErrorMessage(response: Response): Promise<string> {
-  // On lit le message d'erreur de l'API s'il existe (réponse JSON { error })
+/**
+ * Erreur d'API qui conserve le corps de la réponse.
+ *
+ * Les refus de génération portent bien plus que leur message : quel mot obligatoire pose problème,
+ * quels layouts l'accueilleraient, quels mots n'ont pas pu être placés. Sans cela, l'écran ne
+ * pourrait afficher qu'« impossible », ce que l'on cherche précisément à éviter.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly data: Record<string, unknown>;
+
+  constructor(message: string, status: number, data: Record<string, unknown>) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
+async function readError(response: Response): Promise<ApiError> {
   let message = `Erreur ${response.status}: ${response.statusText}`;
+  let data: Record<string, unknown> = {};
   try {
-    const errorData = await response.json();
-    if (typeof errorData?.error === "string" && errorData.error) {
-      message = errorData.error;
+    data = await response.json();
+    if (typeof data?.error === "string" && data.error) {
+      message = data.error;
     }
   } catch {
     // Réponse non JSON : on garde le message générique
   }
-  return message;
+  return new ApiError(message, response.status, data);
 }
 
 export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, allowRefresh = true) {
@@ -115,7 +134,7 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, 
   }
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
+    throw await readError(response);
   }
 
   if (response.status === 204) {
