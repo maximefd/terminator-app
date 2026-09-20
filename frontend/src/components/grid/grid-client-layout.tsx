@@ -10,6 +10,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { GridDisplay, type GridData } from "@/components/grid/grid-display";
 import { WordList, type WordEntry } from "@/components/grid/word-list";
 import { DifficultyPanel, type Difficulty } from "@/components/grid/difficulty-panel";
+import { DictionaryPicker } from "@/components/grid/dictionary-picker";
 
 type GridFormat = { width: number; height: number; layouts: number };
 
@@ -66,6 +67,7 @@ function FailureNotice({ error }: { error: ApiError }) {
 export function GridClientLayout() {
   const [entries, setEntries] = useState<WordEntry[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
+  const [dictionaryIds, setDictionaryIds] = useState<number[]>([]);
   const [gridData, setGridData] = useState<GridData | null>(null);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -116,6 +118,7 @@ export function GridClientLayout() {
           seed: Math.floor(Math.random() * 1_000_000),
           must_words: required,
           wish_words: wished,
+          wish_dictionary_ids: dictionaryIds,
         },
       });
       setGridData(data.grid);
@@ -162,6 +165,11 @@ export function GridClientLayout() {
         <div className="space-y-2">
           <Label>Mots à placer</Label>
           <WordList entries={entries} onChange={setEntries} disabled={isGenerating} />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Vos dictionnaires</Label>
+          <DictionaryPicker selected={dictionaryIds} onChange={setDictionaryIds} disabled={isGenerating} />
         </div>
 
         <DifficultyPanel difficulty={difficulty} isLoading={isEstimating} hasRequiredWords={required.length > 0} />
