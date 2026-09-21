@@ -1,6 +1,7 @@
 # Versions figées : mises à jour par Dependabot (PR hebdomadaires), auditées par pip-audit en CI
 Flask==3.1.3
 Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.1.0
 psycopg2-binary==2.9.13
 Flask-Cors==6.0.5
 Flask-Login==0.6.3

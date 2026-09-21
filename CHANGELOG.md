@@ -5,6 +5,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Grilles conservées (Phase 4, #24) : une grille générée se garde, se retrouve et se supprime —
+  `POST /api/grids`, `GET /api/grids`, `GET /api/grids/<id>`, `DELETE /api/grids/<id>`, page **Mes grilles**.
+  La grille est stockée **telle qu'elle a été produite**, et non rejouée à partir de sa seed : le lexique est
+  curé au fil des semaines et le catalogue de layouts s'enrichit, si bien que la même seed ne redonnerait pas
+  la même grille plus tard. 200 grilles par compte au plus ; une grille d'autrui répond 404.
+- Migrations de schéma Alembic ([ADR 0010](docs/adr/0010-migrations-de-schema.md), #24) : `db.create_all()`
+  ne savait que créer les tables manquantes — ni ajouter une colonne, ni signaler que le modèle et la base
+  avaient divergé. Deux révisions : le schéma d'avant Alembic, puis les grilles conservées. Une base de
+  développement existante est **marquée** à la première révision au lieu d'être recréée, puis mise à niveau.
 - Audit UX des écrans existants ([docs/AUDIT-UX.md](docs/AUDIT-UX.md), #21) et ses corrections : la
   recherche explique sa syntaxe et propose trois motifs cliquables au lieu d'un champ muet ; les états vides
   disent quoi faire ; les dictionnaires personnels gagnent une page, un bouton de suppression (l'API le

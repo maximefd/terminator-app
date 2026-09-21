@@ -8,11 +8,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from models import db
 from auth import bcrypt, auth_bp
 from routes import main_bp
-from extensions import jwt
+from extensions import jwt, migrate
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
 from lexicon_loader import LexiconManager
 
 DEV_SECRET = 'default-secret-for-dev'
+# Première migration : le schéma tel qu'il existait avant l'arrivée d'Alembic
+BASELINE_REVISION = '0001_schema_initial'
 DEFAULT_CORS_ORIGINS = 'http://localhost:3000'
 
 # Valeurs par défaut communes (application normale et tests), surchargeables
@@ -20,6 +22,7 @@ DEFAULT_SETTINGS = dict(
     MAX_CONTENT_LENGTH=64 * 1024,  # Corps de requête : 64 Ko maximum
     MAX_DICTIONARIES_PER_USER=20,
     MAX_WORDS_PER_DICTIONARY=5000,
+    MAX_GRIDS_PER_USER=200,
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
     TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
     RATELIMIT_ENABLED=True,
@@ -34,6 +37,9 @@ DEFAULT_SETTINGS = dict(
     RATELIMIT_DIFFICULTY='120 per minute',
     LEXICON_PATH=None,  # Lexique curé ; à défaut, le DELA complet (backend/dela_clean.csv)
     LEXICON_RELOAD_INTERVAL_S=30,  # Vérification des changements du lexique (0 : pas de rechargement à chaud)
+    # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
+    # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
+    AUTO_MIGRATE=True,
 )
 
 
@@ -85,6 +91,37 @@ def _load_config_from_env() -> dict:
     )
 
 
+def prepare_database(app: Flask) -> None:
+    """Met le schéma à niveau au démarrage.
+
+    Les tests tournent sur une base SQLite en mémoire, recréée à chaque session : y jouer les
+    migrations coûterait du temps sans rien vérifier de plus, `db.create_all()` suffit.
+
+    En développement, la base existait avant les migrations (créée par `db.create_all()`).
+    Rejouer la première révision échouerait sur des tables déjà là : on la marque comme
+    appliquée (`stamp`), puis on déroule les suivantes.
+    """
+    from sqlalchemy import inspect
+
+    if app.config['TESTING']:
+        db.create_all()
+        return
+    if not app.config['AUTO_MIGRATE']:
+        return
+    if not os.path.isdir(os.path.join(app.root_path, 'migrations')):
+        logging.warning("Dossier migrations/ absent : schéma laissé en l'état.")
+        return
+
+    from flask_migrate import stamp, upgrade
+
+    tables = set(inspect(db.engine).get_table_names())
+    if tables and 'alembic_version' not in tables:
+        logging.info("Base antérieure aux migrations : marquage de la révision initiale.")
+        stamp(revision=BASELINE_REVISION)
+    upgrade()
+    logging.info("Schéma de la BDD à jour.")
+
+
 def create_app(test_config=None):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -112,6 +149,7 @@ def create_app(test_config=None):
     )
 
     db.init_app(app)
+    migrate.init_app(app, db)
     bcrypt.init_app(app)
     jwt.init_app(app)
     register_jwt_callbacks(jwt)
@@ -142,9 +180,10 @@ def create_app(test_config=None):
 
     with app.app_context():
         try:
-            db.create_all()
-            logging.info("Tables de la BDD vérifiées/créées.")
-        except Exception as e:
-            logging.critical(f"Échec de la création des tables BDD: {e}")
+            prepare_database(app)
+        # SystemExit : la CLI d'Alembic quitte le processus quand une migration échoue.
+        # L'API démarre quand même, pour que l'erreur se lise dans le journal et non dans un conteneur mort.
+        except (Exception, SystemExit) as e:
+            logging.critical(f"Échec de la préparation de la BDD: {e}")
 
     return app

@@ -63,6 +63,8 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
 | POST | `/api/grids/difficulty` | — | Ce que coûtent des mots imposés, **sans générer** ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
 | POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (`must_words`, `wish_words`, `wish_dictionary_ids`, dictionnaire personnel actif) |
+| GET / POST | `/api/grids` | ✅ | Lister ses grilles conservées (résumés) / en conserver une |
+| GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (avec ses cases) / la supprimer |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
@@ -72,6 +74,7 @@ Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `det
 ```mermaid
 erDiagram
     USER ||--o{ DICTIONARY : possède
+    USER ||--o{ SAVED_GRID : conserve
     DICTIONARY ||--o{ PERSONAL_WORD : contient
     USER {
         int id
@@ -92,9 +95,22 @@ erDiagram
         datetime date_ajout
         int dictionary_id
     }
+    SAVED_GRID {
+        int id
+        string name
+        string layout_id "ex. 6x7-002"
+        int width
+        int height
+        int seed "si connue"
+        json payload "la grille telle que produite"
+        datetime date_creation
+        int user_id
+    }
 ```
 
-Le **dictionnaire commun (DELA)** n'est pas en base : il est lu depuis `backend/dela_clean.csv` et chargé en mémoire au démarrage de l'API (voir [LEXICON.md](LEXICON.md)). Les tables sont créées par `db.create_all()` au démarrage (pas encore de migrations : Phase 4).
+Le **dictionnaire commun (DELA)** n'est pas en base : il est lu depuis `backend/dela_clean.csv` et chargé en mémoire au démarrage de l'API (voir [LEXICON.md](LEXICON.md)).
+
+Le schéma évolue par **migrations Alembic** (`backend/migrations/`, [ADR 0010](adr/0010-migrations-de-schema.md)) : l'API applique les révisions en attente au démarrage, et `db.create_all()` ne subsiste que pour les tests. Une grille conservée garde son contenu en JSON plutôt que ses paramètres : le lexique est curé au fil des semaines, la même seed ne redonnerait pas la même grille plus tard.
 
 ### Parcours d'une génération
 

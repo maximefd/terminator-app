@@ -10,7 +10,10 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0004](0004-pas-de-deploiement-en-ligne.md) | Pas de déploiement en ligne avant un serveur de production | Acceptée |
 | [0005](0005-pipeline-du-lexique-et-decisions.md) | Pipeline du lexique et fichier de décisions versionné | Acceptée |
 | [0006](0006-format-des-layouts.md) | Format (`x` / `-`) et emplacement des fichiers de layout | Acceptée |
-| [0007](0007-contrat-de-generation.md) | Contrat de génération : mots obligatoires, souhaités et thématiques | Proposée |
+| [0007](0007-contrat-de-generation.md) | Contrat de génération : mots obligatoires, souhaités et thématiques | Acceptée |
+| [0008](0008-regles-automatiques-et-revision.md) | Règles automatiques, filtre positif et révision des décisions | Acceptée |
+| [0009](0009-annoncer-la-difficulte.md) | Annoncer la difficulté d'une demande plutôt que de la subir | Acceptée |
+| [0010](0010-migrations-de-schema.md) | Le schéma de la base évolue par migrations Alembic | Acceptée |
 
 ## Modèle
 

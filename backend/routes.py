@@ -1,11 +1,13 @@
 # DANS backend/routes.py
 
 import unicodedata
+from datetime import datetime
+
 from flask import Blueprint, abort, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
-from models import db, Dictionary, PersonalWord
+from models import db, Dictionary, PersonalWord, SavedGrid
 from engine.difficulty import request_difficulty
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
@@ -14,6 +16,7 @@ from schemas import (
     DifficultyRequest,
     DictionaryUpdateRequest,
     GenerateRequest,
+    SaveGridRequest,
     SearchRequest,
     WordCreateRequest,
     parse_body,
@@ -30,6 +33,10 @@ def normalize_pattern(text):
 def escape_like(value: str) -> str:
     """Échappe les jokers SQL (%, _) et le caractère d'échappement pour une clause LIKE."""
     return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+def get_owned_grid(user, grid_id):
+    """Grille de l'utilisateur, ou 404 (même règle que pour les dictionnaires)."""
+    return SavedGrid.query.filter_by(id=grid_id, user_id=user.id).first_or_404()
 
 def get_owned_dictionary(user, dict_id):
     """Dictionnaire de l'utilisateur, ou 404 (on ne révèle pas l'existence des dictionnaires des autres)."""
@@ -295,6 +302,65 @@ def generate_grid():
         }), 422
 
     return jsonify({"grid": generator.get_grid_data()}), 200
+
+# --- GRILLES CONSERVÉES ---
+
+@main_bp.route('/grids', methods=['POST'])
+@jwt_required()
+def save_grid():
+    """Conserve une grille générée, telle qu'elle a été produite (voir SavedGrid)."""
+    user = get_current_user()
+    payload = parse_body(SaveGridRequest)
+
+    maximum = current_app.config['MAX_GRIDS_PER_USER']
+    if SavedGrid.query.filter_by(user_id=user.id).count() >= maximum:
+        accord = "s" if maximum > 1 else ""
+        return jsonify({'error': f"Limite atteinte : {maximum} grille{accord} conservée{accord} au maximum."}), 400
+
+    grid = payload.grid
+    # Sans nom choisi, un repère vaut mieux qu'« Grille 37 » : le format et le jour
+    name = payload.name or f"{grid.width}×{grid.height} du {datetime.now():%d/%m/%Y}"
+
+    saved = SavedGrid(
+        name=name,
+        layout_id=grid.layout,
+        width=grid.width,
+        height=grid.height,
+        seed=grid.seed,
+        payload=grid.model_dump(),
+        user_id=user.id,
+    )
+    db.session.add(saved)
+    db.session.commit()
+    return jsonify(saved.summary()), 201
+
+
+@main_bp.route('/grids', methods=['GET'])
+@jwt_required()
+def list_grids():
+    """Les grilles conservées, la plus récente d'abord, sans leurs cases."""
+    user = get_current_user()
+    grids = (SavedGrid.query
+             .filter_by(user_id=user.id)
+             .order_by(SavedGrid.date_creation.desc(), SavedGrid.id.desc())
+             .all())
+    return jsonify([grid.summary() for grid in grids]), 200
+
+
+@main_bp.route('/grids/<int:grid_id>', methods=['GET'])
+@jwt_required()
+def get_grid(grid_id):
+    return jsonify(get_owned_grid(get_current_user(), grid_id).to_json()), 200
+
+
+@main_bp.route('/grids/<int:grid_id>', methods=['DELETE'])
+@jwt_required()
+def delete_grid(grid_id):
+    grid = get_owned_grid(get_current_user(), grid_id)
+    db.session.delete(grid)
+    db.session.commit()
+    return jsonify({'message': 'Grille supprimée.'}), 200
+
 
 # ROUTE RGPD : droit à l'effacement
 @main_bp.route('/users/me', methods=['DELETE'])

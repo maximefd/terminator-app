@@ -17,6 +17,7 @@ export function Header() {
   const navItems = [
     { href: "/search", label: "Recherche" },
     { href: "/grid", label: "Générer" },
+    { href: "/grids", label: "Mes grilles" },
     { href: "/dictionaries", label: "Dictionnaires" },
   ];
 
