@@ -79,8 +79,22 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await page.reload();
   await expect(page.getByRole("button", { name: /AS\s+Champion/ })).toBeVisible();
 
-  // La définition s'écrit dans la case, à côté de sa flèche
-  await expect(page.locator("svg tspan", { hasText: "Champion" }).first()).toBeVisible();
+  // La définition s'écrit dans la case en capitales accentuées, comme dans les magazines, alors que
+  // la saisie reste telle que l'auteur l'a tapée
+  await expect(page.locator("svg tspan").filter({ hasText: /^CHAMPION$/ }).first()).toBeVisible();
+  await expect(page.getByLabel("Définition de AS")).toHaveValue("Champion");
+
+  // Le gras se coupe, et le réglage survit au rechargement
+  await page.getByRole("button", { name: "Définitions en gras" }).click();
+  await expect(page.locator("svg tspan").filter({ hasText: /^CHAMPION$/ }).first()).toHaveAttribute(
+    "x", /\d/,
+  );
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Définitions en gras" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByRole("button", { name: "Définitions en gras" }).click();
 
   // L'aperçu montre la grille telle qu'elle s'imprime : définitions et flèches, sans les lettres
   await page.getByRole("button", { name: "Aperçu imprimé" }).click();

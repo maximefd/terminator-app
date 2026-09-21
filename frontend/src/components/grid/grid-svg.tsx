@@ -123,6 +123,8 @@ type GridSvgProps = {
   onSelect?: (key: string) => void;
   /** Provenance de chaque case lettre (« must », « wish »), pour teinter la grille produite. */
   cellSources?: Record<string, string>;
+  /** Définitions en gras, comme dans la plupart des magazines. */
+  boldDefinitions?: boolean;
 };
 
 export function GridSvg({
@@ -132,6 +134,7 @@ export function GridSvg({
   selectedKey,
   onSelect,
   cellSources,
+  boldDefinitions = true,
 }: GridSvgProps) {
   const clues = grid.clues ?? [];
   const showLetters = variant !== "vierge";
@@ -240,7 +243,16 @@ export function GridSvg({
                           <polygon points={shape.head} stroke="none" />
                         </g>
                       )}
-                      {text && <ClueText text={text} x={x} y={boxY} height={boxHeight} arrow={clue.arrow} />}
+                      {text && (
+                        <ClueText
+                          text={text}
+                          x={x}
+                          y={boxY}
+                          height={boxHeight}
+                          arrow={clue.arrow}
+                          bold={boldDefinitions}
+                        />
+                      )}
                       {onSelect && (
                         <rect
                           x={x}
@@ -298,7 +310,19 @@ export function GridSvg({
  * `overflow` est dit à l'auteur pendant qu'il écrit : une définition rognée à l'impression sans
  * prévenir serait le pire des silences.
  */
-export function wrapDefinition(text: string, arrow: string | null, half: boolean) {
+/**
+ * Largeur moyenne d'un caractère, en em, mesurée sur Archivo Narrow avec de vraies définitions.
+ * Les capitales sont **50 % plus larges** que le bas de casse (0,60 contre 0,42) : la coupe des
+ * lignes en dépend directement, et la même formule pour les deux tronquerait une ligne sur deux.
+ */
+const CHAR_WIDTH = { bold: 0.64, regular: 0.6 };
+
+/** Comme dans les magazines : capitales accentuées. La saisie de l'auteur, elle, reste telle quelle. */
+export const printedCase = (text: string) => text.toLocaleUpperCase("fr");
+
+export function wrapDefinition(text: string, arrow: string | null, half: boolean, bold = true) {
+  // La flèche traverse la case : le texte se serre dans ce qu'elle laisse, et le côté dépend de la
+  // flèche — la coudée d'un mot collé au bord gauche descend le long de la gauche, pas de la droite.
   const reserved = { left: 0, right: 0, bottom: 0 };
   if (arrow === "coudee_bas_droite") reserved.left = 30;
   else if (arrow === "bas") {
@@ -307,30 +331,57 @@ export function wrapDefinition(text: string, arrow: string | null, half: boolean
   } else reserved.right = 26;
 
   const height = half ? CELL / 2 : CELL;
-  const fontSize = half ? CELL * 0.125 : CELL * 0.135;
   const usable = CELL - reserved.left - reserved.right - 8;
-  // Archivo Narrow tourne autour de 0,43 em par caractère : c'est ce qui fixe la coupe
-  const perLine = Math.max(5, Math.floor(usable / (0.43 * fontSize)));
-  const lineHeight = fontSize * 1.06;
-  const maxLines = Math.max(2, Math.floor((height - reserved.bottom - 6) / lineHeight));
+  const charWidth = bold ? CHAR_WIDTH.bold : CHAR_WIDTH.regular;
+  const words = printedCase(text).split(" ").filter(Boolean);
+  const longest = words.reduce((max, word) => Math.max(max, word.length), 0);
 
-  const lines: string[] = [];
-  let current = "";
-  for (const word of text.split(" ")) {
-    if (!current || (current + " " + word).length <= perLine) {
-      current = current ? `${current} ${word}` : word;
-    } else {
-      lines.push(current);
-      current = word;
+  const wrap = (width: number) => {
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      if (!current || (current + " " + word).length <= width) {
+        current = current ? `${current} ${word}` : word;
+      } else {
+        lines.push(current);
+        current = word;
+      }
     }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  /**
+   * Répartition à une taille donnée, coupe **équilibrée** : à nombre de lignes égal, on resserre la
+   * largeur pour éviter l'orpheline (« IL DONNE / LA / CADENCE » plutôt que trois lignes bancales).
+   */
+  const layout = (fontSize: number) => {
+    const perLine = Math.max(4, Math.floor(usable / (charWidth * fontSize)));
+    let lines = wrap(perLine);
+    for (let width = perLine - 1; width >= longest; width -= 1) {
+      const candidate = wrap(width);
+      if (candidate.length > lines.length) break;
+      lines = candidate;
+    }
+    return { fontSize, lines, lineHeight: fontSize * 1.08 };
+  };
+
+  // Une définition longue fait rétrécir sa police plutôt que de gagner une ligne : c'est ce que font
+  // les magazines, et c'est ce qui sauve « IL DONNE LA CADENCE » d'une troisième ligne à deux lettres.
+  const nominal = half ? CELL * 0.105 : CELL * 0.115;
+  let best = layout(nominal);
+  for (let size = nominal - 0.5; size >= nominal * 0.8; size -= 0.5) {
+    const candidate = layout(size);
+    if (candidate.lines.length < best.lines.length) best = candidate;
   }
-  if (current) lines.push(current);
+
+  const maxLines = Math.max(2, Math.floor((height - reserved.bottom - 4) / best.lineHeight));
 
   return {
-    lines: lines.slice(0, maxLines),
-    overflow: lines.length > maxLines,
-    fontSize,
-    lineHeight,
+    lines: best.lines.slice(0, maxLines),
+    overflow: best.lines.length > maxLines,
+    fontSize: best.fontSize,
+    lineHeight: best.lineHeight,
     reserved,
     usable,
   };
@@ -342,15 +393,17 @@ function ClueText({
   y,
   height,
   arrow,
+  bold,
 }: {
   text: string;
   x: number;
   y: number;
   height: number;
   arrow: string | null;
+  bold: boolean;
 }) {
   const half = height <= CELL / 2;
-  const { lines: shown, fontSize, lineHeight, reserved, usable } = wrapDefinition(text, arrow, half);
+  const { lines: shown, fontSize, lineHeight, reserved, usable } = wrapDefinition(text, arrow, half, bold);
 
   const centerX = x + reserved.left + usable / 2 + 4;
   const centerY = y + (height - reserved.bottom) / 2;
@@ -361,6 +414,7 @@ function ClueText({
       textAnchor="middle"
       fill={PAPER.letter}
       fontSize={fontSize}
+      fontWeight={bold ? 700 : 400}
       fontFamily={GRID_FONT}
     >
       {shown.map((line, index) => (

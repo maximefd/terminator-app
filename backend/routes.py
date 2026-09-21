@@ -209,7 +209,18 @@ def grid_difficulty():
     if payload.size:
         slots = format_slot_count(payload.size.width, payload.size.height,
                                   current_app.config.get('LAYOUTS_DIR'))
-    return jsonify(request_difficulty(words, slots)), 200
+    estimate = request_difficulty(words, slots)
+
+    # Le moteur reste pur : c'est ici qu'on sait ce que contient le lexique chargé. Un mot qui n'y
+    # est pas se place quand même, mais **tous** ses croisements devront venir du lexique — aucun
+    # autre mot hors lexique ne peut l'aider. C'est une contrainte de plus, et elle se dit.
+    dela_trie = current_app.dela_trie
+    known = dela_trie.words if dela_trie else set()
+    for detail in estimate["words"]:
+        detail["in_lexicon"] = detail["word"] in known
+    estimate["unknown_words"] = [d["word"] for d in estimate["words"] if not d["in_lexicon"]]
+
+    return jsonify(estimate), 200
 
 @main_bp.route('/grids/generate', methods=['POST'])
 @jwt_required(optional=True)
@@ -229,18 +240,15 @@ def generate_grid():
         # rendait presque tous les croisements impossibles.
         common_words.extend(w for w in dela_trie.words if 2 <= len(w) <= longest)
 
-    # Mots du dictionnaire personnel actif : pool « souhaité ». Ils sont essayés avant le lexique
-    # commun et restent valides aux croisements même s'ils n'y figurent pas (#17) ; auparavant ils
-    # étaient mélangés au lexique et simplement ignorés à l'indexation.
+    # Pool « souhaité » : les mots saisis, plus ceux des dictionnaires **explicitement choisis**.
+    # Le dictionnaire actif n'y entre plus de lui-même ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
+    # une grille thématique n'a aucune raison d'hériter du dictionnaire que la recherche utilise.
+    # Ces mots sont essayés avant le lexique commun et restent valides aux croisements même s'ils
+    # n'y figurent pas (#17).
     wish_words = [normalize_pattern(word) for word in payload.wish_words]
-    if user:
-        active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
-        if active_dict:
-            wish_words.extend(word.mot for word in active_dict.words if 2 <= len(word.mot) <= longest)
 
-    # Dictionnaires thématiques demandés : ceux de l'utilisateur connecté, et eux seuls. Un
-    # dictionnaire qui ne lui appartient pas répond 404 comme partout ailleurs — on ne révèle pas
-    # son existence (ADR 0007).
+    # Ceux de l'utilisateur connecté, et eux seuls. Un dictionnaire qui ne lui appartient pas répond
+    # 404 comme partout ailleurs — on ne révèle pas son existence (ADR 0007).
     for dictionary_id in payload.wish_dictionary_ids:
         if not user:
             abort(404)

@@ -122,3 +122,16 @@ def test_an_unmeasured_size_cell_falls_back_to_the_aggregate():
 
     assert grande["size_class"] == "grande"
     assert grande["success_rate"] == agrege["success_rate"]
+
+
+def test_the_estimate_says_which_words_are_absent_from_the_lexicon(test_app, client, small_trie, monkeypatch):
+    """Un mot hors lexique se place, mais tous ses croisements doivent venir du lexique : c'est dit."""
+    monkeypatch.setattr(test_app, "dela_trie", small_trie)
+
+    response = client.post("/api/grids/difficulty", json={"must_words": ["Zorglub", "Arbre"]})
+
+    body = response.get_json()
+    assert response.status_code == 200, body
+    absents = body["unknown_words"]
+    assert "ZORGLUB" in absents and "ARBRE" not in absents
+    assert {d["word"]: d["in_lexicon"] for d in body["words"]} == {"ZORGLUB": False, "ARBRE": True}

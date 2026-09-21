@@ -40,23 +40,18 @@ export function DictionaryPicker({ selected, onChange, disabled }: DictionaryPic
     return <p className="text-sm text-muted-foreground">Vous n&apos;avez pas encore de dictionnaire personnel.</p>;
   }
 
-  const active = dictionaries.find((dictionary) => dictionary.is_active);
-  const others = dictionaries.filter((dictionary) => !dictionary.is_active);
-
   const toggle = (id: number) =>
     onChange(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
 
   return (
     <div className="space-y-2">
+      {/*
+        Tous les dictionnaires se cochent, aucun n'entre de lui-même — pas même l'actif
+        ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)). L'actif sert à la recherche par motif ;
+        rien ne dit que la grille du jour doit hériter de ce qu'on y range.
+      */}
       <div className="flex flex-wrap gap-2">
-        {/* Le dictionnaire actif part toujours avec la requête : l'API l'ajoute d'office */}
-        {active && (
-          <span className="inline-flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-sm">
-            {active.name}
-            <span className="text-xs text-muted-foreground">actif · toujours inclus</span>
-          </span>
-        )}
-        {others.map((dictionary) => (
+        {dictionaries.map((dictionary) => (
           <Toggle
             key={dictionary.id}
             variant="outline"
@@ -66,12 +61,17 @@ export function DictionaryPicker({ selected, onChange, disabled }: DictionaryPic
             aria-label={`Utiliser le dictionnaire ${dictionary.name}`}
           >
             {dictionary.name}
+            {dictionary.is_active && (
+              <span className="ml-1.5 text-xs text-muted-foreground">actif dans la recherche</span>
+            )}
           </Toggle>
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        Leurs mots rejoignent les <strong>souhaités</strong> : placés s&apos;ils rentrent, sans jamais faire échouer
-        la grille. {selected.length >= MAX_DICTIONARIES && `Maximum de ${MAX_DICTIONARIES} atteint.`}
+        {selected.length === 0
+          ? "Aucun dictionnaire coché : la grille n'utilisera que vos mots saisis et le lexique commun."
+          : "Leurs mots rejoignent les souhaités : placés s'ils rentrent, sans jamais faire échouer la grille."}{" "}
+        {selected.length >= MAX_DICTIONARIES && `Maximum de ${MAX_DICTIONARIES} atteint.`}
       </p>
     </div>
   );

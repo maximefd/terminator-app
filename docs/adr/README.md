@@ -14,6 +14,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0008](0008-regles-automatiques-et-revision.md) | Règles automatiques, filtre positif et révision des décisions | Acceptée |
 | [0009](0009-annoncer-la-difficulte.md) | Annoncer la difficulté d'une demande plutôt que de la subir | Acceptée |
 | [0010](0010-migrations-de-schema.md) | Le schéma de la base évolue par migrations Alembic | Acceptée |
+| [0011](0011-dictionnaires-choisis.md) | Les dictionnaires versés à une grille se choisissent, aucun n'est implicite | Acceptée |
 
 ## Modèle
 

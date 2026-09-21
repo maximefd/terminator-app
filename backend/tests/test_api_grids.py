@@ -67,29 +67,52 @@ def test_generated_grid_says_where_each_definition_goes(grid_app, client):
         assert noire["is_black"]
 
 
-def test_the_active_personal_dictionary_feeds_the_wished_pool(grid_app, client, monkeypatch):
+@pytest.fixture
+def spy_on_generator(monkeypatch):
+    """Ce que la route transmet au moteur : mots communs et mots souhaités."""
+    calls = []
+    real_generator = routes.GridGenerator
+
+    def spy(*args, **kwargs):
+        generator = real_generator(*args, **kwargs)
+        calls.append({"common": args[2], "wish": kwargs["wish_words"], "generator": generator})
+        return generator
+
+    monkeypatch.setattr(routes, "GridGenerator", spy)
+    return calls
+
+
+def test_a_chosen_dictionary_feeds_the_wished_pool(grid_app, client, spy_on_generator):
     """#17 : les mots personnels étaient mélangés au lexique commun, donc ignorés à l'indexation."""
     headers = auth_headers(client)
     dict_id = default_dictionary_id(client, headers)
     assert client.post(f"/api/dictionaries/{dict_id}/words", json={"mot": "Zorgl"},
                        headers=headers).status_code == 201
 
-    generators = []
-    real_generator = routes.GridGenerator
+    response = post_generate(
+        client, {"size": {"width": 5, "height": 5}, "seed": 42, "wish_dictionary_ids": [dict_id]}, headers)
 
-    def spy(*args, **kwargs):
-        generators.append((args[2], kwargs["wish_words"], real_generator(*args, **kwargs)))
-        return generators[-1][2]
+    assert response.status_code == 200, response.get_json()
+    call = spy_on_generator[0]
+    assert call["wish"] == ["ZORGL"] and "ZORGL" not in call["common"]
+    assert call["generator"].repository.source_of("ZORGL") == "wish"
+    assert "wish_ratio" in response.get_json()["grid"]
 
-    monkeypatch.setattr(routes, "GridGenerator", spy)
+
+def test_a_dictionary_left_unchecked_stays_out_of_the_grid(grid_app, client, spy_on_generator):
+    """[ADR 0011](../../docs/adr/0011-dictionnaires-choisis.md) : plus aucun dictionnaire implicite.
+
+    Le dictionnaire **actif** entrait autrefois de lui-même : une grille sur la musique héritait des
+    mots de cuisine, sans que rien ne le dise.
+    """
+    headers = auth_headers(client)
+    dict_id = default_dictionary_id(client, headers)
+    client.post(f"/api/dictionaries/{dict_id}/words", json={"mot": "Zorgl"}, headers=headers)
 
     response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42}, headers)
 
     assert response.status_code == 200, response.get_json()
-    common_words, wish_words, generator = generators[0]
-    assert wish_words == ["ZORGL"] and "ZORGL" not in common_words
-    assert generator.repository.source_of("ZORGL") == "wish"
-    assert "wish_ratio" in response.get_json()["grid"]
+    assert spy_on_generator[0]["wish"] == []
 
 
 def test_a_must_word_too_long_is_refused_before_solving(grid_app, client):

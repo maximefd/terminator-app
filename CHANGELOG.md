@@ -5,6 +5,18 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Définitions composées comme dans les magazines (#27) : **capitales accentuées**, centrées, en gras —
+  le gras se coupe d'un bouton, et le réglage vaut pour l'écran comme pour le PDF. La coupe des lignes
+  suit la mesure : une capitale d'Archivo Narrow fait **0,64 em** contre 0,42 en bas de casse, et une
+  définition trop longue fait **rétrécir sa police** plutôt que gagner une ligne — c'est ce qui évite
+  « IL DONNE / LA / CADENCE » au profit de « IL DONNE / LA CADENCE ». La saisie, elle, reste telle que
+  l'auteur l'a tapée.
+- Échecs répétés expliqués (#73) : après deux tentatives infructueuses, l'écran calcule ce que cela veut
+  dire — « à 66 % par tentative, trois échecs de suite n'arrivent qu'une fois sur 26 : l'estimation ne
+  colle pas à vos mots » — et propose les trois sorties qui changent vraiment quelque chose. L'estimation
+  dit désormais qu'elle vaut **par tentative**, sur quoi elle a été mesurée, et **quels mots imposés sont
+  absents du lexique** : ceux-là se placent, mais tous leurs croisements devront venir du lexique.
+- Les mots s'ajoutent à la chaîne : **Tab** valide le mot saisi et laisse le curseur en place, comme Entrée.
 - Saisie des définitions et export (Phase 5, #27) : sur une grille conservée, un écran **Définitions**.
   On écrit **sur la grille remplie** — définir un mot qu'on ne voit pas n'a pas de sens — en cliquant une
   case ou un mot de la liste ; **Tab** et **Entrée** passent au suivant, dans l'ordre de lecture de la
@@ -139,6 +151,13 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Plus aucun dictionnaire personnel n'entre de lui-même dans une grille** ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
+  le dictionnaire *actif* y était versé en silence, si bien qu'une grille sur la musique héritait des mots
+  de cuisine. Tous se cochent maintenant, l'actif compris — il ne sert plus qu'à la recherche par motif.
+- Les garde-fous d'usage cessent de gêner l'auteur : 1 000 grilles conservées par compte au lieu de 200,
+  et la génération n'est plus plafonnée à 10 par minute sur la pile de développement. Les valeurs du code
+  restent celles de la production, où elles protègent d'un abus ; `MAX_GRIDS_PER_USER` et
+  `RATELIMIT_GENERATE` se règlent par variable d'environnement partout ailleurs.
 - Rendu des grilles repris pour ressembler à une grille de magazine (#26, #27) : police étroite
   (Archivo Narrow, embarquée), cadre extérieur plus fort que les traits intérieurs, flèches plus fines et
   plus petites. Le rendu connaît trois états — **édition** (lettres, flèches et définitions, cases

@@ -19,8 +19,57 @@ const formatKey = (format: Pick<GridFormat, "width" | "height">) => `${format.wi
 
 const fetchFormats = async (): Promise<GridFormat[]> => (await apiFetch("/api/grids/formats")).formats;
 
+/**
+ * Ce que veulent dire des échecs répétés, quand l'estimation annonçait mieux.
+ *
+ * À 66 % par tentative, trois échecs de suite n'arrivent qu'une fois sur 26. Le dire vaut mieux que
+ * de laisser l'auteur relancer indéfiniment : la vraie information, c'est que l'estimation — mesurée
+ * sur des mots courants du lexique — ne colle pas à ses mots.
+ */
+function RepeatedFailures({ attempts, rate, hardest }: { attempts: number; rate: number | null; hardest: string | null }) {
+  if (attempts < 2) return null;
+  const improbable = rate !== null && rate > 0 && rate < 1 ? Math.round(1 / Math.pow(1 - rate, attempts)) : null;
+
+  return (
+    <div className="mt-3 space-y-2 border-t border-destructive/20 pt-3 text-sm">
+      <p>
+        <strong>
+          {attempts} tentatives, {attempts} échecs.
+        </strong>{" "}
+        {improbable !== null && rate !== null
+          ? `À ${Math.round(rate * 100)} % par tentative, cela n'arrive qu'une fois sur ${improbable} :` +
+            " l'estimation ne colle pas à vos mots."
+          : "Relancer encore ne changera probablement rien."}
+      </p>
+      <p className="text-muted-foreground">
+        Ce qui change vraiment les choses, dans l&apos;ordre :
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+        {hardest && (
+          <li>
+            passer <span className="font-mono font-semibold">{hardest}</span> en{" "}
+            <strong>souhaité</strong> : il sera placé s&apos;il rentre, sans faire échouer la grille ;
+          </li>
+        )}
+        <li>raccourcir : c&apos;est la longueur qui décide, bien plus que le nombre de mots ;</li>
+        <li>changer de format : pour des mots longs, une grande grille offre plus d&apos;emplacements.</li>
+      </ul>
+    </div>
+  );
+}
+
 /** Refus de génération : chaque cause mérite sa propre explication, pas un « impossible » commun. */
-function FailureNotice({ error }: { error: ApiError }) {
+function FailureNotice({
+  error,
+  attempts,
+  rate,
+  hardest,
+}: {
+  error: ApiError;
+  attempts: number;
+  rate: number | null;
+  hardest: string | null;
+}) {
   const data = error.data as {
     reason?: string;
     details?: { word: string; problem: string }[];
@@ -61,6 +110,8 @@ function FailureNotice({ error }: { error: ApiError }) {
       {data.reason === "timeout" && (
         <p className="text-sm">Relancez : chaque tentative suit un chemin différent.</p>
       )}
+
+      <RepeatedFailures attempts={attempts} rate={rate} hardest={hardest} />
     </div>
   );
 }
@@ -72,6 +123,8 @@ export function GridClientLayout() {
   const [gridData, setGridData] = useState<GridData | null>(null);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Échecs consécutifs pour une même demande : c'est leur répétition qui informe, pas le dernier
+  const [failures, setFailures] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);
 
@@ -85,6 +138,9 @@ export function GridClientLayout() {
   const wished = entries.filter((entry) => !entry.required).map((entry) => entry.text);
   // Le chiffre ne doit pas sauter à chaque frappe : on attend que la saisie se pose
   const estimateKey = useDebounce(`${required.join(",")}|${currentFormat ? formatKey(currentFormat) : ""}`, 300);
+
+  // Changer un mot ou le format, c'est une autre demande : les échecs précédents ne la concernent plus
+  useEffect(() => setFailures(0), [estimateKey]);
 
   useEffect(() => {
     const [words, size] = estimateKey.split("|");
@@ -123,7 +179,9 @@ export function GridClientLayout() {
         },
       });
       setGridData(data.grid);
+      setFailures(0);
     } catch (error) {
+      setFailures((count) => count + 1);
       setFailure(error instanceof ApiError
         ? error
         : new ApiError(error instanceof Error ? error.message : "Une erreur inattendue est survenue.", 0, {}));
@@ -181,7 +239,16 @@ export function GridClientLayout() {
       </form>
 
       <div className="mt-8 w-full">
-        {failure && <div className="mx-auto max-w-xl"><FailureNotice error={failure} /></div>}
+        {failure && (
+          <div className="mx-auto max-w-xl">
+            <FailureNotice
+              error={failure}
+              attempts={failures}
+              rate={difficulty?.success_rate ?? null}
+              hardest={difficulty?.hardest ?? null}
+            />
+          </div>
+        )}
         {gridData && (
           <div className="space-y-6">
             <GridDisplay gridData={gridData} />

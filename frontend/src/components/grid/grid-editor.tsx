@@ -37,6 +37,9 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const [isExporting, setExporting] = useState(false);
   const [draftName, setDraftName] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  // Goût de l'auteur, pas propriété de la grille : gardé dans le navigateur, appliqué à l'écran
+  // comme au PDF. Les magazines impriment en gras, d'où la valeur par défaut.
+  const [bold, setBold] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
   const solutionRef = useRef<HTMLDivElement>(null);
@@ -50,6 +53,23 @@ export function GridEditor({ gridId }: { gridId: number }) {
   useEffect(() => {
     if (data) setDefinitions(data.definitions ?? {});
   }, [data]);
+
+  useEffect(() => {
+    try {
+      setBold(localStorage.getItem("terminator:definitions-grasses") !== "non");
+    } catch {
+      // Stockage refusé (navigation privée) : on garde la valeur par défaut
+    }
+  }, []);
+
+  const changeBold = (next: boolean) => {
+    setBold(next);
+    try {
+      localStorage.setItem("terminator:definitions-grasses", next ? "oui" : "non");
+    } catch {
+      // Sans stockage, le réglage ne survit pas au rechargement : ce n'est pas une raison d'échouer
+    }
+  };
 
   const rename = useMutation({
     mutationFn: (name: string) => apiFetch(`/api/grids/${gridId}`, { method: "PATCH", body: { name } }),
@@ -150,7 +170,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const sharesItsCell = (clue: Clue) =>
     clues.some((other) => other !== clue && other.cell_x === clue.cell_x && other.cell_y === clue.cell_y);
   const overflows = (clue: Clue, text: string) =>
-    Boolean(text) && wrapDefinition(text, clue.arrow, sharesItsCell(clue)).overflow;
+    Boolean(text) && wrapDefinition(text, clue.arrow, sharesItsCell(clue), bold).overflow;
   const tooLong = clues.filter((clue) => overflows(clue, definitions[clueKey(clue)] ?? ""));
 
   const setDefinition = (key: string, text: string) =>
@@ -269,16 +289,21 @@ export function GridEditor({ gridId }: { gridId: number }) {
             <Toggle size="sm" pressed={preview} onPressedChange={() => setPreview(true)}>
               Aperçu imprimé
             </Toggle>
+            <span className="mx-1 w-px bg-border" aria-hidden />
+            <Toggle size="sm" pressed={bold} onPressedChange={changeBold} aria-label="Définitions en gras">
+              Gras
+            </Toggle>
           </div>
 
           {/* On définit sur la grille remplie : le mot à définir est sous les yeux, en surbrillance */}
           {preview ? (
-            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} />
+            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} boldDefinitions={bold} />
           ) : (
             <GridSvg
               grid={data.grid}
               variant="edition"
               definitions={definitions}
+              boldDefinitions={bold}
               selectedKey={selected}
               onSelect={(key) => {
                 setSelected(key);
@@ -293,7 +318,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
             besoin — d'où le renvoi hors cadre plutôt que le masquage.
           */}
           <div ref={blankRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
-            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} />
+            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} boldDefinitions={bold} />
           </div>
           <div ref={solutionRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
             <GridSvg grid={data.grid} variant="solution" />
