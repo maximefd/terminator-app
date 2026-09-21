@@ -212,8 +212,8 @@ def grid_difficulty():
     estimate = request_difficulty(words, slots)
 
     # Le moteur reste pur : c'est ici qu'on sait ce que contient le lexique chargé. Un mot qui n'y
-    # est pas se place quand même, mais **tous** ses croisements devront venir du lexique — aucun
-    # autre mot hors lexique ne peut l'aider. C'est une contrainte de plus, et elle se dit.
+    # figure pas se place quand même (le pool des mots imposés étend l'index), mais la mesure d'où
+    # sort le taux a tiré ses mots **dans** le lexique : l'auteur doit savoir qu'il en sort.
     dela_trie = current_app.dela_trie
     known = dela_trie.words if dela_trie else set()
     for detail in estimate["words"]:

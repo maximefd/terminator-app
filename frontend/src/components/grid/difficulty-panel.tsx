@@ -79,14 +79,18 @@ export function DifficultyPanel({ difficulty, isLoading, hasRequiredWords }: Dif
         </ul>
       )}
 
-      {/* Un mot hors lexique se place, mais aucun autre mot hors lexique ne peut le croiser */}
+      {/*
+        Un mot hors lexique se place ; ce sont ses croisements qui coûtent. La mesure, elle, a tiré
+        ses mots imposés **dans** le lexique : le dire évite de lire le chiffre comme une promesse.
+      */}
       {difficulty.unknown_words?.length > 0 && (
         <p className="text-xs text-muted-foreground">
           <span className="font-mono font-semibold">{difficulty.unknown_words.join(", ")}</span>{" "}
           {difficulty.unknown_words.length > 1 ? "ne sont pas" : "n'est pas"} dans le lexique. Le moteur
-          {difficulty.unknown_words.length > 1 ? " les placera" : " le placera"} quand même, mais chacun de
-          {difficulty.unknown_words.length > 1 ? " leurs" : " ses"} croisements devra tomber sur un mot du
-          lexique : c&apos;est plus contraint que l&apos;estimation ci-dessus ne le suppose.
+          {difficulty.unknown_words.length > 1 ? " les place" : " le place"} quand même, mais les mots qui
+          {difficulty.unknown_words.length > 1 ? " les croiseront" : " le croiseront"} viendront du lexique
+          ou de vos propres mots — et le taux ci-dessus a été mesuré sur des mots du lexique, plus faciles
+          à croiser que des mots choisis au hasard.
         </p>
       )}
 
