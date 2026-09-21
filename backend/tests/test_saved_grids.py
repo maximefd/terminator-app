@@ -58,6 +58,20 @@ def test_saved_grid_comes_back_as_it_was(client):
     assert full["grid"]["seed"] == 42
 
 
+def test_a_saved_grid_comes_back_with_its_arrows(client):
+    """#26 : les flèches ne sont pas stockées mais recalculées, donc les grilles d'avant en ont aussi."""
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+
+    clues = client.get(f"/api/grids/{grid_id}", headers=headers).get_json()["grid"]["clues"]
+
+    # AS commence en (1,0), juste à droite de la seule case noire : flèche vers la droite
+    assert {clue["text"]: (clue["cell_x"], clue["cell_y"], clue["arrow"]) for clue in clues} == {
+        "AS": (0, 0, "droite"),
+        "ILE": (0, 0, "coudee_bas_droite"),
+    }
+
+
 def test_grid_without_a_name_gets_one(client):
     headers = auth_headers(client)
 

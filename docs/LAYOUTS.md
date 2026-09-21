@@ -32,7 +32,7 @@ Règles :
 - tout autre caractère est une **erreur**, avec la ligne et la colonne en cause (il n'est plus lu comme une case lettre) ;
 - un mot doit faire au moins 2 lettres (une case lettre isolée dans un sens n'y forme pas de mot) ;
 - un mot peut commencer au bord de la grille ;
-- les flèches ne sont pas encodées : elles seront déduites de la géométrie (Phase 5).
+- les flèches ne sont pas encodées : elles **sont déduites** de la géométrie (`backend/engine/arrows.py`, #26). Un mot horizontal se définit depuis la case à sa gauche, un mot vertical depuis celle du dessus ; au bord de la grille, la définition passe dans la case perpendiculaire et la flèche se coude. Un layout dont un mot n'aurait nulle part où se définir, ou dont une case porterait trois définitions, ferait échouer `tests/test_arrows.py` — c'est le filet quand on recopie une nouvelle grille.
 
 L'ancien format (`#` = définition, `.` = lettre) reste lu, mais un fichier ne mélange pas les deux. Pour convertir des fichiers (depuis `backend/`) :
 

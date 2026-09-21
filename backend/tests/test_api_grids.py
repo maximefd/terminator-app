@@ -53,6 +53,20 @@ def test_generate_returns_a_filled_grid(grid_app, client):
     assert grid["words"]
 
 
+def test_generated_grid_says_where_each_definition_goes(grid_app, client):
+    """#26 : sans les flèches, l'auteur ne sait pas quelle case porte quelle définition."""
+    response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42})
+
+    grid = response.get_json()["grid"]
+    assert len(grid["clues"]) == len(grid["words"])
+    for clue in grid["clues"]:
+        assert clue["arrow"] in ("droite", "bas", "coudee_bas_droite", "coudee_droite_bas")
+        assert clue["exit"] in ("right", "bottom")
+        # La case qui porte la définition est bien une case noire de cette grille
+        noire = next(c for c in grid["cells"] if c["x"] == clue["cell_x"] and c["y"] == clue["cell_y"])
+        assert noire["is_black"]
+
+
 def test_the_active_personal_dictionary_feeds_the_wished_pool(grid_app, client, monkeypatch):
     """#17 : les mots personnels étaient mélangés au lexique commun, donc ignorés à l'indexation."""
     headers = auth_headers(client)

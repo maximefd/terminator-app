@@ -5,6 +5,16 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
+  définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
+  dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie
+  (`backend/engine/arrows.py`) — définition à gauche pour un mot horizontal, au-dessus pour un mot vertical,
+  et flèche coudée le long des bords. Mesuré sur les 21 layouts et 821 mots du catalogue : **aucun mot sans
+  case où se définir**, **jamais plus de deux définitions par case**, et dans une case qui en porte deux,
+  l'une sort toujours par la droite et l'autre par le bas — c'est ce qui permet de la couper en deux moitiés
+  sans arbitrage. Les tests le vérifient layout par layout, pour que l'ajout d'une mise en page bancale se
+  voie tout de suite. Une grille conservée avant cette version reçoit ses flèches à la relecture : elles se
+  recalculent au lieu d'être stockées.
 - Parcours end-to-end et accessibilité en CI (Phase 4, #25) : un travail `e2e-ci` démarre PostgreSQL et
   l'API, puis joue les parcours Playwright (inscription, dictionnaires, génération et conservation d'une
   grille) et **axe** sur chaque écran (WCAG A et AA). Premier verdict d'axe : les pages de connexion et

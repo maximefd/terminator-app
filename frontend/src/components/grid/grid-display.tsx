@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { Toggle } from "@/components/ui/toggle";
+import { GridSvg, type Clue } from "@/components/grid/grid-svg";
+
 export type Cell = { x: number; y: number; char: string; is_black: boolean };
 
 export type PlacedWord = {
@@ -21,6 +25,8 @@ export type GridData = {
   fill_ratio: number;
   wish_ratio: number;
   must_words: string[];
+  /** Où va la définition de chaque mot et par où part sa flèche (#26) */
+  clues?: Clue[];
 };
 
 const SOURCES: Record<string, { label: string; cell: string; badge: string }> = {
@@ -30,15 +36,17 @@ const SOURCES: Record<string, { label: string; cell: string; badge: string }> = 
 };
 
 export function GridDisplay({ gridData }: { gridData: GridData }) {
+  const [mode, setMode] = useState<"vierge" | "remplie">("remplie");
+
   // Une case peut appartenir à deux mots : la provenance la plus « voulue » l'emporte à l'affichage
   const priority = ["common", "wish", "must"];
-  const origin = new Map<string, string>();
+  const origin: Record<string, string> = {};
   for (const word of gridData.words) {
     for (let i = 0; i < word.text.length; i += 1) {
       const key = `${word.x + (word.direction === "across" ? i : 0)}-${word.y + (word.direction === "down" ? i : 0)}`;
-      const current = origin.get(key);
+      const current = origin[key];
       if (!current || priority.indexOf(word.source) > priority.indexOf(current)) {
-        origin.set(key, word.source);
+        origin[key] = word.source;
       }
     }
   }
@@ -52,29 +60,18 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
           {gridData.width}×{gridData.height} · mise en page {gridData.layout} · seed {gridData.seed ?? "—"} ·
           {" "}{gridData.words.length} mots · {Math.round(gridData.wish_ratio * 100)} % de vos mots
         </p>
-        <div
-          className="grid border-2 border-foreground bg-background"
-          style={{
-            gridTemplateColumns: `repeat(${gridData.width}, minmax(0, 1fr))`,
-            width: "100%",
-            maxWidth: "600px",
-            aspectRatio: `${gridData.width} / ${gridData.height}`,
-          }}
-        >
-          {gridData.cells.map((cell) => {
-            const source = origin.get(`${cell.x}-${cell.y}`);
-            return (
-              <div
-                key={`${cell.x}-${cell.y}`}
-                className={`flex select-none items-center justify-center border border-foreground/20 font-bold uppercase
-                  ${cell.is_black ? "bg-foreground" : `bg-background text-foreground ${source ? SOURCES[source]?.cell ?? "" : ""}`}`}
-                style={{ fontSize: "clamp(0.5rem, 4vw, 1.25rem)" }}
-              >
-                {!cell.is_black && cell.char}
-              </div>
-            );
-          })}
+
+        {/* La grille vierge est celle qu'on imprime ; la solution, celle qu'on relit */}
+        <div className="mb-3 flex gap-1 rounded-md border p-1">
+          <Toggle size="sm" pressed={mode === "remplie"} onPressedChange={() => setMode("remplie")}>
+            Solution
+          </Toggle>
+          <Toggle size="sm" pressed={mode === "vierge"} onPressedChange={() => setMode("vierge")}>
+            Grille vierge
+          </Toggle>
         </div>
+
+        <GridSvg grid={gridData} mode={mode} cellSources={origin} />
       </div>
 
       {/* La provenance des mots : c'est ce que l'auteur vient vérifier après avoir imposé des mots */}

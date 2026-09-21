@@ -1,6 +1,8 @@
 # DANS backend/models.py
 
 from datetime import datetime
+
+from engine.arrows import clues_from_grid_data
 from extensions import db # MODIFICATION ICI : On importe 'db' depuis notre fichier central
 
 class User(db.Model):
@@ -105,4 +107,8 @@ class SavedGrid(db.Model):
         }
 
     def to_json(self):
-        return {**self.summary(), 'grid': self.payload}
+        # Les flèches ne sont pas stockées : elles se déduisent des cases noires et des débuts de mots,
+        # si bien qu'une grille conservée avant leur arrivée en reçoit aussi (#26).
+        grid = dict(self.payload) if isinstance(self.payload, dict) else {}
+        grid['clues'] = clues_from_grid_data(grid.get('cells', []), grid.get('words', []))
+        return {**self.summary(), 'grid': grid}

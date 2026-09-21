@@ -16,7 +16,8 @@
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve levée, et elle révèle un problème** : la baseline comporte désormais des cas avec mots obligatoires (`--must-words`). Un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %**, tous layouts sous le critère ([mesures](../backend/benchmarks/README.md)). Le changement de layout (#73) améliore le cas où un format compte plusieurs layouts — 6×7 de 6/20 à 11/20 — sans rien résoudre sur le fond. **Traité non par le taux mais par l'aveu** : l'écran annonce la difficulté avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)), et la mesure a désigné le vrai facteur — la **longueur** des mots imposés, pas leur nombre (#73 reste ouverte). Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
 | 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed. page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair |
-| 5 à 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
+| 5 — Rendu professionnel | 🚧 en cours : flèches et cases définitions (#26). Restent la saisie des définitions et l'export PDF (#27) |
+| 6 et 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
 
@@ -170,8 +171,10 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Recherche (derniers 10 %)** ([#83](https://github.com/maximefd/terminator-app/issues/83), seul point de la phase encore ouvert) : lettres incluses/exclues, filtre de longueur, définitions.
 - Tests Playwright et contrôle d'accessibilité axe en CI ✅ (#25) : travail `e2e-ci` (PostgreSQL + API + parcours + axe sur chaque écran). **Reste à faire** : la session d'utilisabilité avec un pair, qui ne s'automatise pas.
 
-## Phase 5 — Rendu professionnel (priorité basse)
-- Flèches déduites des débuts de mots (droite, bas, coudées) ; rendu des cases définitions ; saisie des définitions ; export impression/PDF.
+## Phase 5 — Rendu professionnel
+- **Flèches et cases définitions** ✅ (#26) : déduites de la géométrie (`engine/arrows.py`), rendu SVG, bascule solution / grille vierge. Vérifié sur tout le catalogue : aucun mot sans case de définition, deux définitions par case au plus, jamais deux du même côté.
+- **Saisie des définitions** (#27) : sur une grille conservée, une définition par mot, enregistrée au fil de la frappe.
+- **Export** (#27) : PDF vectoriel, page solution séparée, et fichier de travail JSON relisible par Terminator.
 
 ## Phase 6 — Durcissement production
 - Cookies httpOnly + CSRF au lieu de localStorage ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes, Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences (Lexique / Wiktionnaire, CC BY-SA).

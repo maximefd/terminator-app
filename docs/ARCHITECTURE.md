@@ -62,7 +62,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | GET | `/api/grids/formats` | — | Formats de grille disponibles |
 | GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
 | POST | `/api/grids/difficulty` | — | Ce que coûtent des mots imposés, **sans générer** ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
-| POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (`must_words`, `wish_words`, `wish_dictionary_ids`, dictionnaire personnel actif) |
+| POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (avec ses flèches : champ `clues`) (`must_words`, `wish_words`, `wish_dictionary_ids`, dictionnaire personnel actif) |
 | GET / POST | `/api/grids` | ✅ | Lister ses grilles conservées (résumés) / en conserver une |
 | GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (avec ses cases) / la supprimer |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
