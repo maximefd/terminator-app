@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/hooks/use-debounce";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { apiFetch } from "@/lib/api-client";
@@ -11,6 +12,9 @@ type SearchResult = {
   source: string;
   definition?: string;
 };
+
+/** Motifs proposés à l'écran vide : ils se chargent d'un clic plutôt que d'être à recopier. */
+const EXAMPLES = ["P??LE", "?A?SON", "MER??"];
 
 export function SearchForm() {
   const [pattern, setPattern] = useState("");
@@ -64,11 +68,24 @@ export function SearchForm() {
 
   return (
     <div className="w-full max-w-xl">
+      <div className="mb-4 space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Trouver le mot manquant</h1>
+        <p className="text-sm text-muted-foreground">
+          Tapez les lettres que vous connaissez et un <span className="font-mono font-semibold">?</span> par
+          case vide. La recherche part dès la deuxième lettre.
+        </p>
+      </div>
+
+      <Label htmlFor="pattern" className="sr-only">
+        Motif à rechercher
+      </Label>
       <div className="relative">
         <Input
+          id="pattern"
           type="search"
-          placeholder="Ex: P??LE, MA??-??É, etc."
-          className="text-lg"
+          placeholder="Ex : P??LE"
+          className="font-mono text-lg uppercase tracking-widest"
+          autoComplete="off"
           value={pattern}
           onChange={(e) => setPattern(e.target.value)}
         />
@@ -83,6 +100,31 @@ export function SearchForm() {
       </div>
 
       <div className="mt-8">
+        {/* Écran vide : il explique la syntaxe au lieu de ne rien montrer. */}
+        {debouncedPattern.length === 0 && !isLoading && (
+          <div className="rounded-md border border-dashed p-6 text-center">
+            <p className="text-sm text-muted-foreground">Essayez un de ces motifs :</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {EXAMPLES.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setPattern(example)}
+                  className="rounded-full bg-secondary px-3 py-1 font-mono text-sm font-semibold hover:bg-secondary/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {debouncedPattern.length === 1 && !isLoading && (
+          <p className="text-center text-sm text-muted-foreground">
+            Encore une lettre : la recherche démarre à deux caractères.
+          </p>
+        )}
+
         {isLoading && results.length === 0 && (
           <p className="text-center text-muted-foreground italic">Recherche en cours...</p>
         )}
@@ -92,7 +134,16 @@ export function SearchForm() {
         )}
 
         {!isLoading && !error && debouncedPattern.length >= 2 && results.length === 0 && (
-          <p className="text-center text-muted-foreground">Aucun résultat trouvé pour &quot;{debouncedPattern}&quot;.</p>
+          <div className="rounded-md border border-dashed p-6 text-center">
+            <p className="text-muted-foreground">
+              Aucun mot ne correspond à{" "}
+              <span className="font-mono font-semibold uppercase">{debouncedPattern}</span>.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Remplacez une lettre par un <span className="font-mono font-semibold">?</span>, ou ajoutez le mot
+              à l&apos;un de vos dictionnaires s&apos;il vous manque.
+            </p>
+          </div>
         )}
         
         {results.length > 0 && (

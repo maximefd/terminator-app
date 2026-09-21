@@ -123,8 +123,10 @@ sequenceDiagram
 
 | Chemin | Rôle |
 |--------|------|
-| `src/app/page.tsx` | Accueil : recherche par motif (+ panneau des dictionnaires si connecté) |
-| `src/app/grid/page.tsx` | Génération de grille |
+| `src/app/page.tsx` | Accueil : ce qu'est Terminator, ses trois usages, mode invité |
+| `src/app/search/page.tsx` | Recherche par motif (+ panneau des dictionnaires si connecté) |
+| `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
+| `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
 | `src/app/legal`, `privacy` | Mentions légales, confidentialité |
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |

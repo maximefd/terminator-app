@@ -13,12 +13,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     try {
       await login(email, password);
       router.push("/");
@@ -28,6 +30,8 @@ export default function LoginPage() {
       } else {
         setError("Une erreur inattendue est survenue.");
       }
+      // La redirection démonte la page : on ne réactive le bouton qu'en cas d'échec
+      setSubmitting(false);
     }
   };
 
@@ -67,8 +71,8 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">
-              Se connecter
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Connexion en cours…" : "Se connecter"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
