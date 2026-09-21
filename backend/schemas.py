@@ -117,6 +117,44 @@ class GenerateRequest(ApiModel):
         default_factory=list)
 
 
+class GridCell(ApiModel):
+    x: Annotated[int, Field(ge=0, le=19)]
+    y: Annotated[int, Field(ge=0, le=19)]
+    # Une case noire (définition) n'a pas de lettre : la chaîne vide est normale
+    char: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2)] = ""
+    is_black: StrictBool = False
+
+
+class GridPlacedWord(ApiModel):
+    text: GridWord
+    x: Annotated[int, Field(ge=0, le=19)]
+    y: Annotated[int, Field(ge=0, le=19)]
+    direction: Literal["across", "down"]
+    source: Literal["must", "wish", "common"]
+
+
+class GridPayload(ApiModel):
+    """La grille telle que `/api/grids/generate` l'a renvoyée, que l'on stocke sans la rejouer."""
+    width: Annotated[int, Field(ge=2, le=20)]
+    height: Annotated[int, Field(ge=2, le=20)]
+    layout: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=30)]
+    seed: Annotated[int, Field(ge=0, le=MAX_SEED)] | None = None
+    # 20 x 20 cases au plus, comme les bornes de largeur et de hauteur
+    cells: Annotated[list[GridCell], Field(max_length=400)]
+    words: Annotated[list[GridPlacedWord], Field(max_length=200)] = Field(default_factory=list)
+    fill_ratio: Annotated[float, Field(ge=0, le=1)] = 0.0
+    wish_ratio: Annotated[float, Field(ge=0, le=1)] = 0.0
+    must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
+
+
+class SaveGridRequest(ApiModel):
+    """Conserver une grille produite. Sans nom, la route en compose un à partir du format et de la date."""
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100, pattern=DICTIONARY_NAME_PATTERN)
+    ] | None = None
+    grid: GridPayload
+
+
 class DifficultyRequest(ApiModel):
     """Estimation de la difficulté d'une demande, sans générer : appelée à chaque frappe."""
     must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
@@ -127,6 +165,10 @@ class DifficultyRequest(ApiModel):
 # --- Conversion des erreurs ---
 
 FIELD_LABELS = {
+    "grid": "grille",
+    "cells": "cases",
+    "words": "mots",
+    "layout": "mise en page",
     "email": "e-mail",
     "password": "mot de passe",
     "name": "nom",

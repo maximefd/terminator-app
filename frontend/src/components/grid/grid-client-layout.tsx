@@ -11,6 +11,7 @@ import { GridDisplay, type GridData } from "@/components/grid/grid-display";
 import { WordList, type WordEntry } from "@/components/grid/word-list";
 import { DifficultyPanel, type Difficulty } from "@/components/grid/difficulty-panel";
 import { DictionaryPicker } from "@/components/grid/dictionary-picker";
+import { SaveGrid } from "@/components/grid/save-grid";
 
 type GridFormat = { width: number; height: number; layouts: number };
 
@@ -181,7 +182,12 @@ export function GridClientLayout() {
 
       <div className="mt-8 w-full">
         {failure && <div className="mx-auto max-w-xl"><FailureNotice error={failure} /></div>}
-        {gridData && <GridDisplay gridData={gridData} />}
+        {gridData && (
+          <div className="space-y-6">
+            <GridDisplay gridData={gridData} />
+            <SaveGrid grid={gridData} />
+          </div>
+        )}
       </div>
     </main>
   );

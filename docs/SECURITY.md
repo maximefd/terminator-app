@@ -71,7 +71,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Pas de vérification d'e-mail ni de réinitialisation de mot de passe | Comptes jetables, perte d'accès | Avant ouverture à d'autres utilisateurs |
 | Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
 | Génération synchrone dans la requête | Saturation CPU malgré le rate limiting | Phase 7 : file de jobs ou moteur côté client |
-| Pas de migrations ni de sauvegardes de base | Perte ou corruption de données | Phase 4 (Alembic) et Phase 6 (sauvegardes) |
+| Pas de sauvegardes de base | Perte de données | Phase 6. Les migrations existent depuis la Phase 4 ([ADR 0010](adr/0010-migrations-de-schema.md)) |
 
 ---
 

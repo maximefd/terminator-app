@@ -65,8 +65,13 @@ Chaque PR est rattachée à un milestone (une phase de la [roadmap](docs/ROADMAP
 - **Imiter le code voisin** : nommage, densité des commentaires, idiomes.
 - **Backend** :
   - chaque endpoint qui lit un corps JSON passe par `parse_body(Schema)` (`backend/schemas.py`) ;
-  - chaque accès à un dictionnaire passe par `get_owned_dictionary()` ;
-  - les erreurs renvoient `{"error": "message en français"}`.
+  - chaque accès à un dictionnaire passe par `get_owned_dictionary()`, chaque accès à une grille conservée par `get_owned_grid()` ;
+  - les erreurs renvoient `{"error": "message en français"}` ;
+  - **toute modification d'un modèle demande une migration** ([ADR 0010](docs/adr/0010-migrations-de-schema.md)) :
+    `docker compose exec api sh -c "cd /app && FLASK_APP=run.py flask db migrate -m 'ce qui change'"`, puis
+    **relire la révision produite** — l'auto-détection voit un renommage comme une colonne supprimée et une
+    autre créée, ce qui perdrait les données. Les tests, eux, tournent sur `db.create_all()` : un modèle ajouté
+    sans migration y passerait inaperçu.
 - **Moteur** : pas d'import Flask ni base de données dans `backend/engine/`, aléatoire uniquement via le générateur seedé, budget temps respecté ([ADR 0002](docs/adr/0002-moteur-pur-et-deterministe.md)).
 - **Frontend** :
   - appels API uniquement via `apiFetch` (`src/lib/api-client.ts`) ;
