@@ -369,6 +369,12 @@ export function GridSvg({
  * lignes en dépend directement, et la même formule pour les deux tronquerait une ligne sur deux.
  */
 const CHAR_WIDTH = { bold: 0.64, regular: 0.6 };
+/**
+ * Largeur du **pire mot** plutôt que du mot moyen, pour la borne qui empêche un mot de sortir de sa
+ * case. Mesuré : « ILLICITE » 0,57, « DÉSAVANTAGÉS » 0,66, « RECOMMANDÉES » 0,74, « CŒUR » 0,79.
+ * La moyenne suffit à répartir les lignes ; elle laissait déborder les mots les plus larges.
+ */
+const WIDEST_CHAR = 0.78;
 
 /** Comme dans les magazines : capitales accentuées. La saisie de l'auteur, elle, reste telle quelle. */
 export const printedCase = (text: string) => text.toLocaleUpperCase("fr");
@@ -419,16 +425,29 @@ export function wrapDefinition(text: string, arrow: string | null, half: boolean
     return { fontSize, lines, lineHeight: fontSize * 1.08 };
   };
 
-  // Une définition longue fait rétrécir sa police plutôt que de gagner une ligne : c'est ce que font
-  // les magazines, et c'est ce qui sauve « IL DONNE LA CADENCE » d'une troisième ligne à deux lettres.
-  const nominal = half ? CELL * 0.105 : CELL * 0.115;
+  // Un mot ne se coupe pas : s'il est plus large que la case, c'est la police qui cède. Sans cette
+  // borne, « RECOMMANDÉES » sortait de sa case — un texte qui déborde est un défaut, pas un choix.
+  const tenable = longest > 0 ? usable / (WIDEST_CHAR * longest) : Number.POSITIVE_INFINITY;
+  const nominal = Math.min(half ? CELL * 0.105 : CELL * 0.115, tenable);
+
+  // Une définition longue fait ensuite rétrécir sa police plutôt que de gagner une ligne : c'est ce
+  // que font les magazines, et c'est ce qui sauve « IL DONNE LA CADENCE » d'une troisième ligne à
+  // deux lettres.
   let best = layout(nominal);
   for (let size = nominal - 0.5; size >= nominal * 0.8; size -= 0.5) {
     const candidate = layout(size);
     if (candidate.lines.length < best.lines.length) best = candidate;
   }
 
-  const maxLines = Math.max(2, Math.floor((height - reserved.bottom - 4) / best.lineHeight));
+  /**
+   * Au-delà de trois lignes dans une demi-case, une définition n'est plus lisible dans une grille,
+   * même si elle y tient géométriquement. Le plafond est typographique, pas arithmétique : sans lui,
+   * une définition de soixante-dix caractères « passait » en six lignes minuscules, sans un mot.
+   */
+  const maxLines = Math.min(
+    half ? 3 : 5,
+    Math.max(2, Math.floor((height - reserved.bottom - 4) / best.lineHeight)),
+  );
 
   return {
     lines: best.lines.slice(0, maxLines),

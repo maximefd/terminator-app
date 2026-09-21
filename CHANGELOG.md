@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Page d'accueil reprise : elle montre désormais **une grille finie produite par le moteur** —
+  définitions, flèches, et une bascule vers la solution — rendue par le composant de l'application,
+  si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
+  parce qu'il l'est vraiment : générer, conserver, retoucher, définir puis imprimer. La recherche par
+  motif et les dictionnaires, qui ne sont pas dans cette séquence, gardent leur propre bloc.
 - Effacer des lettres dans l'éditeur ([ADR 0012](docs/adr/0012-grille-modifiable.md)) :
   `Retour arrière` efface en remontant — maintenu, il vide le mot — et `Suppr` efface sur place. Les
   trous sont un **état de travail** : le mot garde sa longueur (`P?RTE`, jamais `PRTE`), il est dit
@@ -201,6 +206,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
+  est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
+  et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
   chaque lettre posée : elles ne sont plus relues qu'à l'ouverture de la grille. Elles s'enregistrent
   aussi en quittant le champ, sans attendre la pause de 600 ms.
