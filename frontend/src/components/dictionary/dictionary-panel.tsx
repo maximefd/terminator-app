@@ -54,6 +54,10 @@ const setActiveDictionary = async (dictionaryId: number) => {
   });
 };
 
+const deleteDictionary = async (dictionaryId: number) => {
+  return apiFetch(`/api/dictionaries/${dictionaryId}`, { method: 'DELETE' });
+};
+
 const createDictionary = async (name: string) => {
   return apiFetch(`/api/dictionaries`, {
     method: 'POST',
@@ -67,6 +71,7 @@ export function DictionaryPanel() {
   const [newDefinition, setNewDefinition] = useState("");
   const [newDictionaryName, setNewDictionaryName] = useState("");
   const [isCreateDictOpen, setCreateDictOpen] = useState(false);
+  const [isDeleteDictOpen, setDeleteDictOpen] = useState(false);
   const queryClient = useQueryClient();
   const wordInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -131,6 +136,25 @@ export function DictionaryPanel() {
     },
   });
 
+  const deleteDictionaryMutation = useMutation({
+    mutationFn: deleteDictionary,
+    onSuccess: async (_data, deletedId: number) => {
+      toast.success("Dictionnaire supprimé.");
+      setDeleteDictOpen(false);
+      // Supprimer l'actif n'en laisse aucun d'actif côté serveur : la recherche et les grilles
+      // perdraient les mots personnels alors que le sélecteur en montre toujours un. On réactive.
+      const deleted = dictionaries?.find(d => d.id === deletedId);
+      const remaining = (dictionaries ?? []).filter(d => d.id !== deletedId);
+      if (deleted?.is_active && remaining.length > 0) {
+        await setActiveDictionary(remaining[0].id).catch(() => undefined);
+      }
+      queryClient.invalidateQueries({ queryKey: ['dictionaries'] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
   const sortedAndFilteredWords = useMemo(() => {
     if (!words) return [];
     let processedWords = [...words];
@@ -178,15 +202,15 @@ export function DictionaryPanel() {
 
   if (isDictLoading) return <div className="p-4 text-sm text-muted-foreground">Chargement...</div>;
   const currentError = dictError || wordsError;
-  if (currentError) return <aside className="w-full max-w-sm rounded-lg border bg-destructive/10 p-4 text-destructive"><h2 className="text-lg font-semibold">Erreur</h2><p className="text-sm">{currentError.message}</p></aside>;
+  if (currentError) return <aside className="w-full rounded-lg border bg-destructive/10 p-4 text-destructive"><h2 className="text-lg font-semibold">Erreur</h2><p className="text-sm">{currentError.message}</p></aside>;
 
   return (
-    <aside className="w-full max-w-sm rounded-lg border bg-card p-4 flex flex-col">
+    <aside className="flex w-full flex-col rounded-lg border bg-card p-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Mes Dictionnaires</h2>
+        <h2 className="text-lg font-semibold">Mes dictionnaires</h2>
         <Dialog open={isCreateDictOpen} onOpenChange={setCreateDictOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8"><PlusCircle className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Créer un dictionnaire"><PlusCircle className="h-5 w-5" /></Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Créer un nouveau dictionnaire</DialogTitle>
@@ -205,16 +229,50 @@ export function DictionaryPanel() {
         </Dialog>
       </div>
       
-      <Select value={activeDictionary?.id.toString()} onValueChange={handleActiveDictionaryChange} disabled={setActiveDictionaryMutation.isPending}>
-        <SelectTrigger className="mt-2"><SelectValue placeholder="Sélectionner un dictionnaire..." /></SelectTrigger>
-        <SelectContent>
-          {dictionaries?.map(dict => (<SelectItem key={dict.id} value={dict.id.toString()}>{dict.name}</SelectItem>))}
-        </SelectContent>
-      </Select>
+      <div className="mt-2 flex items-center gap-2">
+        <Select value={activeDictionary?.id.toString()} onValueChange={handleActiveDictionaryChange} disabled={setActiveDictionaryMutation.isPending}>
+          <SelectTrigger className="flex-1" aria-label="Dictionnaire actif"><SelectValue placeholder="Sélectionner un dictionnaire..." /></SelectTrigger>
+          <SelectContent>
+            {dictionaries?.map(dict => (<SelectItem key={dict.id} value={dict.id.toString()}>{dict.name}</SelectItem>))}
+          </SelectContent>
+        </Select>
+        <Dialog open={isDeleteDictOpen} onOpenChange={setDeleteDictOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" aria-label="Supprimer ce dictionnaire" disabled={!activeDictionary}>
+              <Trash2 className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Supprimer « {activeDictionary?.name} » ?</DialogTitle>
+              <DialogDescription>
+                Ses {words?.length ?? 0} mot{(words?.length ?? 0) > 1 ? "s" : ""} seront effacés avec lui.
+                C&apos;est définitif : Terminator ne garde pas de copie.
+                {dictionaries?.length === 1 && " C'est votre dernier : un « Dictionnaire par défaut » vide prendra sa place."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteDictOpen(false)}>Annuler</Button>
+              <Button
+                variant="destructive"
+                disabled={deleteDictionaryMutation.isPending}
+                onClick={() => activeDictionary && deleteDictionaryMutation.mutate(activeDictionary.id)}
+              >
+                {deleteDictionaryMutation.isPending ? "Suppression…" : "Supprimer définitivement"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <p className="mt-2 text-xs text-muted-foreground">
+        Le dictionnaire choisi ici est l&apos;<strong>actif</strong> : ses mots remontent en tête de la
+        recherche par motif et sont proposés aux grilles que vous générez.
+      </p>
 
       <div className="mt-4 flex flex-col flex-1">
         <h3 className="font-semibold mb-2">Mots ({sortedAndFilteredWords?.length || 0})</h3>
-        
+      
         <form ref={formRef} onSubmit={handleAddWordSubmit} className="mb-4 border-b pb-4">
           <div className="grid gap-2">
              <Label htmlFor="mot" className="text-xs font-semibold">Nouveau mot</Label>
@@ -234,22 +292,30 @@ export function DictionaryPanel() {
                     <SelectItem value="alpha">Ordre alphabétique</SelectItem>
                 </SelectContent>
             </Select>
-            <Input type="number" min="1" placeholder="Lg." className="w-20" onChange={(e) => setFilterLength(e.target.value || 'all')} />
+            <Input type="number" min="1" placeholder="Lg." className="w-20" aria-label="Filtrer par longueur" onChange={(e) => setFilterLength(e.target.value || 'all')} />
         </div>
 
         <ScrollArea className="flex-1 rounded-md border mt-2">
           <div className="p-4">
             {sortedAndFilteredWords.length > 0 ? (
               sortedAndFilteredWords.map((word) => (
-                <div key={word.id} className="text-sm font-mono mb-2 flex justify-between items-center group">
-                  <span>{word.mot}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => {if (activeDictionary) {deleteWordMutation.mutate({ dictionaryId: activeDictionary.id, wordId: word.id });}}} disabled={deleteWordMutation.isPending}>
+                <div key={word.id} className="group mb-2 flex items-start justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-mono font-semibold">{word.mot}</p>
+                    {word.definition && <p className="text-xs text-muted-foreground">{word.definition}</p>}
+                  </div>
+                  {/* Visible au survol, mais aussi au focus : sinon le bouton est inatteignable au clavier */}
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100" aria-label={`Supprimer ${word.mot}`} onClick={() => {if (activeDictionary) {deleteWordMutation.mutate({ dictionaryId: activeDictionary.id, wordId: word.id });}}} disabled={deleteWordMutation.isPending}>
                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground italic">Aucun mot ne correspond à vos critères.</p>
+              <p className="text-sm italic text-muted-foreground">
+                {words?.length
+                  ? "Aucun mot de cette longueur dans ce dictionnaire."
+                  : "Ce dictionnaire est vide : ajoutez un premier mot ci-dessus."}
+              </p>
             )}
           </div>
         </ScrollArea>

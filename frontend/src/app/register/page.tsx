@@ -13,12 +13,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     try {
       await register(email, password);
       router.push("/");
@@ -28,6 +30,8 @@ export default function RegisterPage() {
       } else {
         setError("Une erreur inattendue est survenue.");
       }
+      // La redirection démonte la page : on ne réactive le bouton qu'en cas d'échec
+      setSubmitting(false);
     }
   };
 
@@ -73,8 +77,8 @@ export default function RegisterPage() {
               </p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full">
-              Créer un compte
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Création du compte…" : "Créer un compte"}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

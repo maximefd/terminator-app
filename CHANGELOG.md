@@ -5,6 +5,21 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Audit UX des écrans existants ([docs/AUDIT-UX.md](docs/AUDIT-UX.md), #21) et ses corrections : la
+  recherche explique sa syntaxe et propose trois motifs cliquables au lieu d'un champ muet ; les états vides
+  disent quoi faire ; les dictionnaires personnels gagnent une page, un bouton de suppression (l'API le
+  permettait, l'interface non), des définitions visibles dans la liste, et des intitulés là où il n'y avait
+  que des icônes ; connexion et inscription montrent leur attente. Deux frictions restent, avec leur issue :
+  les pages légales décrivent un produit qui n'existe pas (#78) et on ne peut pas supprimer son compte (#79).
+- Parcours Playwright des dictionnaires (`frontend/tests/dictionaries.spec.ts`) : créer, ajouter un mot avec
+  sa définition, supprimer le mot puis le dictionnaire, et vérifier qu'un dictionnaire reste actif.
+- Page d'accueil (Phase 4, #22) : `/` explique ce qu'est Terminator au lieu d'ouvrir directement sur la
+  recherche. Trois blocs — trouver le mot manquant, remplir une grille, vos dictionnaires — chacun avec un
+  exemple **vrai** : le motif `P??LE` avec cinq des dix mots qu'il renvoie réellement, et une grille 6×7
+  réellement produite par le moteur (seed 99, PIANO imposé). Le mode invité est dit explicitement : recherche
+  et génération marchent sans compte, le compte ne sert qu'à garder les dictionnaires.
+- Page `/dictionaries` (Phase 4, #22) : les dictionnaires personnels ont enfin une adresse à eux. Ils
+  n'existaient que dans la colonne de droite de la recherche, et seulement une fois connecté.
 - Écran de génération (Phase 4, #23) : tout ce que la Phase 3 avait construit devient manipulable.
   - **liste de mots ordonnée** (glisser-déposer, plus des boutons ↑/↓ pour le clavier) : les mots du haut sont
     les plus importants, et chaque mot se bascule entre **obligatoire** (la grille échoue sans lui) et
@@ -89,6 +104,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- Supprimer le dictionnaire **actif** n'en laissait aucun d'actif : la recherche et les grilles perdaient les mots personnels alors que le sélecteur en montrait toujours un. Un dictionnaire restant est réactivé aussitôt (#21).
+- La recherche par motif passe de `/` à `/search` : `/` accueille désormais la page d'accueil (#22).
 - Génération avec mots imposés : quand la requête nomme un **format**, le moteur passe au layout suivant une fois la recherche épuisée sur le courant, au lieu de s'entêter sur un unique tirage au sort. Mesuré (#73) : 6×7 à trois mots imposés de 6/20 à 11/20, et les formats à layout unique ne bougent pas d'une grille. **Sans mot imposé, les 420 trajectoires de la baseline sont identiques.** La vérification préalable porte désormais sur tous les layouts du format : un mot n'est refusé que s'il n'entre dans aucun, au lieu d'être jugé sur le layout tiré ([mesures](backend/benchmarks/README.md)).
 - Benchmark : `--by-format` (le moteur choisit son layout, comme l'API) et `--max-layouts N`. Sans eux, un correctif agissant au niveau du format est invisible au harness, qui pilote layout par layout.
 - Plafond de candidats du solveur porté de 100 à **300** : mesuré sur les 21 layouts, 420/420 dans les deux cas, mais médiane de 0,91 s à 0,71 s et p95 du 13×18 de 14,57 s à 8,72 s. Gain sec, sans contrepartie.

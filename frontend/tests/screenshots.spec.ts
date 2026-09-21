@@ -20,13 +20,22 @@ const hideDevIndicator = (page: Page) =>
   page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 
 test("recherche par motif", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/search");
   await hideDevIndicator(page);
-  await page.getByPlaceholder(/Ex:/).fill("P??LE");
+  await page.getByLabel("Motif à rechercher").fill("P??LE");
 
   await expect(page.getByText(/\d+ résultats?/)).toBeVisible({ timeout: 20_000 });
 
   await page.screenshot({ path: path.join(IMAGES_DIR, "recherche.png") });
+});
+
+test("page d'accueil", async ({ page }) => {
+  await page.goto("/");
+  await hideDevIndicator(page);
+
+  await expect(page.getByRole("heading", { name: "Composez vos mots fléchés" })).toBeVisible();
+
+  await page.screenshot({ path: path.join(IMAGES_DIR, "accueil.png") });
 });
 
 test("génération d'une grille", async ({ page }) => {
@@ -35,7 +44,9 @@ test("génération d'une grille", async ({ page }) => {
   await page.getByRole("button", { name: "Générer la grille" }).click();
 
   // La génération peut prendre plusieurs secondes (budget serveur : 20 s)
-  await expect(page.getByText(/Taux de remplissage/)).toBeVisible({ timeout: 45_000 });
+  // « % de vos mots » n'apparaît que sous la grille produite ; « mise en page » figure aussi
+  // dans la liste des formats, qui n'attend rien
+  await expect(page.getByText(/% de vos mots/)).toBeVisible({ timeout: 45_000 });
 
   await page.screenshot({ path: path.join(IMAGES_DIR, "generation.png"), fullPage: true });
 });

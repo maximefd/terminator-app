@@ -11,9 +11,9 @@ Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet e
 
 ## Aperçu
 
-| Recherche par motif | Génération automatique |
-|---------------------|------------------------|
-| ![Recherche du motif P??LE : onze résultats, dont PERLE, POELE et POULE](docs/images/recherche.png) | ![Grille 6×7 générée et remplie à 100 % de mots qui se croisent](docs/images/generation.png) |
+| Accueil | Recherche par motif | Génération automatique |
+|---------|---------------------|------------------------|
+| ![Page d'accueil : les trois usages de Terminator, chacun avec un exemple](docs/images/accueil.png) | ![Recherche du motif P??LE : dix résultats, dont PERLE, POELE et POULE](docs/images/recherche.png) | ![Grille 6×7 générée, avec les mots imposés en couleur et la provenance de chaque mot](docs/images/generation.png) |
 
 Captures régénérées par `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`, avec l'API et le frontend démarrés.
 
@@ -27,7 +27,8 @@ Captures régénérées par `cd frontend && pnpm exec playwright test tests/scre
 | Génération automatique d'une grille à partir d'un layout | ✅ 20/20 sur les 16 layouts, du 6×7 au 13×16 ([détails](docs/ENGINE.md)) |
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
 | Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
-| Mots imposés et dictionnaires thématiques dans la génération | 🚧 Phase 3 |
+| Mots imposés et dictionnaires thématiques dans la génération | ✅ ; la difficulté est annoncée avant de générer ([ADR 0009](docs/adr/0009-annoncer-la-difficulte.md)) |
+| Sauvegarde et historique des grilles | 🔜 Phase 4 |
 | Flèches, définitions, export PDF | 🔜 Phase 5 |
 
 Détail et calendrier : **[roadmap](docs/ROADMAP.md)**.
@@ -56,7 +57,7 @@ Le premier démarrage charge tout le dictionnaire en mémoire (une à deux minut
 make dev-front
 ```
 
-Ouvrez **http://localhost:3000** : la page d'accueil est la recherche par motif, l'onglet **Générer** crée une grille.
+Ouvrez **http://localhost:3000** : la page d'accueil présente les trois usages, l'onglet **Recherche** trouve un mot par motif et **Générer** remplit une grille entière.
 
 ## Commandes utiles
 
