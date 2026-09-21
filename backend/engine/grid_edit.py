@@ -14,11 +14,24 @@ Module pur : ni Flask, ni base, ni lexique. Ce que contient le dictionnaire se d
 
 ACROSS = "across"
 DOWN = "down"
+# Une case vidée laisse un **trou**, et le mot garde sa longueur : « P?RTE » et non « PRTE ».
+# Sans cette marque, effacer une lettre raccourcirait le mot, et toute la géométrie qui s'appuie
+# dessus (surbrillance, remplacement, croisements) se décalerait d'une case.
+HOLE = "?"
+
+
+def fill_ratio(cells: list[dict]) -> float:
+    """Part des cases lettres effectivement remplies : une grille trouée n'est plus pleine."""
+    lettres = [cell for cell in cells if not cell.get("is_black")]
+    if not lettres:
+        return 0.0
+    return round(sum(1 for cell in lettres if (cell.get("char") or "").strip()) / len(lettres), 3)
 
 
 def letters_of(cells: list[dict]) -> dict[tuple[int, int], str]:
-    """Les lettres de la grille, par case. Les cases définitions n'en ont pas."""
-    return {(cell["x"], cell["y"]): (cell.get("char") or "") for cell in cells if not cell.get("is_black")}
+    """Les lettres de la grille, par case. Les cases définitions n'en ont pas, une case vidée non plus."""
+    # `strip()` : une case contenant une espace est vide, quelle que soit la façon dont elle l'est devenue
+    return {(cell["x"], cell["y"]): (cell.get("char") or "").strip() for cell in cells if not cell.get("is_black")}
 
 
 def _size(cells: list[dict]) -> tuple[int, int]:
@@ -72,7 +85,12 @@ def slot_at(cells: list[dict], x: int, y: int, direction: str) -> dict | None:
 
 
 def text_of(slot: dict, letters: dict[tuple[int, int], str]) -> str:
-    return "".join(letters.get(cell, "") for cell in cells_of_slot(slot))
+    """Le mot tel qu'il est écrit, trous compris : la longueur est celle de l'emplacement."""
+    return "".join(letters.get(cell) or HOLE for cell in cells_of_slot(slot))
+
+
+def is_complete(text: str) -> bool:
+    return HOLE not in text
 
 
 def apply_letters(cells: list[dict], edits: list[dict]) -> tuple[list[dict], list[str]]:
@@ -117,6 +135,8 @@ def words_from_cells(cells: list[dict], previous: list[dict] | None = None) -> l
         words.append({
             "id": index,
             "text": text,
+            "length": slot["length"],
+            "complete": is_complete(text),
             "x": slot["x"],
             "y": slot["y"],
             "direction": slot["direction"],
@@ -142,7 +162,12 @@ def allowed_letters(cells: list[dict], slot: dict, is_word) -> list[set[str]]:
             continue
         cells_crossing = cells_of_slot(crossing)
         at = cells_crossing.index(position)
-        base = [letters.get(cell, "") for cell in cells_crossing]
+        base = [letters.get(cell) or HOLE for cell in cells_crossing]
+        # Un croisement lui-même troué ne contraint pas encore : l'auteur le remplira ensuite, et
+        # refuser toutes les lettres au prétexte qu'il est inachevé viderait la liste sans raison.
+        if any(char == HOLE for index, char in enumerate(base) if index != at):
+            allowed.append(set())
+            continue
         possible = set()
         for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
             base[at] = letter

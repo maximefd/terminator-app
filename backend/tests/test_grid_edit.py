@@ -6,8 +6,11 @@ from engine.grid_edit import (
     allowed_letters,
     apply_letters,
     cells_of_slot,
+    fill_ratio,
+    letters_of,
     slot_at,
     slots_of,
+    text_of,
     words_from_cells,
 )
 
@@ -112,11 +115,40 @@ def test_a_cell_without_a_crossing_constrains_nothing():
 
 
 @pytest.mark.parametrize("char", ["", " "])
-def test_an_empty_cell_yields_an_incomplete_word(char):
-    """Une grille conservée est pleine, mais rien ne garantit qu'elle le reste : on ne masque pas le trou."""
+def test_an_erased_cell_leaves_a_hole_and_keeps_the_length(char):
+    """Effacer une lettre ne raccourcit pas le mot : « ?S » et non « S ».
+
+    Sans cette marque, toute la géométrie qui s'appuie sur la longueur du mot — surbrillance,
+    remplacement, croisements — se décalerait d'une case.
+    """
     troue = grid(["#AS", "ILE"])
     troue[1]["char"] = char
 
-    words = {(w["x"], w["y"], w["direction"]): w["text"] for w in words_from_cells(troue)}
+    mots = {(w["x"], w["y"], w["direction"]): w for w in words_from_cells(troue)}
 
-    assert words[(1, 0, "across")] == f"{char}S"
+    assert mots[(1, 0, "across")]["text"] == "?S"
+    assert mots[(1, 0, "across")]["length"] == 2
+    assert mots[(1, 0, "across")]["complete"] is False
+    assert mots[(0, 1, "across")]["complete"] is True
+
+
+def test_erasing_is_a_letter_edit_like_any_other():
+    """Une case se vide en écrivant « rien » : c'est le même chemin que poser une lettre."""
+    efface, problems = apply_letters(PETITE, [{"x": 1, "y": 0, "char": ""}])
+
+    assert problems == []
+    assert fill_ratio(efface) == round(4 / 5, 3)
+    assert text_of(slot_at(efface, 1, 0, "across"), letters_of(efface)) == "?S"
+
+
+def test_an_unfinished_crossing_does_not_constrain_yet():
+    """Un croisement troué se remplira plus tard : le refuser viderait la liste sans raison."""
+    lexique = {"AS", "OS", "AL", "OL", "ILE", "SE"}
+    troue, _ = apply_letters(PETITE, [{"x": 1, "y": 1, "char": ""}])
+
+    allowed = allowed_letters(troue, slot_at(troue, 1, 0, "across"), lambda word: word in lexique)
+
+    # Le vertical en (1,0) est « A? » : inachevé, donc aucune contrainte sur cette case
+    assert allowed[0] == set()
+    # Le vertical en (2,0) reste « SE », entier : il contraint toujours
+    assert allowed[1] == {"S"}

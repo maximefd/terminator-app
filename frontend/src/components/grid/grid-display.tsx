@@ -13,8 +13,12 @@ export type PlacedWord = {
   direction: "across" | "down";
   /** « must », « wish », « common » — ou « manuel » quand l'auteur l'a corrigé lui-même */
   source: string;
-  /** Connu du lexique ou d'un dictionnaire de l'auteur. Absent tant que la grille n'est pas conservée. */
-  in_lexicon?: boolean;
+  /** Longueur de l'emplacement : le texte peut être troué, elle ne bouge pas. */
+  length?: number;
+  /** Faux si l'auteur a effacé des lettres : « P?RTE » est un mot en cours, pas un mot inconnu. */
+  complete?: boolean;
+  /** Connu du lexique ou d'un dictionnaire de l'auteur ; `null` tant que le mot est inachevé. */
+  in_lexicon?: boolean | null;
 };
 
 export type GridData = {

@@ -9,7 +9,10 @@ from flask_jwt_extended import jwt_required, get_current_user
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord, SavedGrid
 from engine.difficulty import request_difficulty
-from engine.grid_edit import allowed_letters, apply_letters, cells_of_slot, slot_at, words_from_cells
+from engine.grid_edit import (
+    HOLE, allowed_letters, apply_letters, cells_of_slot, fill_ratio, letters_of, slot_at,
+    words_from_cells,
+)
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
 from schemas import (
@@ -365,13 +368,18 @@ def known_words(user, words: set[str]) -> set[str]:
 
 
 def annotated_grid(user, grid: SavedGrid) -> dict:
-    """La grille, ses flèches, et ce que le lexique dit de chacun de ses mots."""
+    """La grille, ses flèches, et ce que le lexique dit de chacun de ses mots.
+
+    Un mot **inachevé** — l'auteur a effacé des lettres pour retravailler la zone — n'est pas jugé :
+    « P?RTE » n'est pas un mot inconnu, c'est un mot en cours.
+    """
     data = grid.to_json()
-    textes = {word["text"] for word in data["grid"].get("words", [])}
-    connus = known_words(user, textes)
-    for word in data["grid"]["words"]:
-        word["in_lexicon"] = word["text"] in connus
-    data["grid"]["unknown_words"] = sorted(textes - connus)
+    mots = data["grid"].get("words", [])
+    termines = {word["text"] for word in mots if word.get("complete", HOLE not in word["text"])}
+    connus = known_words(user, termines)
+    for word in mots:
+        word["in_lexicon"] = word["text"] in connus if word["text"] in termines else None
+    data["grid"]["unknown_words"] = sorted(termines - connus)
     return data
 
 
@@ -421,8 +429,20 @@ def grid_suggestions(grid_id):
         return jsonify({"error": "Aucun mot ne passe par cette case dans ce sens."}), 404
 
     allowed = allowed_letters(cells, slot, lambda word: word in dela_trie.words)
-    # Une case sans croisement n'impose rien : elle reste un joker dans le motif
-    motif = "".join(next(iter(lettres)) if len(lettres) == 1 else "?" for lettres in allowed)
+    # Par défaut on **comble les trous** : les lettres déjà posées restent, seules les cases vides
+    # sont à remplir. C'est le geste de l'auteur qui efface deux lettres pour retravailler une zone.
+    # `keep_letters: false` propose au contraire de remplacer le mot entier.
+    posees = letters_of(cells)
+    motif = ""
+    for index, position in enumerate(cells_of_slot(slot)):
+        lettre = posees.get(position) or ""
+        if payload.keep_letters and lettre:
+            motif += lettre
+        elif len(allowed[index]) == 1:
+            # Une case dont le croisement n'admet qu'une lettre : autant la fixer dans le motif
+            motif += next(iter(allowed[index]))
+        else:
+            motif += "?"
 
     limite = current_app.config['MAX_SUGGESTIONS']
     candidats = dela_trie.search_pattern(motif, limit=limite * 20)
@@ -438,10 +458,8 @@ def grid_suggestions(grid_id):
         "allowed": ["".join(sorted(lettres)) for lettres in allowed],
         "words": retenus[:limite],
         "truncated": len(retenus) > limite,
-        "current": "".join(
-            cell.get("char", "") for position in cells_of_slot(slot)
-            for cell in cells if (cell["x"], cell["y"]) == position
-        ),
+        "current": "".join(posees.get(position) or HOLE for position in cells_of_slot(slot)),
+        "keep_letters": payload.keep_letters,
     }), 200
 
 
@@ -471,6 +489,8 @@ def update_grid(grid_id):
         contenu["cells"] = cells
         # Les mots se recalculent depuis les lettres : c'est la règle de l'ADR 0012
         contenu["words"] = words_from_cells(cells, contenu.get("words"))
+        # Une grille trouée n'est plus pleine : le taux de remplissage doit le dire
+        contenu["fill_ratio"] = fill_ratio(cells)
         grid.payload = contenu
 
     db.session.commit()

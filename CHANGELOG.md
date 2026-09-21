@@ -5,6 +5,14 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Effacer des lettres dans l'éditeur ([ADR 0012](docs/adr/0012-grille-modifiable.md)) :
+  `Retour arrière` efface en remontant — maintenu, il vide le mot — et `Suppr` efface sur place. Les
+  trous sont un **état de travail** : le mot garde sa longueur (`P?RTE`, jamais `PRTE`), il est dit
+  **inachevé** plutôt qu'inconnu, et les propositions **comblent les trous** en gardant les lettres
+  laissées en place. Un bouton bascule vers « remplacer le mot » quand on veut repartir de zéro, un
+  autre efface le mot entier.
+- **Annuler et rétablir** dans l'éditeur de lettres (boutons et `Ctrl+Z` / `Ctrl+Y`), sur les
+  cinquante dernières modifications de la session.
 - Retouche d'une grille conservée ([ADR 0012](docs/adr/0012-grille-modifiable.md)) : l'auteur change une
   lettre à la main — le `O` de PORTE devient un `E` — et **les mots se recalculent** à partir de la grille.
   Une lettre appartenant toujours à deux mots, la correction en touche deux ; les emplacements, eux, ne
@@ -193,6 +201,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
+  chaque lettre posée : elles ne sont plus relues qu'à l'ouverture de la grille. Elles s'enregistrent
+  aussi en quittant le champ, sans attendre la pause de 600 ms.
 - Conserver une grille répondait **500** dès que la migration des définitions était passée mais que
   l'API tournait encore sur le code d'avant : la colonne était `NOT NULL` sans valeur par défaut côté
   base, si bien que l'ancien code ne pouvait plus insérer une ligne. La base porte désormais le défaut

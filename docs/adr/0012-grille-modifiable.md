@@ -38,6 +38,15 @@ Deux difficultés rendent cette modification moins anodine qu'elle en a l'air :
   de l'auteur. Un mot inconnu est signalé — souligné dans la grille, listé dans le panneau — et
   **posé quand même**, avec un bouton pour le ranger dans un dictionnaire. Un nom propre ou un
   régionalisme est parfois exactement ce qu'il faut ; c'est l'auteur qui juge, pas le lexique.
+- **Une case peut être vide.** Effacer une lettre (`Retour arrière`, `Suppr`) laisse un **trou**, et
+  c'est un état de travail voulu : on vide deux cases pour retravailler une zone, puis on regarde ce
+  qui vient les remplir. Le mot garde sa longueur — `P?RTE`, jamais `PRTE` — sans quoi toute la
+  géométrie qui s'y appuie se décalerait d'une case. Un mot troué n'est pas jugé : il est **inachevé**,
+  pas inconnu.
+- **Les propositions comblent les trous par défaut** : les lettres laissées en place sont des
+  contraintes voulues. « Remplacer le mot » propose l'inverse — oublier ce qui est écrit. Un
+  croisement lui-même troué ne contraint pas encore : l'auteur le remplira ensuite, et l'écarter
+  viderait la liste sans raison.
 - Les propositions de remplacement respectent les croisements : `POST /api/grids/<id>/suggestions`
   calcule, case par case, les lettres qui laissent le mot perpendiculaire valide — la cohérence d'arc
   du solveur ramenée à un emplacement — et n'offre que des mots qui les respectent toutes. Proposer
@@ -54,5 +63,9 @@ Deux difficultés rendent cette modification moins anodine qu'elle en a l'air :
 - Le moteur reste pur : `engine/grid_edit.py` ne sait rien du lexique, il reçoit une fonction qui dit
   si une chaîne est un mot. Ce que contient le dictionnaire se décide dans l'API, qui seule connaît
   l'utilisateur et ses dictionnaires.
+- **Annuler et rétablir** portent sur les lettres, et vivent le temps de la session : on garde les
+  cases d'avant, pas des copies de grille — l'inverse d'une pose de lettre est une autre pose de
+  lettre. Rien n'est enregistré côté serveur : une annulation est un geste d'atelier, pas un
+  historique de version.
 - Corollaire à ne pas perdre de vue : rien ne garantit plus qu'une grille conservée soit remplie de
   mots existants. Les écrans doivent le dire plutôt que le supposer.

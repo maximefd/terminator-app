@@ -314,3 +314,41 @@ def test_notes_and_archiving_are_kept(grid_app, client):
     assert client.get("/api/grids?archived=false", headers=headers).get_json() == []
     assert len(client.get("/api/grids?archived=true", headers=headers).get_json()) == 1
     assert len(client.get("/api/grids", headers=headers).get_json()) == 1
+
+
+def test_a_letter_can_be_erased_and_the_word_keeps_its_length(grid_app, client):
+    """Retour arrière : la case se vide, le mot garde sa longueur et n'est plus jugé (ADR 0012)."""
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+
+    response = send(client, "patch", f"/api/grids/{grid_id}", {"cells": [{"x": 1, "y": 1, "char": ""}]}, headers)
+
+    assert response.status_code == 200, response.get_json()
+    grid = response.get_json()["grid"]
+    mot = next(w for w in grid["words"] if (w["x"], w["y"], w["direction"]) == (0, 1, "across"))
+    assert mot["text"] == "I?E" and mot["length"] == 3 and mot["complete"] is False
+    # Un mot inachevé n'est pas un mot inconnu : il ne doit pas être signalé comme tel
+    assert mot["in_lexicon"] is None
+    assert "I?E" not in grid["unknown_words"]
+    assert grid["fill_ratio"] < 1
+
+
+def test_suggestions_fill_the_holes_by_default(grid_app, client):
+    """Le geste de l'auteur : effacer deux lettres, puis voir ce qui vient les remplacer."""
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+    send(client, "patch", f"/api/grids/{grid_id}", {"cells": [{"x": 1, "y": 1, "char": ""}]}, headers)
+
+    garde = send(client, "post", f"/api/grids/{grid_id}/suggestions",
+                 {"x": 0, "y": 1, "direction": "across"}, headers).get_json()
+
+    assert garde["current"] == "I?E"
+    # Les lettres restées en place sont gardées : le motif ne touche qu'au trou
+    assert garde["pattern"][0] == "I" and garde["pattern"][2] == "E"
+    assert all(mot[0] == "I" and mot[2] == "E" for mot in garde["words"])
+
+    remplace = send(client, "post", f"/api/grids/{grid_id}/suggestions",
+                    {"x": 0, "y": 1, "direction": "across", "keep_letters": False}, headers).get_json()
+
+    # En remplacement, plus rien n'est imposé par les lettres en place
+    assert remplace["pattern"].count("?") >= garde["pattern"].count("?")

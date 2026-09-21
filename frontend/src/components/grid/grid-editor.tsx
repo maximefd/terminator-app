@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Check, Download, FileText, Pencil } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Download, FileText, Pencil, Redo2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
@@ -29,6 +29,8 @@ type SavedGrid = {
 
 type Mode = "definitions" | "lettres" | "apercu";
 
+type CellEdit = { x: number; y: number; char: string };
+
 /**
  * L'éditeur d'une grille conservée : définitions, lettres, notes, export.
  *
@@ -50,6 +52,10 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const [draftName, setDraftName] = useState<string | null>(null);
   const [isExporting, setExporting] = useState(false);
   const [bold, setBold] = useState(true);
+  // Annulation : on garde les **lettres d'avant**, pas des copies de grille. Une correction ne
+  // touche que quelques cases, et l'inverse d'une pose de lettre est une autre pose de lettre.
+  const [past, setPast] = useState<CellEdit[][]>([]);
+  const [future, setFuture] = useState<CellEdit[][]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
@@ -61,12 +67,23 @@ export function GridEditor({ gridId }: { gridId: number }) {
     enabled: isAuthenticated,
   });
 
+  /**
+   * Le texte en cours de frappe ne se recharge pas.
+   *
+   * Chaque lettre posée invalide la requête, donc les données reviennent du serveur pendant que
+   * l'auteur écrit ses notes. Réappliquer la réponse effacerait ce qu'il est en train de taper :
+   * définitions et notes ne sont donc lues qu'à l'ouverture de la grille. Le contenu de la grille,
+   * lui, vient toujours du serveur — c'est lui qui recalcule les mots.
+   */
+  const seeded = useRef<number | null>(null);
   useEffect(() => {
     if (!data) return;
+    setContent(data.grid);
+    if (seeded.current === gridId) return;
+    seeded.current = gridId;
     setDefinitions(data.definitions ?? {});
     setNotes(data.notes ?? "");
-    setContent(data.grid);
-  }, [data]);
+  }, [data, gridId]);
 
   useEffect(() => {
     try {
@@ -97,13 +114,28 @@ export function GridEditor({ gridId }: { gridId: number }) {
   // Enregistrement au fil de la frappe, définitions et notes : rien à cliquer, rien à perdre
   const pending = JSON.stringify({ definitions, notes });
   const settled = useDebounce(pending, 600);
+  const saved = useRef<string | null>(null);
   useEffect(() => {
     if (!data) return;
-    if (settled === JSON.stringify({ definitions: data.definitions ?? {}, notes: data.notes ?? "" })) return;
+    if (saved.current === null) saved.current = JSON.stringify({ definitions: data.definitions ?? {}, notes: data.notes ?? "" });
+    if (settled === saved.current) return;
+    saved.current = settled;
     patchRef.current.mutate(JSON.parse(settled));
     // `data` change à chaque enregistrement réussi : le mettre en dépendance relancerait la boucle
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settled]);
+
+  /**
+   * Quitter un champ enregistre sans attendre.
+   *
+   * L'attente de 600 ms suffit tant qu'on continue de taper ; elle ne suffit pas si on ferme
+   * l'onglet dans la foulée. Le départ du curseur est le signal le plus sûr que la phrase est finie.
+   */
+  const flush = () => {
+    if (pending === saved.current) return;
+    saved.current = pending;
+    patchRef.current.mutate(JSON.parse(pending));
+  };
 
   /** Ordre de travail : celui de la lecture d'une grille, et la moitié haute avant la basse. */
   const clues = useMemo(() => {
@@ -144,7 +176,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
       return (
         content.words.find((word) => {
           if (word.direction !== wanted) return false;
-          const length = word.text.length;
+          const length = word.length ?? word.text.length;
           return wanted === "across"
             ? word.y === cell.y && cell.x >= word.x && cell.x < word.x + length
             : word.x === cell.x && cell.y >= word.y && cell.y < word.y + length;
@@ -157,7 +189,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const currentWord = wordAt(cursor, direction);
   const crossingWord = wordAt(cursor, direction === "across" ? "down" : "across");
   const litCells = currentWord
-    ? Array.from({ length: currentWord.text.length }, (_, i) =>
+    ? Array.from({ length: currentWord.length ?? currentWord.text.length }, (_, i) =>
         currentWord.direction === "across"
           ? `${currentWord.x + i}-${currentWord.y}`
           : `${currentWord.x}-${currentWord.y + i}`,
@@ -170,36 +202,113 @@ export function GridEditor({ gridId }: { gridId: number }) {
     return content.words
       .filter((word) => word.in_lexicon === false)
       .flatMap((word) =>
-        Array.from({ length: word.text.length }, (_, i) =>
+        Array.from({ length: word.length ?? word.text.length }, (_, i) =>
           word.direction === "across" ? `${word.x + i}-${word.y}` : `${word.x}-${word.y + i}`,
         ),
       );
   }, [content]);
 
-  const writeLetters = async (cells: { x: number; y: number; char: string }[]) => {
+  /** Ce qu'il faudrait réécrire pour revenir à l'état actuel de ces cases. */
+  const inverseOf = (cells: CellEdit[]): CellEdit[] =>
+    cells.map(({ x, y }) => ({
+      x,
+      y,
+      char: content?.cells.find((cell) => cell.x === x && cell.y === y)?.char ?? "",
+    }));
+
+  const writeLetters = async (cells: CellEdit[], remember = true) => {
+    const before = inverseOf(cells);
     try {
       const updated = await apiFetch(`/api/grids/${gridId}`, { method: "PATCH", body: { cells } });
       setContent(updated.grid);
+      if (remember) {
+        setPast((stack) => [...stack.slice(-49), before]);
+        setFuture([]);
+      }
       queryClient.invalidateQueries({ queryKey: ["saved-grids"] });
+      return before;
     } catch (writeError) {
       toast.error(writeError instanceof Error ? writeError.message : "La lettre n'a pas pu être posée.");
+      return null;
     }
   };
 
+  const undo = async () => {
+    const last = past[past.length - 1];
+    if (!last) return;
+    const redoEntry = await writeLetters(last, false);
+    if (!redoEntry) return;
+    setPast((stack) => stack.slice(0, -1));
+    setFuture((stack) => [...stack, redoEntry]);
+  };
+
+  const redo = async () => {
+    const next = future[future.length - 1];
+    if (!next) return;
+    const undoEntry = await writeLetters(next, false);
+    if (!undoEntry) return;
+    setFuture((stack) => stack.slice(0, -1));
+    setPast((stack) => [...stack, undoEntry]);
+  };
+
   const selectCell = (cell: { x: number; y: number }) => {
-    // Un second clic sur la même case change de sens : c'est le geste des grilles croisées
+    // Un second clic sur la même case change de sens : c'est le geste des grilles croisées.
+    // Mais seulement si un mot y passe dans l'autre sens — sinon le panneau se viderait sans raison.
     if (cursor && cursor.x === cell.x && cursor.y === cell.y) {
-      setDirection((previous) => (previous === "across" ? "down" : "across"));
-    } else {
-      setCursor(cell);
+      const other = direction === "across" ? "down" : "across";
+      if (wordAt(cell, other)) setDirection(other);
+      return;
+    }
+    setCursor(cell);
+    // Une case au croisement d'un seul mot : on prend ce sens-là plutôt que de laisser le vide
+    if (!wordAt(cell, direction)) {
+      const other = direction === "across" ? "down" : "across";
+      if (wordAt(cell, other)) setDirection(other);
     }
   };
 
   const onLetterKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!cursor || !content) return;
+    if (!content) return;
+    // Annuler et rétablir marchent même sans case sélectionnée
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      void undo();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+      event.preventDefault();
+      void redo();
+      return;
+    }
+    if (!cursor) return;
+
     const isLetter = /^[a-zA-ZàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]$/.test(event.key);
     const inGrid = (cell: { x: number; y: number }) =>
       content.cells.some((candidate) => candidate.x === cell.x && candidate.y === cell.y && !candidate.is_black);
+    const letterAt = (cell: { x: number; y: number }) =>
+      content.cells.find((candidate) => candidate.x === cell.x && candidate.y === cell.y)?.char ?? "";
+
+    // Retour arrière : on efface la case courante si elle porte une lettre, sinon on recule et on
+    // efface celle d'avant. Maintenu, il remonte le mot en le vidant — c'est le geste attendu.
+    if (event.key === "Backspace") {
+      event.preventDefault();
+      const back =
+        direction === "across" ? { x: cursor.x - 1, y: cursor.y } : { x: cursor.x, y: cursor.y - 1 };
+      if (letterAt(cursor)) {
+        void writeLetters([{ ...cursor, char: "" }]);
+        if (inGrid(back)) setCursor(back);
+      } else if (inGrid(back)) {
+        void writeLetters([{ ...back, char: "" }]);
+        setCursor(back);
+      }
+      return;
+    }
+    // Suppr efface sans bouger : utile quand on nettoie une case au milieu d'un mot
+    if (event.key === "Delete") {
+      event.preventDefault();
+      void writeLetters([{ ...cursor, char: "" }]);
+      return;
+    }
 
     if (isLetter) {
       event.preventDefault();
@@ -228,6 +337,17 @@ export function GridEditor({ gridId }: { gridId: number }) {
       event.preventDefault();
       setDirection((previous) => (previous === "across" ? "down" : "across"));
     }
+  };
+
+  const clearWord = () => {
+    if (!currentWord) return;
+    void writeLetters(
+      Array.from({ length: currentWord.length ?? currentWord.text.length }, (_, index) => ({
+        x: currentWord.direction === "across" ? currentWord.x + index : currentWord.x,
+        y: currentWord.direction === "down" ? currentWord.y + index : currentWord.y,
+        char: "",
+      })),
+    );
   };
 
   const replaceWord = (word: string) => {
@@ -430,10 +550,31 @@ export function GridEditor({ gridId }: { gridId: number }) {
           </div>
 
           {mode === "lettres" && (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Cliquez une case et tapez. <kbd className="rounded border px-1">Tab</kbd> change de sens,
-              les flèches déplacent le curseur. Chaque lettre est enregistrée aussitôt.
-            </p>
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => void undo()} disabled={past.length === 0}>
+                  <Undo2 className="mr-1 h-4 w-4" />
+                  Annuler
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void redo()} disabled={future.length === 0}>
+                  <Redo2 className="mr-1 h-4 w-4" />
+                  Rétablir
+                </Button>
+                {past.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {past.length} modification{past.length > 1 ? "s" : ""} depuis l&apos;ouverture
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Cliquez une case et tapez. <kbd className="rounded border px-1">Tab</kbd> change de sens,
+                les flèches déplacent le curseur,{" "}
+                <kbd className="rounded border px-1">Retour arrière</kbd> efface en remontant et{" "}
+                <kbd className="rounded border px-1">Suppr</kbd> efface sur place. Chaque lettre est
+                enregistrée aussitôt ; <kbd className="rounded border px-1">Ctrl</kbd>+
+                <kbd className="rounded border px-1">Z</kbd> annule.
+              </p>
+            </div>
           )}
 
           {/* Les rendus de l'export : hors cadre mais mis en page, sinon le PDF ne mesure rien */}
@@ -452,6 +593,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
               word={currentWord}
               crossing={crossingWord}
               onReplace={replaceWord}
+              onClear={clearWord}
               unknownWords={content.unknown_words ?? []}
             />
           ) : (
@@ -477,6 +619,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
                       onChange={(event) =>
                         setDefinitions((state) => ({ ...state, [clueKey(selectedClue)]: event.target.value }))
                       }
+                      onBlur={flush}
                       onKeyDown={(event) => {
                         if (event.key === "Tab" || event.key === "Enter") {
                           event.preventDefault();
@@ -548,6 +691,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
               placeholder="Idées, mots à caser, thème, où vous en êtes…"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              onBlur={flush}
               className="mt-2 w-full resize-y rounded-md border bg-transparent p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <p className="mt-1 text-xs text-muted-foreground">

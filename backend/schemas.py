@@ -168,8 +168,9 @@ class GridCellEdit(ApiModel):
     """Une lettre posée à la main. Le reste de la grille s'en déduit ([ADR 0012])."""
     x: Annotated[int, Field(ge=0, le=19)]
     y: Annotated[int, Field(ge=0, le=19)]
-    # Une seule lettre, majuscule et sans accent : c'est la forme dans laquelle le moteur travaille
-    char: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]$")]
+    # Une lettre majuscule sans accent — la forme dans laquelle le moteur travaille — ou **rien**,
+    # pour effacer la case : un trou est un état de travail, pas une anomalie (ADR 0012).
+    char: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]?$")]
 
 
 class GridUpdateRequest(ApiModel):
@@ -191,6 +192,8 @@ class SlotRef(ApiModel):
     x: Annotated[int, Field(ge=0, le=19)]
     y: Annotated[int, Field(ge=0, le=19)]
     direction: Literal["across", "down"]
+    # Garder les lettres déjà posées (on comble les trous) ou proposer de remplacer tout le mot
+    keep_letters: StrictBool = True
 
 
 class DifficultyRequest(ApiModel):

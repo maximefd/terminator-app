@@ -153,18 +153,44 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await expect(page.getByText(/hors lexique/)).toBeVisible();
   await expect(page.getByRole("button", { name: /^Ajouter$/ }).first()).toBeVisible();
 
-  // Les propositions ne cassent aucun croisement : en cliquer une réécrit le mot entier
+  // Les propositions ne cassent aucun croisement : en cliquer une réécrit le mot entier.
+  // « Remplacer le mot » plutôt que « combler les trous » : ici on veut un autre mot, pas le même.
   await page.locator("svg rect.cursor-text").nth(2).click();
+  await page.getByRole("button", { name: "Remplacer le mot" }).click();
   const suggestion = page.locator("li > button.font-mono").first();
   await expect(suggestion).toBeVisible({ timeout: 15_000 });
   const mot = (await suggestion.textContent())?.trim() ?? "";
   await suggestion.click();
   await expect(page.locator("svg text").filter({ hasText: new RegExp(`^${mot[0]}$`) }).first()).toBeVisible();
 
+  // --- Effacer : le trou est un état de travail, pas une anomalie ---
+  await page.locator("svg rect.cursor-text").nth(4).click();
+  await page.keyboard.press("Backspace");
+  await expect(page.getByText(/Inachevé/)).toBeVisible();
+  // Le mot garde sa longueur : le trou ne raccourcit rien
+  await expect(page.getByText(/3 lettres/)).toBeVisible();
+
+  // Les propositions comblent le trou en gardant ce qui reste en place
+  await page.getByRole("button", { name: "Combler les trous" }).click();
+  const comble = page.locator("li > button.font-mono").first();
+  await expect(comble).toBeVisible({ timeout: 15_000 });
+
+  // Annuler rend la lettre effacée ; rétablir la retire de nouveau
+  await page.getByRole("button", { name: "Annuler" }).click();
+  await expect(page.getByText(/Inachevé/)).toHaveCount(0);
+  await page.getByRole("button", { name: "Rétablir" }).click();
+  await expect(page.getByText(/Inachevé/)).toBeVisible();
+  await page.getByRole("button", { name: "Annuler" }).click();
+
   // --- Le bloc-notes suit la grille ---
   await page.getByLabel("Notes").fill("Idée : thème musique");
+  // On attend l'enregistrement **des notes**, et non n'importe quel PATCH : les lettres en écrivent
+  // aussi, et attendre le mauvais rechargerait la page avant que le texte ne soit parti.
   await page.waitForResponse(
-    (response) => response.url().endsWith(`/api/grids/${gridId}`) && response.request().method() === "PATCH",
+    (response) =>
+      response.url().endsWith(`/api/grids/${gridId}`) &&
+      response.request().method() === "PATCH" &&
+      (response.request().postData() ?? "").includes("notes"),
   );
   await page.reload();
   await expect(page.getByLabel("Notes")).toHaveValue("Idée : thème musique");
