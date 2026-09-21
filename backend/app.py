@@ -86,6 +86,11 @@ def _load_config_from_env() -> dict:
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
         RATELIMIT_STORAGE_URI=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
+        # Desserrable pour les parcours end-to-end, qui créent un compte par exécution.
+        # Jamais en production : le quota y protège de la création de comptes en masse.
+        RATELIMIT_REGISTER=(
+            os.environ.get('RATELIMIT_REGISTER') if app_env != 'production' else None
+        ) or DEFAULT_SETTINGS['RATELIMIT_REGISTER'],
         LEXICON_PATH=os.environ.get('LEXICON_PATH') or None,
         LEXICON_RELOAD_INTERVAL_S=float(os.environ.get('LEXICON_RELOAD_INTERVAL_S', 30)),
     )

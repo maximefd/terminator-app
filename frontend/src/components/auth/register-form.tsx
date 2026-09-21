@@ -1,0 +1,94 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useAuth } from "@/contexts/auth-context";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
+export function RegisterForm() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
+  const { register } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await register(email, password);
+      router.push("/");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Une erreur inattendue est survenue.");
+      }
+      // La redirection démonte la page : on ne réactive le bouton qu'en cas d'échec
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <main className="flex items-center justify-center py-16 md:py-24">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          {/* On ajoute l'attribut de test ici */}
+          <CardTitle className="text-2xl" data-testid="register-title">Inscription</CardTitle>
+          <CardDescription>
+            Créez votre compte pour sauvegarder vos dictionnaires personnels.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="nom@exemple.com"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                maxLength={128}
+                aria-describedby="password-hint"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <p id="password-hint" className="text-xs text-muted-foreground">
+                8 caractères minimum.
+              </p>
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Création du compte…" : "Créer un compte"}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Vous avez déjà un compte ?{" "}
+            <Link href="/login" className="underline">
+              Se connecter
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}

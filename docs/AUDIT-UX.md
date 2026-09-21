@@ -44,6 +44,7 @@ savoir ce que le logiciel fait ni qu'il sait aussi remplir une grille entière. 
 
 | Friction | Correction |
 |---|---|
+| Aucun titre de document : l'onglet affichait l'URL, et un lecteur d'écran n'annonçait pas la page (trouvé par axe, #25) | Une page serveur porte les métadonnées, le formulaire reste un composant client |
 | Aucun état d'attente : le bouton restait cliquable pendant l'appel réseau | Bouton désactivé et libellé « Connexion en cours… » / « Création du compte… » |
 
 Le reste tient : intitulés associés, `autocomplete` correct, minimum de mot de passe annoncé, erreurs en

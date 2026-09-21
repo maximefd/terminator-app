@@ -46,3 +46,25 @@ def test_production_with_complete_configuration(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db/terminator")
 
     assert _load_config_from_env()["SQLALCHEMY_DATABASE_URI"] == "postgresql://u:p@db/terminator"
+
+
+def test_register_quota_is_adjustable_outside_production(monkeypatch):
+    """Les parcours end-to-end créent un compte par exécution : le quota doit pouvoir être desserré."""
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('RATELIMIT_REGISTER', '1000 per hour')
+    monkeypatch.setenv('APP_ENV', 'development')
+    assert _load_config_from_env()['RATELIMIT_REGISTER'] == '1000 per hour'
+
+
+def test_register_quota_stays_strict_in_production(monkeypatch):
+    """En production, le quota protège de la création de comptes en masse : pas de contournement."""
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('RATELIMIT_REGISTER', '1000 per hour')
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('SECRET_KEY', 'une-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('JWT_SECRET_KEY', 'une-autre-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://user:pass@localhost:5432/terminator')
+
+    assert _load_config_from_env()['RATELIMIT_REGISTER'] == '5 per hour'

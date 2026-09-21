@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Parcours end-to-end et accessibilité en CI (Phase 4, #25) : un travail `e2e-ci` démarre PostgreSQL et
+  l'API, puis joue les parcours Playwright (inscription, dictionnaires, génération et conservation d'une
+  grille) et **axe** sur chaque écran (WCAG A et AA). Premier verdict d'axe : les pages de connexion et
+  d'inscription n'avaient **aucun titre de document** — composants clients, elles ne pouvaient pas en
+  déclarer ; elles sont désormais une page serveur qui porte ses métadonnées.
 - Grilles conservées (Phase 4, #24) : une grille générée se garde, se retrouve et se supprime —
   `POST /api/grids`, `GET /api/grids`, `GET /api/grids/<id>`, `DELETE /api/grids/<id>`, page **Mes grilles**.
   La grille est stockée **telle qu'elle a été produite**, et non rejouée à partir de sa seed : le lexique est
@@ -113,6 +118,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- `RATELIMIT_REGISTER` se règle par variable d'environnement **hors production**, où le quota reste celui du code : les parcours end-to-end créent un compte par exécution, et le quota de production les ferait échouer dès le deuxième (#25).
 - Supprimer le dictionnaire **actif** n'en laissait aucun d'actif : la recherche et les grilles perdaient les mots personnels alors que le sélecteur en montrait toujours un. Un dictionnaire restant est réactivé aussitôt (#21).
 - La recherche par motif passe de `/` à `/search` : `/` accueille désormais la page d'accueil (#22).
 - Génération avec mots imposés : quand la requête nomme un **format**, le moteur passe au layout suivant une fois la recherche épuisée sur le courant, au lieu de s'entêter sur un unique tirage au sort. Mesuré (#73) : 6×7 à trois mots imposés de 6/20 à 11/20, et les formats à layout unique ne bougent pas d'une grille. **Sans mot imposé, les 420 trajectoires de la baseline sont identiques.** La vérification préalable porte désormais sur tous les layouts du format : un mot n'est refusé que s'il n'entre dans aucun, au lieu d'être jugé sur le layout tiré ([mesures](backend/benchmarks/README.md)).
