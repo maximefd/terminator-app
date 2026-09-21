@@ -63,9 +63,10 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | GET | `/api/layouts` | — | Catalogue des layouts : grilles et statistiques par format |
 | POST | `/api/grids/difficulty` | — | Ce que coûtent des mots imposés, **sans générer** ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
 | POST | `/api/grids/generate` | optionnelle | Génère une grille remplie, flèches comprises (`clues`) : `must_words`, `wish_words`, et les seuls dictionnaires demandés ([ADR 0011](adr/0011-dictionnaires-choisis.md)) |
-| GET / POST | `/api/grids` | ✅ | Lister ses grilles conservées (résumés) / en conserver une |
+| GET / POST | `/api/grids` | ✅ | Lister ses grilles conservées (résumés ; `?archived=true|false`) / en conserver une |
 | GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (cases, flèches, définitions) / la supprimer |
-| PATCH | `/api/grids/<id>` | ✅ | Écrire les définitions d'une grille, ou la renommer |
+| PATCH | `/api/grids/<id>` | ✅ | Définitions, notes, archivage, renommage — et **lettres corrigées à la main** (`cells`), qui font recalculer les mots ([ADR 0012](adr/0012-grille-modifiable.md)) |
+| POST | `/api/grids/<id>/suggestions` | ✅ | Les mots qui entrent à un emplacement **sans casser ses croisements** |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
@@ -103,8 +104,10 @@ erDiagram
         int width
         int height
         int seed "si connue"
-        json payload "la grille telle que produite"
-        json definitions "une définition par mot placé"
+        json payload "cases, mots, flèches — modifiable à la main"
+        json definitions "une définition par emplacement (clé x-y-sens)"
+        text notes "bloc-notes de l'auteur"
+        bool archived "rangée hors de la liste de travail"
         datetime date_creation
         int user_id
     }
@@ -112,7 +115,7 @@ erDiagram
 
 Le **dictionnaire commun (DELA)** n'est pas en base : il est lu depuis `backend/dela_clean.csv` et chargé en mémoire au démarrage de l'API (voir [LEXICON.md](LEXICON.md)).
 
-Le schéma évolue par **migrations Alembic** (`backend/migrations/`, [ADR 0010](adr/0010-migrations-de-schema.md)) : l'API applique les révisions en attente au démarrage, et `db.create_all()` ne subsiste que pour les tests. Une grille conservée garde son contenu en JSON plutôt que ses paramètres : le lexique est curé au fil des semaines, la même seed ne redonnerait pas la même grille plus tard.
+Le schéma évolue par **migrations Alembic** (`backend/migrations/`, [ADR 0010](adr/0010-migrations-de-schema.md)) : l'API applique les révisions en attente au démarrage, et `db.create_all()` ne subsiste que pour les tests. Une grille conservée garde son contenu en JSON plutôt que ses paramètres : le lexique est curé au fil des semaines, la même seed ne redonnerait pas la même grille plus tard. Et depuis l'[ADR 0012](adr/0012-grille-modifiable.md), elle n'est plus le procès-verbal d'une génération mais un **document** : l'auteur y corrige des lettres, et les mots se recalculent à partir de la grille — les emplacements, eux, ne bougent jamais.
 
 ### Parcours d'une génération
 
@@ -144,7 +147,8 @@ sequenceDiagram
 | `src/app/page.tsx` | Accueil : ce qu'est Terminator, ses trois usages, mode invité |
 | `src/app/search/page.tsx` | Recherche par motif (+ panneau des dictionnaires si connecté) |
 | `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
-| `src/app/grids/`, `grids/[id]/` | Grilles conservées, et l'éditeur de définitions avec son export PDF |
+| `src/app/grids/` | Grilles conservées : recherche, filtres, archivage |
+| `src/app/grids/[id]/` | L'éditeur : définitions, correction des lettres, notes, export PDF |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
 | `src/app/legal`, `privacy` | Mentions légales, confidentialité |

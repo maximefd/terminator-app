@@ -79,9 +79,14 @@ class SavedGrid(db.Model):
     # La seed de génération, quand elle est connue : elle sert à retrouver l'origine d'une grille
     seed = db.Column(db.Integer, nullable=True)
     payload = db.Column(db.JSON, nullable=False)
-    # Définition de chaque mot, par clé « MOT-x-y-direction ». Séparée du payload : on la modifie
-    # au fil de la frappe, la grille elle-même ne bouge plus.
+    # Définition de chaque mot, par clé « x-y-direction » — la **position**, jamais le texte : une
+    # lettre corrigée à la main renomme le mot, et une clé fondée sur le texte laisserait sa
+    # définition orpheline ([ADR 0012](docs/adr/0012-grille-modifiable.md)).
     definitions = db.Column(db.JSON, nullable=False, default=dict, server_default=db.text("'{}'"))
+    # Bloc-notes de l'auteur : les idées viennent avant les définitions, et rarement en une fois
+    notes = db.Column(db.Text, nullable=False, default="", server_default="")
+    # Archivée : rangée hors de la liste courante, jamais supprimée
+    archived = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     date_creation = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -107,6 +112,8 @@ class SavedGrid(db.Model):
             'word_count': len(words),
             'must_words': self.payload.get('must_words', []) if isinstance(self.payload, dict) else [],
             'defined_count': len(self.definitions or {}),
+            'archived': self.archived,
+            'has_notes': bool((self.notes or "").strip()),
             'date_creation': self.date_creation.isoformat() if self.date_creation else None,
         }
 
@@ -115,4 +122,5 @@ class SavedGrid(db.Model):
         # si bien qu'une grille conservée avant leur arrivée en reçoit aussi (#26).
         grid = dict(self.payload) if isinstance(self.payload, dict) else {}
         grid['clues'] = clues_from_grid_data(grid.get('cells', []), grid.get('words', []))
-        return {**self.summary(), 'grid': grid, 'definitions': self.definitions or {}}
+        return {**self.summary(), 'grid': grid, 'definitions': self.definitions or {},
+                'notes': self.notes or ""}

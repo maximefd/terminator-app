@@ -11,8 +11,10 @@ export type PlacedWord = {
   x: number;
   y: number;
   direction: "across" | "down";
-  /** « must », « wish » ou « common » : d'où vient ce mot */
+  /** « must », « wish », « common » — ou « manuel » quand l'auteur l'a corrigé lui-même */
   source: string;
+  /** Connu du lexique ou d'un dictionnaire de l'auteur. Absent tant que la grille n'est pas conservée. */
+  in_lexicon?: boolean;
 };
 
 export type GridData = {

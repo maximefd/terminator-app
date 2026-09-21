@@ -81,7 +81,7 @@ Chaque PR est rattachée à un milestone (une phase de la [roadmap](docs/ROADMAP
     **relire la révision produite** — l'auto-détection voit un renommage comme une colonne supprimée et une
     autre créée, ce qui perdrait les données. Les tests, eux, tournent sur `db.create_all()` : un modèle ajouté
     sans migration y passerait inaperçu.
-- **Moteur** : pas d'import Flask ni base de données dans `backend/engine/`, aléatoire uniquement via le générateur seedé, budget temps respecté ([ADR 0002](docs/adr/0002-moteur-pur-et-deterministe.md)).
+- **Moteur** : pas d'import Flask ni base de données dans `backend/engine/` — y compris `arrows.py` et `grid_edit.py`, qui reçoivent ce qu'ils doivent savoir (une fonction « est-ce un mot ? » plutôt que le lexique lui-même), aléatoire uniquement via le générateur seedé, budget temps respecté ([ADR 0002](docs/adr/0002-moteur-pur-et-deterministe.md)).
 - **Frontend** :
   - appels API uniquement via `apiFetch` (`src/lib/api-client.ts`) ;
   - composants shadcn/ui dans `src/components/ui/` ;

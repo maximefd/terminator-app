@@ -115,6 +115,22 @@ Deux réserves sur ce tableau : il est mesuré sur le DELA brut, alors que l'API
 
 Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **redémarrages** exploitent ce profil (#19) et l'**index des candidats** rend chaque essai 2 à 6 fois plus rapide (#20). Surtout, les grilles de plus de 30 mots n'aboutissaient **jamais** à cause d'un bug de la validation croisée : les mots encore en cours d'écriture devaient déjà exister au dictionnaire (#57, voir `backend/benchmarks/README.md`). Enfin, le seuil du forward checking est passé de 3 à 2 : à 3, les grilles de plus de 60 mots arrivaient à deux mots de la fin sans pouvoir conclure (#61). Et le plafond de candidats est passé de 100 à 300, ce qui accélère sans rien changer au taux de succès.
 
+## Autour du solveur
+
+Deux modules purs complètent le moteur, sans rien connaître de Flask ni de la base :
+
+- `engine/arrows.py` — **où va la définition de chaque mot, et par où sort sa flèche**. Les layouts
+  ne les encodent pas ([ADR 0006](adr/0006-format-des-layouts.md)) : un mot horizontal se définit
+  depuis la case à sa gauche, un vertical depuis celle du dessus, et le long des bords la flèche se
+  coude. Mesuré sur les 21 layouts et 821 mots du catalogue : aucun mot sans case où se définir,
+  jamais plus de deux définitions par case, et jamais deux du même côté — c'est cet invariant qui
+  permet de couper une case en deux moitiés sans arbitrage, et les tests le vérifient layout par
+  layout.
+- `engine/grid_edit.py` — **la retouche manuelle** ([ADR 0012](adr/0012-grille-modifiable.md)). Les
+  lettres font foi, les mots se recalculent, les emplacements ne bougent jamais. Il sait aussi dire,
+  case par case, quelles lettres laissent le mot perpendiculaire valide : c'est la cohérence d'arc du
+  solveur ramenée à un seul emplacement, et c'est ce qui alimente les propositions de remplacement.
+
 ## Limites connues
 
 | Limite | Conséquence | Prévu |
@@ -122,5 +138,5 @@ Cinq changements ont mené là. Le 11×6 était « vite ou jamais » : les **red
 | **Mots obligatoires** : c'est la **longueur** des mots qui décide. Trois mots de 6 lettres au plus réussissent 67 % du temps, contre 39 % sans plafond ; un seul mot imposé, 92 % | Un mot long ou portant une lettre rare (`TAQUINER`, `BIBLIOTHEQUES`) peut n'aboutir sur aucune grille | [#73](https://github.com/maximefd/terminator-app/issues/73). Les échecs sont surtout des mots **non placés**, pas des dépassements de budget : allonger le temps n'y changerait rien. Le changement de layout améliore le cas où le format compte plusieurs layouts, sans résoudre le fond |
 | **Qualité des mots** : un tiers des mots placés sont absents de tout corpus | Grilles avec des formes rares | Le tri par fréquence les ramène à 17 %, mais fait échouer les grandes grilles : disponible par requête (`frequency_mode: "exact"`), pas par défaut. Le vrai levier reste la **curation du lexique** |
 | Dictionnaire trop large (formes fléchies rares) | Grilles pleines de mots peu naturels | Phase 1 : lexique curé |
-| Pas de flèches ni de définitions | Rendu « mots croisés » plutôt que « mots fléchés » | Phase 5 |
+| Une grille retouchée à la main peut contenir des mots hors lexique | Le moteur ne les aurait pas placés ; l'auteur, si | Voulu : les mots sont signalés, jamais refusés ([ADR 0012](adr/0012-grille-modifiable.md)) |
 | Première génération après le chargement d'un lexique : construction de l'index (1,4 s sur le DELA complet, puis 0,3 s par génération) | Première génération un peu plus lente | Construire l'index au chargement du lexique si besoin |

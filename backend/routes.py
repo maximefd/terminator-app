@@ -3,12 +3,13 @@
 import unicodedata
 from datetime import datetime
 
-from flask import Blueprint, abort, jsonify, current_app
+from flask import Blueprint, abort, jsonify, current_app, request
 from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord, SavedGrid
 from engine.difficulty import request_difficulty
+from engine.grid_edit import allowed_letters, apply_letters, cells_of_slot, slot_at, words_from_cells
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
 from schemas import (
@@ -18,6 +19,7 @@ from schemas import (
     GenerateRequest,
     GridUpdateRequest,
     SaveGridRequest,
+    SlotRef,
     SearchRequest,
     WordCreateRequest,
     parse_body,
@@ -344,22 +346,103 @@ def save_grid():
     return jsonify(saved.summary()), 201
 
 
+def known_words(user, words: set[str]) -> set[str]:
+    """Parmi ces mots, ceux que l'auteur peut considérer comme connus : le lexique, plus les siens.
+
+    Un mot qu'il a lui-même ajouté à un dictionnaire n'a pas à être signalé comme inconnu — c'est
+    précisément là qu'il range ce que le lexique n'a pas.
+    """
+    dela_trie = current_app.dela_trie
+    known = {word for word in words if dela_trie and word in dela_trie.words}
+    reste = words - known
+    if user and reste:
+        personnels = (PersonalWord.query
+                      .join(Dictionary, PersonalWord.dictionary_id == Dictionary.id)
+                      .filter(Dictionary.user_id == user.id, PersonalWord.mot.in_(reste))
+                      .all())
+        known |= {word.mot for word in personnels}
+    return known
+
+
+def annotated_grid(user, grid: SavedGrid) -> dict:
+    """La grille, ses flèches, et ce que le lexique dit de chacun de ses mots."""
+    data = grid.to_json()
+    textes = {word["text"] for word in data["grid"].get("words", [])}
+    connus = known_words(user, textes)
+    for word in data["grid"]["words"]:
+        word["in_lexicon"] = word["text"] in connus
+    data["grid"]["unknown_words"] = sorted(textes - connus)
+    return data
+
+
 @main_bp.route('/grids', methods=['GET'])
 @jwt_required()
 def list_grids():
-    """Les grilles conservées, la plus récente d'abord, sans leurs cases."""
+    """Les grilles conservées, la plus récente d'abord, sans leurs cases.
+
+    Les archivées sont écartées par défaut : elles restent en base, hors de la liste de travail.
+    """
     user = get_current_user()
-    grids = (SavedGrid.query
-             .filter_by(user_id=user.id)
-             .order_by(SavedGrid.date_creation.desc(), SavedGrid.id.desc())
-             .all())
+    query = SavedGrid.query.filter_by(user_id=user.id)
+    archived = request.args.get('archived')
+    if archived in ('true', 'false'):
+        query = query.filter(SavedGrid.archived.is_(archived == 'true'))
+    grids = query.order_by(SavedGrid.date_creation.desc(), SavedGrid.id.desc()).all()
     return jsonify([grid.summary() for grid in grids]), 200
 
 
 @main_bp.route('/grids/<int:grid_id>', methods=['GET'])
 @jwt_required()
 def get_grid(grid_id):
-    return jsonify(get_owned_grid(get_current_user(), grid_id).to_json()), 200
+    user = get_current_user()
+    return jsonify(annotated_grid(user, get_owned_grid(user, grid_id))), 200
+
+
+@main_bp.route('/grids/<int:grid_id>/suggestions', methods=['POST'])
+@jwt_required()
+def grid_suggestions(grid_id):
+    """Les mots qui entreraient à cet emplacement **sans casser ses croisements** (ADR 0012).
+
+    C'est la cohérence d'arc du solveur ramenée à un seul emplacement : on calcule d'abord, case par
+    case, les lettres qui laissent le mot perpendiculaire valide, puis on ne garde que les mots du
+    lexique qui les respectent toutes. Proposer un mot qui casse un croisement ne rendrait service
+    à personne.
+    """
+    user = get_current_user()
+    grid = get_owned_grid(user, grid_id)
+    payload = parse_body(SlotRef)
+    dela_trie = current_app.dela_trie
+    if not dela_trie:
+        return jsonify({"error": "Dictionnaire principal non disponible."}), 503
+
+    cells = (grid.payload or {}).get("cells", [])
+    slot = slot_at(cells, payload.x, payload.y, payload.direction)
+    if slot is None:
+        return jsonify({"error": "Aucun mot ne passe par cette case dans ce sens."}), 404
+
+    allowed = allowed_letters(cells, slot, lambda word: word in dela_trie.words)
+    # Une case sans croisement n'impose rien : elle reste un joker dans le motif
+    motif = "".join(next(iter(lettres)) if len(lettres) == 1 else "?" for lettres in allowed)
+
+    limite = current_app.config['MAX_SUGGESTIONS']
+    candidats = dela_trie.search_pattern(motif, limit=limite * 20)
+    retenus = [
+        mot for mot in candidats
+        if all(not lettres or mot[i] in lettres for i, lettres in enumerate(allowed))
+    ]
+    # Les mots les plus courants d'abord : ce sont ceux qu'un lecteur reconnaîtra
+    retenus.sort(key=lambda mot: (-dela_trie.frequency(mot), mot))
+
+    return jsonify({
+        "pattern": motif,
+        "allowed": ["".join(sorted(lettres)) for lettres in allowed],
+        "words": retenus[:limite],
+        "truncated": len(retenus) > limite,
+        "current": "".join(
+            cell.get("char", "") for position in cells_of_slot(slot)
+            for cell in cells if (cell["x"], cell["y"]) == position
+        ),
+    }), 200
 
 
 @main_bp.route('/grids/<int:grid_id>', methods=['PATCH'])
@@ -374,8 +457,25 @@ def update_grid(grid_id):
     if payload.definitions is not None:
         # Une définition vidée disparaît : on ne garde pas de chaînes vides en base
         grid.definitions = {key: text for key, text in payload.definitions.items() if text}
+    if payload.notes is not None:
+        grid.notes = payload.notes
+    if payload.archived is not None:
+        grid.archived = payload.archived
+
+    if payload.cells is not None:
+        contenu = dict(grid.payload or {})
+        cells, problemes = apply_letters(contenu.get("cells", []),
+                                         [edit.model_dump() for edit in payload.cells])
+        if problemes:
+            return jsonify({"error": "Modification refusée.", "details": problemes}), 400
+        contenu["cells"] = cells
+        # Les mots se recalculent depuis les lettres : c'est la règle de l'ADR 0012
+        contenu["words"] = words_from_cells(cells, contenu.get("words"))
+        grid.payload = contenu
 
     db.session.commit()
+    if payload.cells is not None:
+        return jsonify(annotated_grid(get_current_user(), grid)), 200
     return jsonify(grid.summary()), 200
 
 

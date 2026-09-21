@@ -5,6 +5,18 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Retouche d'une grille conservée ([ADR 0012](docs/adr/0012-grille-modifiable.md)) : l'auteur change une
+  lettre à la main — le `O` de PORTE devient un `E` — et **les mots se recalculent** à partir de la grille.
+  Une lettre appartenant toujours à deux mots, la correction en touche deux ; les emplacements, eux, ne
+  bougent jamais. Le résultat est **vérifié sans être censuré** : un mot absent du lexique est souligné
+  dans la grille, listé dans le panneau, et posé quand même — avec un bouton pour le ranger dans le
+  dictionnaire de son choix. `POST /api/grids/<id>/suggestions` propose les mots qui entrent à un
+  emplacement **sans casser ses croisements** : c'est la cohérence d'arc du solveur ramenée à une case.
+- Bloc-notes par grille : les idées viennent avant les définitions, et rarement en une fois. Enregistré au
+  fil de la frappe, comme les définitions.
+- Grilles conservées à l'échelle : recherche par nom, filtres (format, définitions complètes ou non,
+  archivées), tri, et **archivage** — une grille rangée sort de la liste de travail sans quitter la base.
+  L'affichage passe en cartes, chacune montrant l'avancement de ses définitions.
 - Définitions composées comme dans les magazines (#27) : **capitales accentuées**, centrées, en gras —
   le gras se coupe d'un bouton, et le réglage vaut pour l'écran comme pour le PDF. La coupe des lignes
   suit la mesure : une capitale d'Archivo Narrow fait **0,64 em** contre 0,42 en bas de casse, et une
@@ -151,6 +163,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- La clé d'une définition est désormais la **position** de son emplacement (`1-2-across`) et non le texte
+  du mot (`PORTE-1-2-across`) : corriger une lettre renomme le mot, et une clé fondée sur le texte aurait
+  laissé la définition orpheline. Migration `0004` : les clés existantes sont réécrites.
 - **Plus aucun dictionnaire personnel n'entre de lui-même dans une grille** ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
   le dictionnaire *actif* y était versé en silence, si bien qu'une grille sur la musique héritait des mots
   de cuisine. Tous se cochent maintenant, l'actif compris — il ne sert plus qu'à la recherche par motif.

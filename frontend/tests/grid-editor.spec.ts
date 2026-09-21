@@ -99,7 +99,7 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   // L'aperçu montre la grille telle qu'elle s'imprime : définitions et flèches, sans les lettres
   await page.getByRole("button", { name: "Aperçu imprimé" }).click();
   await expect(page.locator("svg[role='img']").first().locator("tspan", { hasText: "Champion" })).toBeVisible();
-  await page.getByRole("button", { name: "Édition" }).click();
+  await page.getByRole("button", { name: "Définitions", exact: true }).click();
 
   // La page de solution ne porte ni flèche ni définition : elle sert à vérifier des lettres.
   // Les pointes de flèches sont les seuls polygones du dessin.
@@ -144,6 +144,30 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await page.getByLabel("Nom de la grille").fill("Grille renommée");
   await page.getByLabel("Nom de la grille").press("Enter");
   await expect(page.getByRole("heading", { name: "Grille renommée" })).toBeVisible();
+
+  // --- Mode lettres : corriger la grille à la main (ADR 0012) ---
+  await page.getByRole("button", { name: "Lettres" }).click();
+  // La case (1,1) porte le L de ILE : on en fait un Z, mot que le lexique ne connaît pas
+  await page.locator("svg rect.cursor-text").nth(3).click();
+  await page.keyboard.press("z");
+  await expect(page.getByText(/hors lexique/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Ajouter$/ }).first()).toBeVisible();
+
+  // Les propositions ne cassent aucun croisement : en cliquer une réécrit le mot entier
+  await page.locator("svg rect.cursor-text").nth(2).click();
+  const suggestion = page.locator("li > button.font-mono").first();
+  await expect(suggestion).toBeVisible({ timeout: 15_000 });
+  const mot = (await suggestion.textContent())?.trim() ?? "";
+  await suggestion.click();
+  await expect(page.locator("svg text").filter({ hasText: new RegExp(`^${mot[0]}$`) }).first()).toBeVisible();
+
+  // --- Le bloc-notes suit la grille ---
+  await page.getByLabel("Notes").fill("Idée : thème musique");
+  await page.waitForResponse(
+    (response) => response.url().endsWith(`/api/grids/${gridId}`) && response.request().method() === "PATCH",
+  );
+  await page.reload();
+  await expect(page.getByLabel("Notes")).toHaveValue("Idée : thème musique");
 
   const workFile = page.waitForEvent("download");
   await page.getByRole("button", { name: "Fichier de travail" }).click();

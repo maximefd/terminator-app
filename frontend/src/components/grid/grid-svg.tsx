@@ -31,7 +31,7 @@ export type Clue = {
  * - `solution` : les lettres seules. Ni flèche ni définition : une page de solutions sert à
  *   vérifier des lettres, le reste l'encombre.
  */
-export type GridVariant = "edition" | "vierge" | "solution";
+export type GridVariant = "edition" | "lettres" | "vierge" | "solution";
 
 const CELL = 100;
 /** Trait fin à l'intérieur, trait fort autour : c'est ce qui donne l'allure imprimée. */
@@ -51,6 +51,7 @@ const PAPER = {
   arrow: "#1b1b1b",
   selected: "#ffd98a",
   highlight: "#fff4dc",
+  unknown: "#d4403a",
   must: "#dce7ff",
   wish: "#dcf0e2",
 };
@@ -102,8 +103,13 @@ function arrowShape(arrow: string, halfOffset: number) {
   }
 }
 
-export const clueKey = (clue: Pick<Clue, "text" | "x" | "y" | "direction">) =>
-  `${clue.text}-${clue.x}-${clue.y}-${clue.direction}`;
+/**
+ * Clé d'une définition : la **position** du mot et son sens, jamais son texte. Une lettre corrigée
+ * à la main renomme le mot ; une clé fondée sur le texte laisserait sa définition orpheline
+ * ([ADR 0012](docs/adr/0012-grille-modifiable.md)).
+ */
+export const clueKey = (clue: Pick<Clue, "x" | "y" | "direction">) =>
+  `${clue.x}-${clue.y}-${clue.direction}`;
 
 /** Les cases qu'occupe un mot : de quoi éclairer, pendant l'édition, celui que l'on définit. */
 function cellsOf(clue: Clue) {
@@ -125,6 +131,12 @@ type GridSvgProps = {
   cellSources?: Record<string, string>;
   /** Définitions en gras, comme dans la plupart des magazines. */
   boldDefinitions?: boolean;
+  /** Mode lettres : la case en cours de correction, et le mot qu'elle traverse. */
+  selectedCell?: { x: number; y: number } | null;
+  onSelectCell?: (cell: { x: number; y: number }) => void;
+  litCells?: string[];
+  /** Mots absents du lexique : soulignés dans la grille, pour qu'on les voie sans lire la liste. */
+  unknownCells?: string[];
 };
 
 export function GridSvg({
@@ -135,10 +147,15 @@ export function GridSvg({
   onSelect,
   cellSources,
   boldDefinitions = true,
+  selectedCell,
+  onSelectCell,
+  litCells,
+  unknownCells,
 }: GridSvgProps) {
   const clues = grid.clues ?? [];
   const showLetters = variant !== "vierge";
   const showClues = variant !== "solution";
+  const letterMode = variant === "lettres";
   const letters = new Map(
     grid.cells.filter((cell) => !cell.is_black).map((cell) => [`${cell.x}-${cell.y}`, cell.char]),
   );
@@ -155,11 +172,14 @@ export function GridSvg({
 
   const selectedClue = clues.find((clue) => clueKey(clue) === selectedKey) ?? null;
   const lit = new Set(
-    selectedClue && variant === "edition" ? cellsOf(selectedClue).map((cell) => `${cell.x}-${cell.y}`) : [],
+    litCells ??
+      (selectedClue && variant === "edition" ? cellsOf(selectedClue).map((cell) => `${cell.x}-${cell.y}`) : []),
   );
+  const unknown = new Set(unknownCells ?? []);
 
   const fillOf = (cell: { x: number; y: number; is_black: boolean }) => {
     if (cell.is_black) return PAPER.definition;
+    if (selectedCell && selectedCell.x === cell.x && selectedCell.y === cell.y) return PAPER.selected;
     if (lit.has(`${cell.x}-${cell.y}`)) return PAPER.highlight;
     if (variant !== "vierge") return SOURCE_TINT[cellSources?.[`${cell.x}-${cell.y}`] ?? ""] ?? PAPER.cell;
     return PAPER.cell;
@@ -186,6 +206,22 @@ export function GridSvg({
           strokeWidth={LINE}
         />
       ))}
+
+      {/* Mots hors lexique : un trait sous la case, visible sans lire la liste */}
+      {unknown.size > 0 &&
+        grid.cells
+          .filter((cell) => !cell.is_black && unknown.has(`${cell.x}-${cell.y}`))
+          .map((cell) => (
+            <line
+              key={`inconnu-${cell.x}-${cell.y}`}
+              x1={cell.x * CELL + 8}
+              y1={cell.y * CELL + CELL - 7}
+              x2={cell.x * CELL + CELL - 8}
+              y2={cell.y * CELL + CELL - 7}
+              stroke={PAPER.unknown}
+              strokeWidth={LINE * 1.6}
+            />
+          ))}
 
       {showLetters &&
         grid.cells
@@ -285,6 +321,23 @@ export function GridSvg({
               </g>
             );
           })}
+
+      {letterMode &&
+        onSelectCell &&
+        grid.cells
+          .filter((cell) => !cell.is_black)
+          .map((cell) => (
+            <rect
+              key={`clic-${cell.x}-${cell.y}`}
+              x={cell.x * CELL}
+              y={cell.y * CELL}
+              width={CELL}
+              height={CELL}
+              fill="transparent"
+              className="cursor-text"
+              onClick={() => onSelectCell({ x: cell.x, y: cell.y })}
+            />
+          ))}
 
       {/* Le cadre extérieur par-dessus tout : c'est lui qui ferme la grille */}
       <rect

@@ -25,6 +25,8 @@ DEFAULT_SETTINGS = dict(
     # Garde-fou, pas quota d'usage : l'auteur ne doit jamais s'y heurter. Il existe pour le jour où
     # d'autres comptes écriront dans la même base.
     MAX_GRIDS_PER_USER=1000,
+    # Mots proposés pour un emplacement : au-delà, la liste ne s'examine plus
+    MAX_SUGGESTIONS=40,
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
     TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
     RATELIMIT_ENABLED=True,
