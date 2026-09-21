@@ -3,6 +3,9 @@ allowBuilds:
   '@tailwindcss/oxide': true
   sharp: true
   unrs-resolver: true
+  # Refusé sciemment : le script d'installation de core-js (dépendance transitive de jspdf) ne fait
+  # qu'afficher un message. Sans cette ligne, pnpm arrête l'installation en CI (ERR_PNPM_IGNORED_BUILDS).
+  core-js: false
 
 # Versions corrigées de dépendances transitives de next 15.5.25 (#7) : next fige postcss 8.4.31
 # (qui tire nanoid 3.3.11) et accepte sharp ^0.35.4. À retirer lors du passage à une version de next
