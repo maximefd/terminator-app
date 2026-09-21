@@ -28,6 +28,22 @@ export type Clue = {
 const CELL = 100;
 const STROKE = 3;
 
+/**
+ * Couleurs fixes, et non des variables CSS : une grille de mots fléchés est un objet imprimé.
+ * Elle doit avoir l'air du papier dans les deux thèmes, et le convertisseur PDF ne saurait de
+ * toute façon pas résoudre un `var()`.
+ */
+const PAPER = {
+  cell: "#ffffff",
+  definition: "#e8e8e6",
+  line: "#1b1b1b",
+  letter: "#111111",
+  arrow: "#1b1b1b",
+  selected: "#c9defc",
+  must: "#dbe7ff",
+  wish: "#dcf3e4",
+};
+
 /** Profondeur de la flèche dans la case voisine, et longueur de sa pointe. */
 const IN = 15;
 const TIP = 15;
@@ -81,8 +97,8 @@ type GridSvgProps = {
 };
 
 const SOURCE_TINT: Record<string, string> = {
-  must: "var(--grid-must, #dbe7ff)",
-  wish: "var(--grid-wish, #dcf3e4)",
+  must: PAPER.must,
+  wish: PAPER.wish,
 };
 
 export const clueKey = (clue: Pick<Clue, "text" | "x" | "y" | "direction">) =>
@@ -123,11 +139,11 @@ export function GridSvg({ grid, mode = "remplie", definitions, selectedKey, onSe
           height={CELL}
           fill={
             cell.is_black
-              ? "var(--grid-definition, #e6e6e6)"
+              ? PAPER.definition
               : (mode === "remplie" && SOURCE_TINT[cellSources?.[`${cell.x}-${cell.y}`] ?? ""]) ||
-                "var(--grid-cell, #ffffff)"
+                PAPER.cell
           }
-          stroke="var(--grid-line, #222222)"
+          stroke={PAPER.line}
           strokeWidth={STROKE}
         />
       ))}
@@ -145,7 +161,8 @@ export function GridSvg({ grid, mode = "remplie", definitions, selectedKey, onSe
               dominantBaseline="central"
               fontSize={CELL * 0.6}
               fontWeight="600"
-              fill="var(--grid-letter, #111111)"
+              fontFamily="Helvetica, Arial, sans-serif"
+              fill={PAPER.letter}
             >
               {letters.get(`${cell.x}-${cell.y}`)}
             </text>
@@ -162,7 +179,7 @@ export function GridSvg({ grid, mode = "remplie", definitions, selectedKey, onSe
           <g key={`def-${cell.x}-${cell.y}`}>
             {split && (
               <line x1={x} y1={y + CELL / 2} x2={x + CELL} y2={y + CELL / 2}
-                    stroke="var(--grid-line, #222222)" strokeWidth={STROKE / 2} />
+                    stroke={PAPER.line} strokeWidth={STROKE / 2} />
             )}
 
             {clueList.map((clue) => {
@@ -179,19 +196,21 @@ export function GridSvg({ grid, mode = "remplie", definitions, selectedKey, onSe
                   {onSelect && (
                     <rect
                       x={x} y={boxY} width={CELL} height={boxHeight}
-                      fill={selectedKey === key ? "var(--grid-selected, #cfe3ff)" : "transparent"}
+                      fill={selectedKey === key ? PAPER.selected : "transparent"}
                       className="cursor-pointer"
                       onClick={() => onSelect(key)}
                     />
                   )}
                   {shape && (
-                    <g transform={`translate(${x} ${y})`} fill="var(--grid-arrow, #222222)"
-                       stroke="var(--grid-arrow, #222222)" strokeWidth={STROKE + 1}>
+                    <g transform={`translate(${x} ${y})`} fill={PAPER.arrow}
+                       stroke={PAPER.arrow} strokeWidth={STROKE + 1}>
                       <path d={shape.d} fill="none" strokeLinecap="round" strokeLinejoin="round" />
                       <polygon points={shape.head} stroke="none" />
                     </g>
                   )}
-                  {text && <ClueText text={text} x={x} y={boxY} height={boxHeight} />}
+                  {text && (
+                    <ClueText text={text} x={x} y={boxY} height={boxHeight} arrow={clue.arrow} />
+                  )}
                 </g>
               );
             })}
@@ -202,10 +221,28 @@ export function GridSvg({ grid, mode = "remplie", definitions, selectedKey, onSe
   );
 }
 
-/** Une définition tient rarement sur une ligne : on la coupe en lignes qui entrent dans sa moitié de case. */
-function ClueText({ text, x, y, height }: { text: string; x: number; y: number; height: number }) {
-  const maxLines = height > CELL / 2 ? 4 : 2;
-  const perLine = 11;
+/**
+ * Une définition tient rarement sur une ligne : on la coupe en lignes qui entrent dans sa moitié de case.
+ *
+ * La coupe est calculée pour la police la plus large des deux rendus : le convertisseur PDF ne dispose
+ * pas de la police du navigateur, et un texte juste à la bonne largeur à l'écran débordait sur le papier.
+ */
+function ClueText({
+  text, x, y, height, arrow,
+}: { text: string; x: number; y: number; height: number; arrow: string | null }) {
+  // La flèche traverse la case : le texte se serre dans ce qu'elle laisse, et le côté dépend de la
+  // flèche — la coudée d'un mot collé au bord gauche descend le long de la gauche, pas de la droite.
+  const half = height <= CELL / 2;
+  const reserved = { left: 0, right: 0, bottom: 0 };
+  if (arrow === "coudee_bas_droite") reserved.left = 34;
+  else if (arrow === "bas") { if (half) reserved.right = 40; else reserved.bottom = 30; }
+  else reserved.right = 30;
+
+  const fontSize = half ? CELL * 0.13 : CELL * 0.14;
+  const usable = CELL - reserved.left - reserved.right;
+  // Largeur d'un caractère estimée au plus large des deux rendus (le PDF n'a pas la police de l'écran)
+  const perLine = Math.max(6, Math.floor((usable * 0.92) / (0.55 * fontSize)));
+  const maxLines = Math.max(2, Math.floor((height - reserved.bottom) / (fontSize * 1.2)));
   const words = text.split(" ");
   const lines: string[] = [];
   let current = "";
@@ -219,13 +256,15 @@ function ClueText({ text, x, y, height }: { text: string; x: number; y: number; 
   }
   if (current) lines.push(current);
   const shown = lines.slice(0, maxLines);
-  const fontSize = height > CELL / 2 ? CELL * 0.17 : CELL * 0.15;
-  const startY = y + height / 2 - ((shown.length - 1) * fontSize * 1.15) / 2;
+  const centerX = x + reserved.left + usable / 2;
+  const centerY = y + (height - reserved.bottom) / 2;
+  const startY = centerY - ((shown.length - 1) * fontSize * 1.15) / 2;
 
   return (
-    <text textAnchor="middle" fill="var(--grid-letter, #111111)" fontSize={fontSize}>
+    // La police est nommée explicitement : sans elle, le PDF retombe sur une serif bien plus large
+    <text textAnchor="middle" fill={PAPER.letter} fontSize={fontSize} fontFamily="Helvetica, Arial, sans-serif">
       {shown.map((line, index) => (
-        <tspan key={line + index} x={x + CELL / 2} y={startY + index * fontSize * 1.15}>
+        <tspan key={line + index} x={centerX} y={startY + index * fontSize * 1.15}>
           {line}
         </tspan>
       ))}

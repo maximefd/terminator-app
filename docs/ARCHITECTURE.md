@@ -64,7 +64,8 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | POST | `/api/grids/difficulty` | — | Ce que coûtent des mots imposés, **sans générer** ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
 | POST | `/api/grids/generate` | optionnelle | Génère une grille remplie (avec ses flèches : champ `clues`) (`must_words`, `wish_words`, `wish_dictionary_ids`, dictionnaire personnel actif) |
 | GET / POST | `/api/grids` | ✅ | Lister ses grilles conservées (résumés) / en conserver une |
-| GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (avec ses cases) / la supprimer |
+| GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (cases, flèches, définitions) / la supprimer |
+| PATCH | `/api/grids/<id>` | ✅ | Écrire les définitions d'une grille, ou la renommer |
 | DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
@@ -103,6 +104,7 @@ erDiagram
         int height
         int seed "si connue"
         json payload "la grille telle que produite"
+        json definitions "une définition par mot placé"
         datetime date_creation
         int user_id
     }
@@ -142,6 +144,7 @@ sequenceDiagram
 | `src/app/page.tsx` | Accueil : ce qu'est Terminator, ses trois usages, mode invité |
 | `src/app/search/page.tsx` | Recherche par motif (+ panneau des dictionnaires si connecté) |
 | `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
+| `src/app/grids/`, `grids/[id]/` | Grilles conservées, et l'éditeur de définitions avec son export PDF |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
 | `src/app/legal`, `privacy` | Mentions légales, confidentialité |

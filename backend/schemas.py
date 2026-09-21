@@ -155,6 +155,23 @@ class SaveGridRequest(ApiModel):
     grid: GridPayload
 
 
+# Clé d'une définition : le mot, sa position et son sens — « PIANO-1-2-across »
+DEFINITION_KEY_PATTERN = rf"^[{LETTERS}'’ -]{{2,30}}-\d{{1,2}}-\d{{1,2}}-(across|down)$"
+
+DefinitionKey = Annotated[str, StringConstraints(strip_whitespace=True, pattern=DEFINITION_KEY_PATTERN)]
+# Une définition de mots fléchés est courte par nature : elle doit tenir dans une demi-case
+DefinitionText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
+
+
+class GridUpdateRequest(ApiModel):
+    """Renommer une grille conservée, ou écrire ses définitions."""
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100, pattern=DICTIONARY_NAME_PATTERN)
+    ] | None = None
+    # Envoyées en bloc : l'écran connaît toujours l'état complet de la grille qu'il affiche
+    definitions: Annotated[dict[DefinitionKey, DefinitionText], Field(max_length=200)] | None = None
+
+
 class DifficultyRequest(ApiModel):
     """Estimation de la difficulté d'une demande, sans générer : appelée à chaque frappe."""
     must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
@@ -169,6 +186,7 @@ FIELD_LABELS = {
     "cells": "cases",
     "words": "mots",
     "layout": "mise en page",
+    "definitions": "définitions",
     "email": "e-mail",
     "password": "mot de passe",
     "name": "nom",

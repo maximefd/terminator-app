@@ -19,6 +19,7 @@ type SavedGrid = {
   seed: number | null;
   word_count: number;
   must_words: string[];
+  defined_count: number;
   date_creation: string | null;
 };
 
@@ -100,6 +101,7 @@ export function SavedGridsClientLayout() {
                   <h2 className="font-semibold">{grid.name}</h2>
                   <p className="text-sm text-muted-foreground">
                     {grid.width}×{grid.height} · mise en page {grid.layout} · {grid.word_count} mots
+                    {` · ${grid.defined_count} définition${grid.defined_count > 1 ? "s" : ""}`}
                     {grid.seed !== null && ` · seed ${grid.seed}`}
                     {grid.date_creation && ` · ${formatDate(grid.date_creation)}`}
                   </p>
@@ -116,6 +118,9 @@ export function SavedGridsClientLayout() {
                     onClick={() => setOpenId(openId === grid.id ? null : grid.id)}
                   >
                     {openId === grid.id ? "Replier" : "Voir"}
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link href={`/grids/${grid.id}`}>Définitions</Link>
                   </Button>
                   <Button
                     variant="ghost"

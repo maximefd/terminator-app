@@ -152,3 +152,62 @@ def test_quota_is_enforced(client, test_app):
         assert "1 grille conservée" in refused.get_json()["error"]
     finally:
         test_app.config["MAX_GRIDS_PER_USER"] = previous
+
+
+def test_definitions_are_written_and_read_back(client):
+    """#27 : les définitions s'écrivent au fil de la frappe, la grille elle-même ne bouge plus."""
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+
+    response = send(client, "patch", f"/api/grids/{grid_id}",
+                    {"definitions": {"AS-1-0-across": "Champion", "ILE-0-1-across": "Terre entourée d'eau"}},
+                    headers)
+
+    assert response.status_code == 200
+    assert response.get_json()["defined_count"] == 2
+    relu = client.get(f"/api/grids/{grid_id}", headers=headers).get_json()
+    assert relu["definitions"]["AS-1-0-across"] == "Champion"
+
+
+def test_an_emptied_definition_disappears(client):
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+    send(client, "patch", f"/api/grids/{grid_id}", {"definitions": {"AS-1-0-across": "Champion"}}, headers)
+
+    send(client, "patch", f"/api/grids/{grid_id}", {"definitions": {"AS-1-0-across": ""}}, headers)
+
+    assert client.get(f"/api/grids/{grid_id}", headers=headers).get_json()["definitions"] == {}
+
+
+def test_a_grid_can_be_renamed(client):
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+
+    response = send(client, "patch", f"/api/grids/{grid_id}", {"name": "Spécial musique"}, headers)
+
+    assert response.get_json()["name"] == "Spécial musique"
+
+
+@pytest.mark.parametrize("body, expected_field", [
+    ({"definitions": {"pas-une-cle": "Peu importe"}}, "definitions"),
+    ({"definitions": {"AS-1-0-across": "x" * 121}}, "definitions.AS-1-0-across"),
+])
+def test_a_malformed_definition_is_refused(client, body, expected_field):
+    headers = auth_headers(client)
+    grid_id = save(client, headers).get_json()["id"]
+
+    response = send(client, "patch", f"/api/grids/{grid_id}", body, headers)
+
+    assert response.status_code == 400
+    assert expected_field in str(response.get_json()["details"]), response.get_json()
+
+
+def test_another_account_cannot_write_definitions(client):
+    owner = auth_headers(client)
+    intruder = auth_headers(client)
+    grid_id = save(client, owner, name="Privée").get_json()["id"]
+
+    response = send(client, "patch", f"/api/grids/{grid_id}", {"definitions": {"AS-1-0-across": "Volée"}}, intruder)
+
+    assert response.status_code == 404
+    assert client.get(f"/api/grids/{grid_id}", headers=owner).get_json()["definitions"] == {}

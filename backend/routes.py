@@ -16,6 +16,7 @@ from schemas import (
     DifficultyRequest,
     DictionaryUpdateRequest,
     GenerateRequest,
+    GridUpdateRequest,
     SaveGridRequest,
     SearchRequest,
     WordCreateRequest,
@@ -351,6 +352,23 @@ def list_grids():
 @jwt_required()
 def get_grid(grid_id):
     return jsonify(get_owned_grid(get_current_user(), grid_id).to_json()), 200
+
+
+@main_bp.route('/grids/<int:grid_id>', methods=['PATCH'])
+@jwt_required()
+def update_grid(grid_id):
+    """Renomme une grille conservée, ou enregistre ses définitions."""
+    grid = get_owned_grid(get_current_user(), grid_id)
+    payload = parse_body(GridUpdateRequest)
+
+    if payload.name is not None:
+        grid.name = payload.name
+    if payload.definitions is not None:
+        # Une définition vidée disparaît : on ne garde pas de chaînes vides en base
+        grid.definitions = {key: text for key, text in payload.definitions.items() if text}
+
+    db.session.commit()
+    return jsonify(grid.summary()), 200
 
 
 @main_bp.route('/grids/<int:grid_id>', methods=['DELETE'])

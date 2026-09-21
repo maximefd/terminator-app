@@ -5,6 +5,13 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Saisie des définitions et export (Phase 5, #27) : sur une grille conservée, un écran **Définitions** —
+  on clique une case (ou un mot dans la liste), on écrit, c'est enregistré au fil de la frappe. Puis trois
+  sorties : **PDF vectoriel**, **PDF + solution** (la solution est la seconde page du même document, pour
+  qu'elle ne se perde pas), et **fichier de travail JSON** relisible par Terminator. Le PDF est dessiné à
+  partir du **SVG de l'écran** : un seul rendu à tenir, et un trait net à n'importe quelle taille
+  d'impression. `PATCH /api/grids/<id>` écrit les définitions (200 au plus, 120 caractères chacune) et
+  renomme la grille ; une grille d'autrui répond 404.
 - Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
   définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
   dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie
