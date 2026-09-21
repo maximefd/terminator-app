@@ -15,8 +15,9 @@ export function Header() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/", label: "Recherche" },
+    { href: "/search", label: "Recherche" },
     { href: "/grid", label: "Générer" },
+    { href: "/dictionaries", label: "Dictionnaires" },
   ];
 
   return (
