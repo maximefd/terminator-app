@@ -5,6 +5,20 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Écran de génération (Phase 4, #23) : tout ce que la Phase 3 avait construit devient manipulable.
+  - **liste de mots ordonnée** (glisser-déposer, plus des boutons ↑/↓ pour le clavier) : les mots du haut sont
+    les plus importants, et chaque mot se bascule entre **obligatoire** (la grille échoue sans lui) et
+    **souhaité** (placé s'il rentre, jamais bloquant) ;
+  - **difficulté annoncée pendant la saisie** ([ADR 0009](docs/adr/0009-annoncer-la-difficulte.md)) : taux de
+    réussite estimé, mot qui pèse le plus et raison, mise à jour après chaque frappe ;
+  - **choix des dictionnaires thématiques** quand on est connecté, les mêmes que dans la recherche par motif ;
+    le dictionnaire actif est signalé comme toujours inclus, puisque l'API l'ajoute d'office ;
+  - **refus expliqués** : un mot trop long pour toute mise en page, un mot que le solveur n'a pas su croiser et
+    un dépassement de budget ne disent pas la même chose et ne s'affichent plus pareil ;
+  - **provenance des mots** dans la grille produite : cases colorées par pool et trois listes (obligatoires,
+    souhaités, lexique), avec le ratio de mots voulus atteint.
+  Reste hors périmètre : le **choix du layout dans un format** et le **rejeu d'un seed**, qui demandent
+  `layout_id` dans le contrat d'API ([ADR 0007](docs/adr/0007-contrat-de-generation.md)).
 - `POST /api/grids/difficulty` ([ADR 0009](docs/adr/0009-annoncer-la-difficulte.md), #73) : ce que coûtent des mots imposés, **sans générer**. Pour chaque mot, son niveau et pourquoi il est coûteux (longueur, lettres rares) ; pour la demande, un taux de réussite estimé, le mot qui pèse le plus, et l'issue proposée — le passer en mot **souhaité**, où il sera placé s'il rentre sans faire échouer la grille. Les taux sortent d'une table de 4 700 générations mesurées, pas d'une intuition ; au-delà de trois mots, rien n'ayant été mesuré, le taux à trois sert de borne haute et l'est signalé (`measured: false`). Plafonné comme la recherche (120/min) : il est appelé à chaque frappe. L'estimation tient compte de la **taille de grille** choisie (champ `size`), dont l'effet mesuré **s'inverse selon la demande** : pour des mots courts la petite grille gagne (100 % contre 77 %), pour des mots longs la grande (31 % contre 13 %).
 - Benchmark : `--must-max-length` (plafonne la longueur des mots imposés) et `--layout-order`. Le plafond corrige un **biais de mesure** : sans lui, les grands formats recevaient des mots plus longs, donc plus durs, et la comparaison entre tailles était faussée. À demande égale, trois mots imposés de 6 lettres au plus réussissent 67 % du temps contre 39 % sans plafond — **c'est la longueur des mots qui domine**, pas leur nombre ni la taille de la grille ([mesures](backend/benchmarks/README.md), #73).
 - Benchmark avec mots obligatoires (`--must-words N`) : N mots courants par grille, de longueurs distinctes présentes dans le layout, tirés selon la seed et reproductibles. Comble le trou que l'[ADR 0007](docs/adr/0007-contrat-de-generation.md) signalait — le moteur des mots imposés n'avait jamais été mesuré. **Résultat : 1 mot imposé fait tomber le succès de 99,5 % à 96 %, 3 mots le font tomber à 40 %**, tous les layouts sous le critère ([mesures](backend/benchmarks/README.md)). Les échecs sont majoritairement des mots non placés, pas des dépassements de budget.
