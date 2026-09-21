@@ -1,6 +1,31 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * Police des grilles : une étroite de labeur, comme dans les magazines de mots fléchés.
+ * Fichiers versionnés (public/fonts/) et non chargés depuis un service extérieur : Terminator
+ * tourne en local, et le PDF embarque exactement le même fichier que l'écran.
+ */
+@font-face {
+  font-family: "ArchivoNarrow";
+  font-style: normal;
+  /*
+   * Le fichier est le Medium (500), déclaré en 400 à dessein : le convertisseur PDF traduit une
+   * graisse 500 en un style « 500normal » qu'il ne sait pas retrouver, et retombe alors sur une
+   * serif. Avec 400 et 700, écran et papier utilisent le même fichier.
+   */
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/archivo-narrow-500.ttf") format("truetype");
+}
+@font-face {
+  font-family: "ArchivoNarrow";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/archivo-narrow-700.ttf") format("truetype");
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

@@ -3,12 +3,16 @@
 import unicodedata
 from datetime import datetime
 
-from flask import Blueprint, abort, jsonify, current_app
+from flask import Blueprint, abort, jsonify, current_app, request
 from flask_jwt_extended import jwt_required, get_current_user
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord, SavedGrid
 from engine.difficulty import request_difficulty
+from engine.grid_edit import (
+    HOLE, allowed_letters, apply_letters, cells_of_slot, fill_ratio, letters_of, slot_at,
+    words_from_cells,
+)
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
 from schemas import (
@@ -16,7 +20,9 @@ from schemas import (
     DifficultyRequest,
     DictionaryUpdateRequest,
     GenerateRequest,
+    GridUpdateRequest,
     SaveGridRequest,
+    SlotRef,
     SearchRequest,
     WordCreateRequest,
     parse_body,
@@ -208,7 +214,18 @@ def grid_difficulty():
     if payload.size:
         slots = format_slot_count(payload.size.width, payload.size.height,
                                   current_app.config.get('LAYOUTS_DIR'))
-    return jsonify(request_difficulty(words, slots)), 200
+    estimate = request_difficulty(words, slots)
+
+    # Le moteur reste pur : c'est ici qu'on sait ce que contient le lexique chargé. Un mot qui n'y
+    # figure pas se place quand même (le pool des mots imposés étend l'index), mais la mesure d'où
+    # sort le taux a tiré ses mots **dans** le lexique : l'auteur doit savoir qu'il en sort.
+    dela_trie = current_app.dela_trie
+    known = dela_trie.words if dela_trie else set()
+    for detail in estimate["words"]:
+        detail["in_lexicon"] = detail["word"] in known
+    estimate["unknown_words"] = [d["word"] for d in estimate["words"] if not d["in_lexicon"]]
+
+    return jsonify(estimate), 200
 
 @main_bp.route('/grids/generate', methods=['POST'])
 @jwt_required(optional=True)
@@ -228,18 +245,15 @@ def generate_grid():
         # rendait presque tous les croisements impossibles.
         common_words.extend(w for w in dela_trie.words if 2 <= len(w) <= longest)
 
-    # Mots du dictionnaire personnel actif : pool « souhaité ». Ils sont essayés avant le lexique
-    # commun et restent valides aux croisements même s'ils n'y figurent pas (#17) ; auparavant ils
-    # étaient mélangés au lexique et simplement ignorés à l'indexation.
+    # Pool « souhaité » : les mots saisis, plus ceux des dictionnaires **explicitement choisis**.
+    # Le dictionnaire actif n'y entre plus de lui-même ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
+    # une grille thématique n'a aucune raison d'hériter du dictionnaire que la recherche utilise.
+    # Ces mots sont essayés avant le lexique commun et restent valides aux croisements même s'ils
+    # n'y figurent pas (#17).
     wish_words = [normalize_pattern(word) for word in payload.wish_words]
-    if user:
-        active_dict = Dictionary.query.filter_by(user_id=user.id, is_active=True).first()
-        if active_dict:
-            wish_words.extend(word.mot for word in active_dict.words if 2 <= len(word.mot) <= longest)
 
-    # Dictionnaires thématiques demandés : ceux de l'utilisateur connecté, et eux seuls. Un
-    # dictionnaire qui ne lui appartient pas répond 404 comme partout ailleurs — on ne révèle pas
-    # son existence (ADR 0007).
+    # Ceux de l'utilisateur connecté, et eux seuls. Un dictionnaire qui ne lui appartient pas répond
+    # 404 comme partout ailleurs — on ne révèle pas son existence (ADR 0007).
     for dictionary_id in payload.wish_dictionary_ids:
         if not user:
             abort(404)
@@ -335,22 +349,154 @@ def save_grid():
     return jsonify(saved.summary()), 201
 
 
+def known_words(user, words: set[str]) -> set[str]:
+    """Parmi ces mots, ceux que l'auteur peut considérer comme connus : le lexique, plus les siens.
+
+    Un mot qu'il a lui-même ajouté à un dictionnaire n'a pas à être signalé comme inconnu — c'est
+    précisément là qu'il range ce que le lexique n'a pas.
+    """
+    dela_trie = current_app.dela_trie
+    known = {word for word in words if dela_trie and word in dela_trie.words}
+    reste = words - known
+    if user and reste:
+        personnels = (PersonalWord.query
+                      .join(Dictionary, PersonalWord.dictionary_id == Dictionary.id)
+                      .filter(Dictionary.user_id == user.id, PersonalWord.mot.in_(reste))
+                      .all())
+        known |= {word.mot for word in personnels}
+    return known
+
+
+def annotated_grid(user, grid: SavedGrid) -> dict:
+    """La grille, ses flèches, et ce que le lexique dit de chacun de ses mots.
+
+    Un mot **inachevé** — l'auteur a effacé des lettres pour retravailler la zone — n'est pas jugé :
+    « P?RTE » n'est pas un mot inconnu, c'est un mot en cours.
+    """
+    data = grid.to_json()
+    mots = data["grid"].get("words", [])
+    termines = {word["text"] for word in mots if word.get("complete", HOLE not in word["text"])}
+    connus = known_words(user, termines)
+    for word in mots:
+        word["in_lexicon"] = word["text"] in connus if word["text"] in termines else None
+    data["grid"]["unknown_words"] = sorted(termines - connus)
+    return data
+
+
 @main_bp.route('/grids', methods=['GET'])
 @jwt_required()
 def list_grids():
-    """Les grilles conservées, la plus récente d'abord, sans leurs cases."""
+    """Les grilles conservées, la plus récente d'abord, sans leurs cases.
+
+    Les archivées sont écartées par défaut : elles restent en base, hors de la liste de travail.
+    """
     user = get_current_user()
-    grids = (SavedGrid.query
-             .filter_by(user_id=user.id)
-             .order_by(SavedGrid.date_creation.desc(), SavedGrid.id.desc())
-             .all())
+    query = SavedGrid.query.filter_by(user_id=user.id)
+    archived = request.args.get('archived')
+    if archived in ('true', 'false'):
+        query = query.filter(SavedGrid.archived.is_(archived == 'true'))
+    grids = query.order_by(SavedGrid.date_creation.desc(), SavedGrid.id.desc()).all()
     return jsonify([grid.summary() for grid in grids]), 200
 
 
 @main_bp.route('/grids/<int:grid_id>', methods=['GET'])
 @jwt_required()
 def get_grid(grid_id):
-    return jsonify(get_owned_grid(get_current_user(), grid_id).to_json()), 200
+    user = get_current_user()
+    return jsonify(annotated_grid(user, get_owned_grid(user, grid_id))), 200
+
+
+@main_bp.route('/grids/<int:grid_id>/suggestions', methods=['POST'])
+@jwt_required()
+def grid_suggestions(grid_id):
+    """Les mots qui entreraient à cet emplacement **sans casser ses croisements** (ADR 0012).
+
+    C'est la cohérence d'arc du solveur ramenée à un seul emplacement : on calcule d'abord, case par
+    case, les lettres qui laissent le mot perpendiculaire valide, puis on ne garde que les mots du
+    lexique qui les respectent toutes. Proposer un mot qui casse un croisement ne rendrait service
+    à personne.
+    """
+    user = get_current_user()
+    grid = get_owned_grid(user, grid_id)
+    payload = parse_body(SlotRef)
+    dela_trie = current_app.dela_trie
+    if not dela_trie:
+        return jsonify({"error": "Dictionnaire principal non disponible."}), 503
+
+    cells = (grid.payload or {}).get("cells", [])
+    slot = slot_at(cells, payload.x, payload.y, payload.direction)
+    if slot is None:
+        return jsonify({"error": "Aucun mot ne passe par cette case dans ce sens."}), 404
+
+    allowed = allowed_letters(cells, slot, lambda word: word in dela_trie.words)
+    # Par défaut on **comble les trous** : les lettres déjà posées restent, seules les cases vides
+    # sont à remplir. C'est le geste de l'auteur qui efface deux lettres pour retravailler une zone.
+    # `keep_letters: false` propose au contraire de remplacer le mot entier.
+    posees = letters_of(cells)
+    motif = ""
+    for index, position in enumerate(cells_of_slot(slot)):
+        lettre = posees.get(position) or ""
+        if payload.keep_letters and lettre:
+            motif += lettre
+        elif len(allowed[index]) == 1:
+            # Une case dont le croisement n'admet qu'une lettre : autant la fixer dans le motif
+            motif += next(iter(allowed[index]))
+        else:
+            motif += "?"
+
+    limite = current_app.config['MAX_SUGGESTIONS']
+    candidats = dela_trie.search_pattern(motif, limit=limite * 20)
+    retenus = [
+        mot for mot in candidats
+        if all(not lettres or mot[i] in lettres for i, lettres in enumerate(allowed))
+    ]
+    # Les mots les plus courants d'abord : ce sont ceux qu'un lecteur reconnaîtra
+    retenus.sort(key=lambda mot: (-dela_trie.frequency(mot), mot))
+
+    return jsonify({
+        "pattern": motif,
+        "allowed": ["".join(sorted(lettres)) for lettres in allowed],
+        "words": retenus[:limite],
+        "truncated": len(retenus) > limite,
+        "current": "".join(posees.get(position) or HOLE for position in cells_of_slot(slot)),
+        "keep_letters": payload.keep_letters,
+    }), 200
+
+
+@main_bp.route('/grids/<int:grid_id>', methods=['PATCH'])
+@jwt_required()
+def update_grid(grid_id):
+    """Renomme une grille conservée, ou enregistre ses définitions."""
+    grid = get_owned_grid(get_current_user(), grid_id)
+    payload = parse_body(GridUpdateRequest)
+
+    if payload.name is not None:
+        grid.name = payload.name
+    if payload.definitions is not None:
+        # Une définition vidée disparaît : on ne garde pas de chaînes vides en base
+        grid.definitions = {key: text for key, text in payload.definitions.items() if text}
+    if payload.notes is not None:
+        grid.notes = payload.notes
+    if payload.archived is not None:
+        grid.archived = payload.archived
+
+    if payload.cells is not None:
+        contenu = dict(grid.payload or {})
+        cells, problemes = apply_letters(contenu.get("cells", []),
+                                         [edit.model_dump() for edit in payload.cells])
+        if problemes:
+            return jsonify({"error": "Modification refusée.", "details": problemes}), 400
+        contenu["cells"] = cells
+        # Les mots se recalculent depuis les lettres : c'est la règle de l'ADR 0012
+        contenu["words"] = words_from_cells(cells, contenu.get("words"))
+        # Une grille trouée n'est plus pleine : le taux de remplissage doit le dire
+        contenu["fill_ratio"] = fill_ratio(cells)
+        grid.payload = contenu
+
+    db.session.commit()
+    if payload.cells is not None:
+        return jsonify(annotated_grid(get_current_user(), grid)), 200
+    return jsonify(grid.summary()), 200
 
 
 @main_bp.route('/grids/<int:grid_id>', methods=['DELETE'])

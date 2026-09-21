@@ -155,6 +155,47 @@ class SaveGridRequest(ApiModel):
     grid: GridPayload
 
 
+# Clé d'une définition : la **position** du mot et son sens — « 1-2-across ». Jamais son texte :
+# une lettre corrigée à la main renomme le mot ([ADR 0012](../docs/adr/0012-grille-modifiable.md)).
+DEFINITION_KEY_PATTERN = r"^\d{1,2}-\d{1,2}-(across|down)$"
+
+DefinitionKey = Annotated[str, StringConstraints(strip_whitespace=True, pattern=DEFINITION_KEY_PATTERN)]
+# Une définition de mots fléchés est courte par nature : elle doit tenir dans une demi-case
+DefinitionText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
+
+
+class GridCellEdit(ApiModel):
+    """Une lettre posée à la main. Le reste de la grille s'en déduit ([ADR 0012])."""
+    x: Annotated[int, Field(ge=0, le=19)]
+    y: Annotated[int, Field(ge=0, le=19)]
+    # Une lettre majuscule sans accent — la forme dans laquelle le moteur travaille — ou **rien**,
+    # pour effacer la case : un trou est un état de travail, pas une anomalie (ADR 0012).
+    char: Annotated[str, StringConstraints(strip_whitespace=True, to_upper=True, pattern=r"^[A-Z]?$")]
+
+
+class GridUpdateRequest(ApiModel):
+    """Renommer une grille conservée, écrire ses définitions, ses notes, ou corriger ses lettres."""
+    name: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100, pattern=DICTIONARY_NAME_PATTERN)
+    ] | None = None
+    # Envoyées en bloc : l'écran connaît toujours l'état complet de la grille qu'il affiche
+    definitions: Annotated[dict[DefinitionKey, DefinitionText], Field(max_length=200)] | None = None
+    # Bloc-notes libre : ce que l'auteur garde à côté de la grille
+    notes: Annotated[str, StringConstraints(max_length=5000)] | None = None
+    archived: StrictBool | None = None
+    # Lettres corrigées à la main : seules les cases changées sont envoyées
+    cells: Annotated[list[GridCellEdit], Field(max_length=400)] | None = None
+
+
+class SlotRef(ApiModel):
+    """Un emplacement de la grille, désigné par son départ et son sens."""
+    x: Annotated[int, Field(ge=0, le=19)]
+    y: Annotated[int, Field(ge=0, le=19)]
+    direction: Literal["across", "down"]
+    # Garder les lettres déjà posées (on comble les trous) ou proposer de remplacer tout le mot
+    keep_letters: StrictBool = True
+
+
 class DifficultyRequest(ApiModel):
     """Estimation de la difficulté d'une demande, sans générer : appelée à chaque frappe."""
     must_words: Annotated[list[GridWord], Field(max_length=50)] = Field(default_factory=list)
@@ -169,6 +210,10 @@ FIELD_LABELS = {
     "cells": "cases",
     "words": "mots",
     "layout": "mise en page",
+    "definitions": "définitions",
+    "notes": "notes",
+    "archived": "archivée",
+    "char": "lettre",
     "email": "e-mail",
     "password": "mot de passe",
     "name": "nom",

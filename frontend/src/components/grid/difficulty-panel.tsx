@@ -7,6 +7,7 @@ export type WordDifficulty = {
   success_rate: number;
   level: string;
   reasons: string[];
+  in_lexicon: boolean;
 };
 
 export type Difficulty = {
@@ -17,6 +18,7 @@ export type Difficulty = {
   hardest: string | null;
   advice: string | null;
   size_class: string | null;
+  unknown_words: string[];
 };
 
 const BAR_COLOURS: Record<string, string> = {
@@ -51,7 +53,7 @@ export function DifficultyPanel({ difficulty, isLoading, hasRequiredWords }: Dif
     <div className={`space-y-3 rounded-md border p-4 ${isLoading ? "opacity-60" : ""}`}>
       <div>
         <div className="flex items-baseline justify-between">
-          <span className="text-sm font-medium">Chances d&apos;obtenir une grille</span>
+          <span className="text-sm font-medium">Chances par tentative</span>
           <span className="text-2xl font-bold tabular-nums">{percent}&nbsp;%</span>
         </div>
         <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
@@ -77,9 +79,29 @@ export function DifficultyPanel({ difficulty, isLoading, hasRequiredWords }: Dif
         </ul>
       )}
 
-      {difficulty.advice && (
-        <p className="rounded bg-muted p-2 text-xs">{difficulty.advice}</p>
+      {/*
+        Un mot hors lexique se place ; ce sont ses croisements qui coûtent. La mesure, elle, a tiré
+        ses mots imposés **dans** le lexique : le dire évite de lire le chiffre comme une promesse.
+      */}
+      {difficulty.unknown_words?.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          <span className="font-mono font-semibold">{difficulty.unknown_words.join(", ")}</span>{" "}
+          {difficulty.unknown_words.length > 1 ? "ne sont pas" : "n'est pas"} dans le lexique. Le moteur
+          {difficulty.unknown_words.length > 1 ? " les place" : " le place"} quand même, mais les mots qui
+          {difficulty.unknown_words.length > 1 ? " les croiseront" : " le croiseront"} viendront du lexique
+          ou de vos propres mots — et le taux ci-dessus a été mesuré sur des mots du lexique, plus faciles
+          à croiser que des mots choisis au hasard.
+        </p>
       )}
+
+      {difficulty.advice && <p className="rounded bg-muted p-2 text-xs">{difficulty.advice}</p>}
+
+      {/* D'où sort le chiffre : sans quoi 66 % se lit comme une promesse */}
+      <p className="border-t pt-2 text-xs text-muted-foreground">
+        Chiffre mesuré sur 4 700 générations, avec des mots courants tirés du lexique. Chaque tentative
+        est indépendante : relancer change de tirage, mais deux échecs de suite sur une demande annoncée
+        facile veulent dire que vos mots sont plus durs que ceux de la mesure.
+      </p>
     </div>
   );
 }

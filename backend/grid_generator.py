@@ -5,6 +5,7 @@ import os
 import random
 import time
 
+from engine.arrows import clues_for_words
 from engine.grid_template import GridTemplate
 from engine.must_words import check_must_words
 from engine.slot_finder import SlotFinder
@@ -352,5 +353,7 @@ class GridGenerator:
             "must_words": self.must_words,
             "cells": cells,
             "words": self.placed_words,
+            # Où s'écrit la définition de chaque mot et par où part sa flèche (#26)
+            "clues": clues_for_words(self.template, self.placed_words),
             "statistics": stats,  # Ajout des statistiques
         }

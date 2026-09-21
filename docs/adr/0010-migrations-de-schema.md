@@ -45,6 +45,11 @@ des migrations depuis plusieurs processus qui démarrent en même temps est une 
 
 ## Conséquences
 
+- **Une migration doit laisser écrire le code d'avant.** Entre le moment où elle passe et celui où le
+  nouveau code tourne, l'ancien continue d'insérer des lignes : une colonne `NOT NULL` sans valeur par
+  défaut **côté base** lui devient impossible à écrire. C'est arrivé avec `saved_grid.definitions` —
+  conserver une grille répondait 500, et le message ne disait rien du schéma. Toute colonne non nulle
+  ajoutée à une table déjà utilisée porte donc un `server_default`.
 - Ajouter une colonne demande désormais une révision. `flask db migrate -m "..."` la rédige, et
   **il faut la relire** : l'auto-détection ignore les renommages et les voit comme une colonne
   supprimée et une autre créée, ce qui perdrait les données.

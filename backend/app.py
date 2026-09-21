@@ -22,7 +22,11 @@ DEFAULT_SETTINGS = dict(
     MAX_CONTENT_LENGTH=64 * 1024,  # Corps de requête : 64 Ko maximum
     MAX_DICTIONARIES_PER_USER=20,
     MAX_WORDS_PER_DICTIONARY=5000,
-    MAX_GRIDS_PER_USER=200,
+    # Garde-fou, pas quota d'usage : l'auteur ne doit jamais s'y heurter. Il existe pour le jour où
+    # d'autres comptes écriront dans la même base.
+    MAX_GRIDS_PER_USER=1000,
+    # Mots proposés pour un emplacement : au-delà, la liste ne s'examine plus
+    MAX_SUGGESTIONS=40,
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
     TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
     RATELIMIT_ENABLED=True,
@@ -91,6 +95,12 @@ def _load_config_from_env() -> dict:
         RATELIMIT_REGISTER=(
             os.environ.get('RATELIMIT_REGISTER') if app_env != 'production' else None
         ) or DEFAULT_SETTINGS['RATELIMIT_REGISTER'],
+        # Même logique pour la génération : en local, l'auteur enchaîne les tentatives sur une
+        # demande difficile, et un plafond conçu contre l'abus n'a rien à y faire.
+        RATELIMIT_GENERATE=(
+            os.environ.get('RATELIMIT_GENERATE') if app_env != 'production' else None
+        ) or DEFAULT_SETTINGS['RATELIMIT_GENERATE'],
+        MAX_GRIDS_PER_USER=int(os.environ.get('MAX_GRIDS_PER_USER') or DEFAULT_SETTINGS['MAX_GRIDS_PER_USER']),
         LEXICON_PATH=os.environ.get('LEXICON_PATH') or None,
         LEXICON_RELOAD_INTERVAL_S=float(os.environ.get('LEXICON_RELOAD_INTERVAL_S', 30)),
     )

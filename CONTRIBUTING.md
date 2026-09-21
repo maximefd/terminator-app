@@ -32,10 +32,11 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 | `make curator` | Mini-app de curation du lexique (PIN dans `.env`) |
 | `make test-e2e` | Parcours end-to-end et contrôle d'accessibilité axe (API et frontend démarrés) |
 
-Les parcours end-to-end créent un compte jetable par exécution, et `RATELIMIT_REGISTER` vaut « 5 par heure » :
-en enchaîner plus de cinq fait échouer l'inscription — ce n'est pas le test qui casse, c'est le quota. Le
-compteur vit en mémoire, `docker compose restart api` le remet à zéro ; la CI, elle, desserre le quota par
-variable d'environnement.
+Les parcours end-to-end créent un compte jetable par exécution. La pile de développement desserre donc
+`RATELIMIT_REGISTER` à 100 par heure (`docker-compose.yml`), et la CI fait de même ; la valeur du code
+reste 5 par heure, et c'est elle qui s'applique partout ailleurs. Si l'inscription se met malgré tout à
+échouer en boucle, regardez le quota avant le code : le compteur vit en mémoire, et
+`docker compose restart api` le remet à zéro.
 
 Le contrôle d'accessibilité (`tests/accessibility.spec.ts`) passe **axe** sur chaque écran (WCAG A et AA).
 Il ne juge que ce qui se vérifie par le code — contraste, intitulés, rôles, ordre des titres. Un écran qui
@@ -80,7 +81,7 @@ Chaque PR est rattachée à un milestone (une phase de la [roadmap](docs/ROADMAP
     **relire la révision produite** — l'auto-détection voit un renommage comme une colonne supprimée et une
     autre créée, ce qui perdrait les données. Les tests, eux, tournent sur `db.create_all()` : un modèle ajouté
     sans migration y passerait inaperçu.
-- **Moteur** : pas d'import Flask ni base de données dans `backend/engine/`, aléatoire uniquement via le générateur seedé, budget temps respecté ([ADR 0002](docs/adr/0002-moteur-pur-et-deterministe.md)).
+- **Moteur** : pas d'import Flask ni base de données dans `backend/engine/` — y compris `arrows.py` et `grid_edit.py`, qui reçoivent ce qu'ils doivent savoir (une fonction « est-ce un mot ? » plutôt que le lexique lui-même), aléatoire uniquement via le générateur seedé, budget temps respecté ([ADR 0002](docs/adr/0002-moteur-pur-et-deterministe.md)).
 - **Frontend** :
   - appels API uniquement via `apiFetch` (`src/lib/api-client.ts`) ;
   - composants shadcn/ui dans `src/components/ui/` ;

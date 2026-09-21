@@ -5,7 +5,7 @@
 **Terminator est un outil de création de mots fléchés.** Il aide à fabriquer des grilles au rendu professionnel français, de deux façons :
 
 - **à la main** : il vous manque un mot de 5 lettres qui commence par P et finit par LE ? La **recherche par motif** (`P??LE`) le trouve dans un dictionnaire de plus de 700 000 mots et dans vos dictionnaires personnels ;
-- **automatiquement** : choisissez un format de grille, et le **moteur de génération** remplit toute la grille avec des mots qui se croisent correctement.
+- **automatiquement** : choisissez un format de grille, donnez les mots que vous voulez y voir, et le **moteur de génération** remplit le reste avec des mots qui se croisent correctement. La grille se garde, se retouche lettre par lettre, se définit et s'exporte en PDF.
 
 Ce n'est pas un jeu : c'est l'atelier d'un auteur de mots fléchés. Le projet est aujourd'hui un outil personnel, pensé dès le départ pour pouvoir servir un jour à des créateurs professionnels.
 
@@ -28,8 +28,11 @@ Captures régénérées par `cd frontend && pnpm exec playwright test tests/scre
 | Dictionnaire nettoyé des mots rares | 🚧 Phase 1 |
 | Éditeur de layouts pour recopier les grilles de magazines ([détails](docs/LAYOUTS.md)) | ✅ ; catalogue à enrichir |
 | Mots imposés et dictionnaires thématiques dans la génération | ✅ ; la difficulté est annoncée avant de générer ([ADR 0009](docs/adr/0009-annoncer-la-difficulte.md)) |
-| Sauvegarde et historique des grilles | 🔜 Phase 4 |
-| Flèches, définitions, export PDF | 🔜 Phase 5 |
+| Grilles conservées : recherche, filtres, archivage, bloc-notes | ✅ |
+| Flèches déduites de la géométrie, cases définitions, saisie des définitions | ✅ ([détails](docs/ENGINE.md)) |
+| Retouche d'une grille : corriger une lettre, mots recalculés et propositions qui respectent les croisements | ✅ ([ADR 0012](docs/adr/0012-grille-modifiable.md)) |
+| Export PDF vectoriel, page solution, fichier de travail | ✅ |
+| Impression multi-grilles, définitions du Wiktionnaire dans la recherche | 🔜 |
 
 Détail et calendrier : **[roadmap](docs/ROADMAP.md)**.
 
@@ -57,7 +60,9 @@ Le premier démarrage charge tout le dictionnaire en mémoire (une à deux minut
 make dev-front
 ```
 
-Ouvrez **http://localhost:3000** : la page d'accueil présente les trois usages, l'onglet **Recherche** trouve un mot par motif et **Générer** remplit une grille entière.
+Ouvrez **http://localhost:3000** : la page d'accueil présente les trois usages, **Recherche** trouve un mot par motif, **Générer** remplit une grille entière, et **Mes grilles** garde celles que vous conservez — c'est là qu'on écrit les définitions, corrige les lettres et exporte le PDF.
+
+> Le conteneur de l'API ne recharge pas le code à chaud : après une modification de `backend/`, `docker compose restart api`.
 
 ## Commandes utiles
 

@@ -36,6 +36,11 @@ services:
       # Origines autorisées, séparées par des virgules
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - GENERATION_TIME_BUDGET_S=${GENERATION_TIME_BUDGET_S:-20}
+      # Les parcours end-to-end créent un compte par exécution. Le quota de production
+      # (5 par heure) les fait échouer sur un message qui ne ressemble pas à sa cause.
+      - RATELIMIT_REGISTER=${RATELIMIT_REGISTER:-100 per hour}
+      # L'auteur enchaîne les tentatives quand une demande est difficile : pas de plafond ici
+      - RATELIMIT_GENERATE=${RATELIMIT_GENERATE:-120 per minute}
       # Lexique curé s'il a été exporté, sinon repli automatique sur le DELA complet
       - LEXICON_PATH=${LEXICON_PATH:-/lexicon/lexique_cure.csv}
       - LEXICON_RELOAD_INTERVAL_S=${LEXICON_RELOAD_INTERVAL_S:-30}

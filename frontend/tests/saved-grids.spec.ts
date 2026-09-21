@@ -25,13 +25,17 @@ test("une grille générée se conserve et se retrouve", async ({ page }) => {
   await expect(page.getByText("Grille conservée.")).toBeVisible();
 
   await page.goto("/grids");
-  const saved = page.getByRole("article").filter({ hasText: "Essai du parcours" });
+  const saved = page.getByRole("listitem").filter({ hasText: "Essai du parcours" });
+  await expect(saved).toBeVisible();
+  // La liste ne transporte que des résumés : l'avancement des définitions est ce qu'on y cherche
+  await expect(saved.getByText(/définition|Définitions complètes/)).toBeVisible();
+
+  // Archiver range la grille sans rien perdre : elle sort de la liste de travail, pas de la base
+  await saved.getByRole("button", { name: "Archiver" }).click();
+  await expect(page.getByText(/Aucune grille ne correspond/)).toBeVisible();
+  await page.getByRole("button", { name: "Voir les grilles archivées" }).click();
   await expect(saved).toBeVisible();
 
-  // « Voir » demande la grille complète : la liste ne transporte que les résumés
-  await saved.getByRole("button", { name: "Voir" }).click();
-  await expect(saved.getByText(/mise en page/)).toBeVisible();
-
   await saved.getByRole("button", { name: "Supprimer Essai du parcours" }).click();
-  await expect(page.getByText(/Aucune grille conservée/)).toBeVisible();
+  await expect(page.getByText(/Aucune grille conservée|Aucune grille ne correspond/)).toBeVisible();
 });

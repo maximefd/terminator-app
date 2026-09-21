@@ -68,3 +68,24 @@ def test_register_quota_stays_strict_in_production(monkeypatch):
     monkeypatch.setenv('DATABASE_URL', 'postgresql://user:pass@localhost:5432/terminator')
 
     assert _load_config_from_env()['RATELIMIT_REGISTER'] == '5 per hour'
+
+
+def test_generation_quota_is_adjustable_outside_production(monkeypatch):
+    """L'auteur enchaîne les tentatives sur une demande difficile : le plafond ne doit pas le gêner."""
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('RATELIMIT_GENERATE', '120 per minute')
+    monkeypatch.setenv('APP_ENV', 'development')
+    assert _load_config_from_env()['RATELIMIT_GENERATE'] == '120 per minute'
+
+
+def test_generation_quota_stays_strict_in_production(monkeypatch):
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('RATELIMIT_GENERATE', '120 per minute')
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('SECRET_KEY', 'une-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('JWT_SECRET_KEY', 'une-autre-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://user:pass@localhost:5432/terminator')
+
+    assert _load_config_from_env()['RATELIMIT_GENERATE'] == '10 per minute'

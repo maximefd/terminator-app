@@ -59,7 +59,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
           placeholder="Ajouter un mot (ex : PORTE)"
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") {
+            // Entrée et Tab ajoutent le mot et laissent le curseur en place : on tape sa liste
+            // d'une traite. Tab sur un champ vide reprend son rôle habituel et quitte le champ.
+            if (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey && draft.trim())) {
               event.preventDefault();
               addWord();
             }
@@ -73,7 +75,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
 
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Aucun mot imposé : la grille sera remplie librement. Ajoutez les mots que vous voulez y voir.
+          Aucun mot imposé : la grille sera remplie librement. Ajoutez les mots que vous voulez y voir
+          — <kbd className="rounded border px-1 text-xs">Entrée</kbd> ou{" "}
+          <kbd className="rounded border px-1 text-xs">Tab</kbd> pour enchaîner.
         </p>
       ) : (
         <ul className="space-y-2">

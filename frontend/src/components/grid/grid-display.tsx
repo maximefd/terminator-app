@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { Toggle } from "@/components/ui/toggle";
+import { GridSvg, type Clue, type GridVariant } from "@/components/grid/grid-svg";
+
 export type Cell = { x: number; y: number; char: string; is_black: boolean };
 
 export type PlacedWord = {
@@ -7,8 +11,14 @@ export type PlacedWord = {
   x: number;
   y: number;
   direction: "across" | "down";
-  /** « must », « wish » ou « common » : d'où vient ce mot */
+  /** « must », « wish », « common » — ou « manuel » quand l'auteur l'a corrigé lui-même */
   source: string;
+  /** Longueur de l'emplacement : le texte peut être troué, elle ne bouge pas. */
+  length?: number;
+  /** Faux si l'auteur a effacé des lettres : « P?RTE » est un mot en cours, pas un mot inconnu. */
+  complete?: boolean;
+  /** Connu du lexique ou d'un dictionnaire de l'auteur ; `null` tant que le mot est inachevé. */
+  in_lexicon?: boolean | null;
 };
 
 export type GridData = {
@@ -21,6 +31,8 @@ export type GridData = {
   fill_ratio: number;
   wish_ratio: number;
   must_words: string[];
+  /** Où va la définition de chaque mot et par où part sa flèche (#26) */
+  clues?: Clue[];
 };
 
 const SOURCES: Record<string, { label: string; cell: string; badge: string }> = {
@@ -30,15 +42,17 @@ const SOURCES: Record<string, { label: string; cell: string; badge: string }> = 
 };
 
 export function GridDisplay({ gridData }: { gridData: GridData }) {
+  const [variant, setVariant] = useState<GridVariant>("solution");
+
   // Une case peut appartenir à deux mots : la provenance la plus « voulue » l'emporte à l'affichage
   const priority = ["common", "wish", "must"];
-  const origin = new Map<string, string>();
+  const origin: Record<string, string> = {};
   for (const word of gridData.words) {
     for (let i = 0; i < word.text.length; i += 1) {
       const key = `${word.x + (word.direction === "across" ? i : 0)}-${word.y + (word.direction === "down" ? i : 0)}`;
-      const current = origin.get(key);
+      const current = origin[key];
       if (!current || priority.indexOf(word.source) > priority.indexOf(current)) {
-        origin.set(key, word.source);
+        origin[key] = word.source;
       }
     }
   }
@@ -52,28 +66,19 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
           {gridData.width}×{gridData.height} · mise en page {gridData.layout} · seed {gridData.seed ?? "—"} ·
           {" "}{gridData.words.length} mots · {Math.round(gridData.wish_ratio * 100)} % de vos mots
         </p>
-        <div
-          className="grid border-2 border-foreground bg-background"
-          style={{
-            gridTemplateColumns: `repeat(${gridData.width}, minmax(0, 1fr))`,
-            width: "100%",
-            maxWidth: "600px",
-            aspectRatio: `${gridData.width} / ${gridData.height}`,
-          }}
-        >
-          {gridData.cells.map((cell) => {
-            const source = origin.get(`${cell.x}-${cell.y}`);
-            return (
-              <div
-                key={`${cell.x}-${cell.y}`}
-                className={`flex select-none items-center justify-center border border-foreground/20 font-bold uppercase
-                  ${cell.is_black ? "bg-foreground" : `bg-background text-foreground ${source ? SOURCES[source]?.cell ?? "" : ""}`}`}
-                style={{ fontSize: "clamp(0.5rem, 4vw, 1.25rem)" }}
-              >
-                {!cell.is_black && cell.char}
-              </div>
-            );
-          })}
+
+        {/* La grille vierge est celle qu'on imprime ; la solution, celle qu'on relit */}
+        <div className="mb-3 flex gap-1 rounded-md border p-1">
+          <Toggle size="sm" pressed={variant === "solution"} onPressedChange={() => setVariant("solution")}>
+            Solution
+          </Toggle>
+          <Toggle size="sm" pressed={variant === "vierge"} onPressedChange={() => setVariant("vierge")}>
+            Grille vierge
+          </Toggle>
+        </div>
+
+        <div className="w-full max-w-2xl">
+          <GridSvg grid={gridData} variant={variant} cellSources={origin} />
         </div>
       </div>
 

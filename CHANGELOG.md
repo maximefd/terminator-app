@@ -5,6 +5,59 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Effacer des lettres dans l'éditeur ([ADR 0012](docs/adr/0012-grille-modifiable.md)) :
+  `Retour arrière` efface en remontant — maintenu, il vide le mot — et `Suppr` efface sur place. Les
+  trous sont un **état de travail** : le mot garde sa longueur (`P?RTE`, jamais `PRTE`), il est dit
+  **inachevé** plutôt qu'inconnu, et les propositions **comblent les trous** en gardant les lettres
+  laissées en place. Un bouton bascule vers « remplacer le mot » quand on veut repartir de zéro, un
+  autre efface le mot entier.
+- **Annuler et rétablir** dans l'éditeur de lettres (boutons et `Ctrl+Z` / `Ctrl+Y`), sur les
+  cinquante dernières modifications de la session.
+- Retouche d'une grille conservée ([ADR 0012](docs/adr/0012-grille-modifiable.md)) : l'auteur change une
+  lettre à la main — le `O` de PORTE devient un `E` — et **les mots se recalculent** à partir de la grille.
+  Une lettre appartenant toujours à deux mots, la correction en touche deux ; les emplacements, eux, ne
+  bougent jamais. Le résultat est **vérifié sans être censuré** : un mot absent du lexique est souligné
+  dans la grille, listé dans le panneau, et posé quand même — avec un bouton pour le ranger dans le
+  dictionnaire de son choix. `POST /api/grids/<id>/suggestions` propose les mots qui entrent à un
+  emplacement **sans casser ses croisements** : c'est la cohérence d'arc du solveur ramenée à une case.
+- Bloc-notes par grille : les idées viennent avant les définitions, et rarement en une fois. Enregistré au
+  fil de la frappe, comme les définitions.
+- Grilles conservées à l'échelle : recherche par nom, filtres (format, définitions complètes ou non,
+  archivées), tri, et **archivage** — une grille rangée sort de la liste de travail sans quitter la base.
+  L'affichage passe en cartes, chacune montrant l'avancement de ses définitions.
+- Définitions composées comme dans les magazines (#27) : **capitales accentuées**, centrées, en gras —
+  le gras se coupe d'un bouton, et le réglage vaut pour l'écran comme pour le PDF. La coupe des lignes
+  suit la mesure : une capitale d'Archivo Narrow fait **0,64 em** contre 0,42 en bas de casse, et une
+  définition trop longue fait **rétrécir sa police** plutôt que gagner une ligne — c'est ce qui évite
+  « IL DONNE / LA / CADENCE » au profit de « IL DONNE / LA CADENCE ». La saisie, elle, reste telle que
+  l'auteur l'a tapée.
+- Échecs répétés expliqués (#73) : après deux tentatives infructueuses, l'écran calcule ce que cela veut
+  dire — « à 66 % par tentative, trois échecs de suite n'arrivent qu'une fois sur 26 : l'estimation ne
+  colle pas à vos mots » — et propose les trois sorties qui changent vraiment quelque chose. L'estimation
+  dit désormais qu'elle vaut **par tentative**, sur quoi elle a été mesurée, et **quels mots imposés sont
+  absents du lexique** : ceux-là se placent, mais tous leurs croisements devront venir du lexique.
+- Les mots s'ajoutent à la chaîne : **Tab** valide le mot saisi et laisse le curseur en place, comme Entrée.
+- Saisie des définitions et export (Phase 5, #27) : sur une grille conservée, un écran **Définitions**.
+  On écrit **sur la grille remplie** — définir un mot qu'on ne voit pas n'a pas de sens — en cliquant une
+  case ou un mot de la liste ; **Tab** et **Entrée** passent au suivant, dans l'ordre de lecture de la
+  grille, si bien qu'une grille entière se définit sans lâcher le clavier. Enregistrement au fil de la
+  frappe (`PATCH /api/grids/<id>`, 200 définitions au plus, 120 caractères chacune ; une grille d'autrui
+  répond 404). Trois sorties : **PDF vectoriel**, **PDF + solution** (seconde page du même document) et
+  **fichier de travail JSON**. La page de solution ne porte ni flèche ni définition : elle sert à vérifier
+  des lettres. Le PDF est dessiné à partir du SVG de l'écran, avec la **police du dessin embarquée** —
+  une étroite de labeur versionnée dans le dépôt, la même à l'écran et sur le papier. Deux garde-fous :
+  une définition **trop longue pour sa case** est signalée pendant qu'on l'écrit (elle serait rognée à
+  l'impression, et le découvrir sur le papier serait pire), et la grille se **renomme** depuis son titre. Une bascule **Édition / Aperçu imprimé** montre à tout moment ce qui sortira sur le papier, sans passer par l'export.
+- Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
+  définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
+  dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie
+  (`backend/engine/arrows.py`) — définition à gauche pour un mot horizontal, au-dessus pour un mot vertical,
+  et flèche coudée le long des bords. Mesuré sur les 21 layouts et 821 mots du catalogue : **aucun mot sans
+  case où se définir**, **jamais plus de deux définitions par case**, et dans une case qui en porte deux,
+  l'une sort toujours par la droite et l'autre par le bas — c'est ce qui permet de la couper en deux moitiés
+  sans arbitrage. Les tests le vérifient layout par layout, pour que l'ajout d'une mise en page bancale se
+  voie tout de suite. Une grille conservée avant cette version reçoit ses flèches à la relecture : elles se
+  recalculent au lieu d'être stockées.
 - Parcours end-to-end et accessibilité en CI (Phase 4, #25) : un travail `e2e-ci` démarre PostgreSQL et
   l'API, puis joue les parcours Playwright (inscription, dictionnaires, génération et conservation d'une
   grille) et **axe** sur chaque écran (WCAG A et AA). Premier verdict d'axe : les pages de connexion et
@@ -118,6 +171,20 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- La clé d'une définition est désormais la **position** de son emplacement (`1-2-across`) et non le texte
+  du mot (`PORTE-1-2-across`) : corriger une lettre renomme le mot, et une clé fondée sur le texte aurait
+  laissé la définition orpheline. Migration `0004` : les clés existantes sont réécrites.
+- **Plus aucun dictionnaire personnel n'entre de lui-même dans une grille** ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
+  le dictionnaire *actif* y était versé en silence, si bien qu'une grille sur la musique héritait des mots
+  de cuisine. Tous se cochent maintenant, l'actif compris — il ne sert plus qu'à la recherche par motif.
+- Les garde-fous d'usage cessent de gêner l'auteur : 1 000 grilles conservées par compte au lieu de 200,
+  et la génération n'est plus plafonnée à 10 par minute sur la pile de développement. Les valeurs du code
+  restent celles de la production, où elles protègent d'un abus ; `MAX_GRIDS_PER_USER` et
+  `RATELIMIT_GENERATE` se règlent par variable d'environnement partout ailleurs.
+- Rendu des grilles repris pour ressembler à une grille de magazine (#26, #27) : police étroite
+  (Archivo Narrow, embarquée), cadre extérieur plus fort que les traits intérieurs, flèches plus fines et
+  plus petites. Le rendu connaît trois états — **édition** (lettres, flèches et définitions, cases
+  cliquables), **vierge** (celle qu'on imprime) et **solution** (les lettres seules).
 - `RATELIMIT_REGISTER` se règle par variable d'environnement **hors production**, où le quota reste celui du code : les parcours end-to-end créent un compte par exécution, et le quota de production les ferait échouer dès le deuxième (#25).
 - Supprimer le dictionnaire **actif** n'en laissait aucun d'actif : la recherche et les grilles perdaient les mots personnels alors que le sélecteur en montrait toujours un. Un dictionnaire restant est réactivé aussitôt (#21).
 - La recherche par motif passe de `/` à `/search` : `/` accueille désormais la page d'accueil (#22).
@@ -134,6 +201,14 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
+  chaque lettre posée : elles ne sont plus relues qu'à l'ouverture de la grille. Elles s'enregistrent
+  aussi en quittant le champ, sans attendre la pause de 600 ms.
+- Conserver une grille répondait **500** dès que la migration des définitions était passée mais que
+  l'API tournait encore sur le code d'avant : la colonne était `NOT NULL` sans valeur par défaut côté
+  base, si bien que l'ancien code ne pouvait plus insérer une ligne. La base porte désormais le défaut
+  (`'{}'`), et l'[ADR 0010](docs/adr/0010-migrations-de-schema.md) en fait une règle : une migration doit
+  laisser écrire le code d'avant.
 - Curateur : « Aucun mot à trier dans cette famille » bloquait l'écran jusqu'au rechargement de la page. Une famille déjà triée ailleurs n'est plus une erreur — la carte affichée était simplement périmée : le curateur passe à la suivante en le disant. Un mot inconnu du lexique reste refusé.
 - Les mots très courants (bande `keep`, zipf ≥ 3,5) sont désormais hors d'atteinte des règles automatiques. `aujourd'hui`, `quelqu'un`, `parce que`, `d'abord` et `à tâtons` étaient visés par `formes-composees` et auraient quitté le lexique.
 - L'export automatique du curateur ignorait les règles automatiques : les mots retirés de la file de tri restaient dans le lexique chargé par l'API, donc invisibles à l'auteur mais toujours placés dans les grilles. L'export applique désormais les mêmes règles que le tri, et `CURATOR_EXPORT_FILTER` permet d'y ajouter le filtre positif.

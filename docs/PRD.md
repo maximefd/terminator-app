@@ -31,12 +31,14 @@ Ce n'est **pas un jeu**, c'est un **outil de création**.
 | F1 | Recherche par motif | `?` = lettre inconnue ; accents ignorés ; résultats personnels en tête | ✅ (~90 %) |
 | F2 | Dictionnaires personnels | Plusieurs par utilisateur, un actif, mots avec définition | ✅ |
 | F3 | Comptes | Inscription, connexion, session renouvelée, suppression des données | ✅ |
-| F4 | Génération automatique | À partir d'un layout ; déterministe par seed ; budget temps | ✅ fragile sur les grands formats |
+| F4 | Génération automatique | À partir d'un layout ; déterministe par seed ; budget temps | ✅ 20/20 sur les 21 layouts sans mot imposé ; fragile dès trois mots imposés longs ([#73](https://github.com/maximefd/terminator-app/issues/73)) |
 | F5 | Lexique curé | Tri manuel rapide des mots rares, aidé par la fréquence et les définitions | Phase 1 |
 | F6 | Catalogue de layouts | Nombreux formats et mises en page issus de livres ; éditeur | Phase 2 |
-| F7 | Mots imposés | Obligatoires, souhaités, dictionnaires thématiques | Phase 3 |
-| F8 | Écran de génération complet et sauvegarde des grilles | Choix visuel du layout, sources des mots, historique | Phase 4 |
-| F9 | Rendu mots fléchés | Flèches, cases définitions, saisie des définitions, export PDF | Phase 5 |
+| F7 | Mots imposés | Obligatoires, souhaités, dictionnaires thématiques choisis un à un | ✅ ; la difficulté est annoncée avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)) |
+| F8 | Écran de génération et grilles conservées | Sources des mots, difficulté, historique cherchable et archivable | ✅ ; reste le choix du layout, qui demande `layout_id` |
+| F9 | Rendu mots fléchés | Flèches déduites, cases définitions, saisie des définitions, export PDF | ✅ |
+| F10 | Retouche d'une grille | Corriger une lettre à la main, mots recalculés et vérifiés, propositions qui respectent les croisements | ✅ ([ADR 0012](adr/0012-grille-modifiable.md)) |
+| F11 | Bloc-notes par grille | Les idées avant les définitions, gardées avec la grille | ✅ |
 
 ## 4. Contraintes
 
