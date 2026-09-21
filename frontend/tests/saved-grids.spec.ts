@@ -28,9 +28,10 @@ test("une grille générée se conserve et se retrouve", async ({ page }) => {
   const saved = page.getByRole("article").filter({ hasText: "Essai du parcours" });
   await expect(saved).toBeVisible();
 
-  // « Voir » demande la grille complète : la liste ne transporte que les résumés
+  // « Voir » demande la grille complète : la liste ne transporte que les résumés.
+  // On vérifie le dessin lui-même — « mise en page » figure aussi dans le résumé de la ligne.
   await saved.getByRole("button", { name: "Voir" }).click();
-  await expect(saved.getByText(/mise en page/)).toBeVisible();
+  await expect(saved.locator("svg[role='img']")).toBeVisible();
 
   await saved.getByRole("button", { name: "Supprimer Essai du parcours" }).click();
   await expect(page.getByText(/Aucune grille conservée/)).toBeVisible();

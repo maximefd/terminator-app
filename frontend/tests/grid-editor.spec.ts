@@ -59,22 +59,35 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Grille à définir" })).toBeVisible();
   await expect(page.getByText("0 définition sur 2")).toBeVisible();
 
-  // Choisir un mot dans la liste, écrire sa définition
-  await page.getByRole("button", { name: /^AS/ }).click();
+  // Le premier mot est choisi d'office : on arrive et on écrit, sans clic d'amorçage
+  await expect(page.getByLabel("Définition de AS")).toBeFocused();
 
   // Enregistrement au fil de la frappe : rien à cliquer. On attend la requête elle-même, et non
   // le compteur de l'écran — il compte l'état local, qui a déjà bougé avant que rien ne soit parti.
   const saved = page.waitForResponse(
     (response) => response.url().endsWith(`/api/grids/${gridId}`) && response.request().method() === "PATCH",
   );
-  await page.getByLabel(/Horizontal/).fill("Champion");
+  await page.getByLabel("Définition de AS").fill("Champion");
   expect((await saved).status()).toBe(200);
+
+  // Tab passe au mot suivant sans lâcher le clavier : c'est ainsi qu'on définit une grille entière
+  await page.getByLabel("Définition de AS").press("Tab");
+  await expect(page.getByLabel("Définition de ILE")).toBeFocused();
+  await page.getByLabel("Définition de ILE").press("Shift+Tab");
+  await expect(page.getByLabel("Définition de AS")).toBeFocused();
 
   await page.reload();
   await expect(page.getByRole("button", { name: /AS\s+Champion/ })).toBeVisible();
 
   // La définition s'écrit dans la case, à côté de sa flèche
   await expect(page.locator("svg tspan", { hasText: "Champion" }).first()).toBeVisible();
+
+  // La page de solution ne porte ni flèche ni définition : elle sert à vérifier des lettres.
+  // Les pointes de flèches sont les seuls polygones du dessin.
+  const grids = page.locator("svg[role='img']");
+  expect(await grids.nth(1).locator("polygon").count()).toBeGreaterThan(0);
+  expect(await grids.nth(2).locator("polygon").count()).toBe(0);
+  expect(await grids.nth(2).locator("tspan").count()).toBe(0);
 
   // L'export PDF : le fichier, et ce qu'il y a dedans. Un PDF vide porterait le même nom.
   const download = page.waitForEvent("download");
@@ -85,11 +98,18 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   const pdfPath = path.join(test.info().outputDir, "grille.pdf");
   await pdf.saveAs(pdfPath);
   const bytes = readFileSync(pdfPath);
+  const raw = bytes.toString("latin1");
+
   expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
   // Deux pages : la grille et sa solution
-  expect(bytes.toString("latin1").match(/\/Type\s*\/Page[^s]/g)?.length).toBe(2);
-  // Le dessin est bien parti dans le PDF, et pas seulement son titre
-  expect(bytes.toString("latin1")).toContain("Champion");
+  expect(raw.match(/\/Type\s*\/Page[^s]/g)?.length).toBe(2);
+  // La police du dessin est embarquée — sans elle, le convertisseur retombe sur une serif large.
+  // C'est aussi pourquoi on ne cherche plus le texte en clair : il est encodé par cette police.
+  expect(raw).toContain("ArchivoNarrow");
+  // Le dessin est là : les traits de la grille (opérateur « l ») et du texte (opérateur « Tj »).
+  // Le texte s'écrit en hexadécimal, encodé par la police embarquée — d'où ce contrôle indirect.
+  expect((raw.match(/\sl\s/g) ?? []).length).toBeGreaterThanOrEqual(20);
+  expect((raw.match(/Tj/g) ?? []).length).toBeGreaterThanOrEqual(2);
 
   const workFile = page.waitForEvent("download");
   await page.getByRole("button", { name: "Fichier de travail" }).click();

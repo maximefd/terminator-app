@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { ArrowLeft, Check, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Toggle } from "@/components/ui/toggle";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -24,18 +22,19 @@ type SavedGrid = {
 };
 
 /**
- * L'éditeur : une grille conservée, ses définitions, et l'export.
+ * L'éditeur de définitions.
  *
- * La grille vierge est rendue en permanence, même quand l'écran montre la solution : c'est elle que
- * le PDF embarque, et un SVG qui n'existe pas au moment de l'export ne se dessine pas.
+ * On écrit sur la **grille remplie** : définir un mot qu'on ne voit pas n'a pas de sens. La grille
+ * vierge et la solution sont rendues en même temps, hors écran — ce sont elles qui partent au PDF,
+ * et un SVG absent au moment de l'export ne se dessine pas.
  */
 export function GridEditor({ gridId }: { gridId: number }) {
   const { isAuthenticated, isLoading: isSessionLoading } = useAuth();
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<"vierge" | "remplie">("vierge");
   const [selected, setSelected] = useState<string | null>(null);
   const [definitions, setDefinitions] = useState<Record<string, string>>({});
   const [isExporting, setExporting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
   const solutionRef = useRef<HTMLDivElement>(null);
 
@@ -65,9 +64,47 @@ export function GridEditor({ gridId }: { gridId: number }) {
     if (!data) return;
     if (debounced === JSON.stringify(data.definitions ?? {})) return;
     saveRef.current.mutate(JSON.parse(debounced));
-    // `data` change à chaque enregistrement réussi : ne pas le mettre en dépendance, sinon boucle
+    // `data` change à chaque enregistrement réussi : le mettre en dépendance relancerait la boucle
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
+
+  /**
+   * Ordre de travail : celui de la lecture d'une grille — de haut en bas, de gauche à droite, et
+   * dans une case qui porte deux définitions, celle du haut avant celle du bas.
+   */
+  const clues = useMemo(() => {
+    const list = [...(data?.grid.clues ?? [])];
+    list.sort((a, b) =>
+      (a.cell_y ?? 0) - (b.cell_y ?? 0) ||
+      (a.cell_x ?? 0) - (b.cell_x ?? 0) ||
+      (a.exit === "right" ? 0 : 1) - (b.exit === "right" ? 0 : 1),
+    );
+    return list;
+  }, [data]);
+
+  // Le premier mot est choisi d'office : on arrive et on écrit, sans un clic d'amorçage
+  useEffect(() => {
+    if (!selected && clues.length > 0) setSelected(clueKey(clues[0]));
+  }, [clues, selected]);
+
+  // Sur une grande grille, le mot suivant tombe souvent hors de l'écran : on le ramène, sans
+  // bouger quand il est déjà visible (`nearest`), pour que la page ne sautille pas à chaque Tab.
+  useEffect(() => {
+    if (!selected) return;
+    document.querySelector(`[data-clue="${CSS.escape(selected)}"]`)?.scrollIntoView({ block: "nearest" });
+    document.querySelector(`[data-clue-row="${CSS.escape(selected)}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [selected]);
+
+  const move = useCallback(
+    (step: number) => {
+      if (clues.length === 0) return;
+      const index = clues.findIndex((clue) => clueKey(clue) === selected);
+      const next = clues[(index + step + clues.length) % clues.length];
+      setSelected(clueKey(next));
+      inputRef.current?.focus();
+    },
+    [clues, selected],
+  );
 
   if (isSessionLoading || (isAuthenticated && isLoading)) {
     return <p className="p-8 text-center text-sm text-muted-foreground">Chargement…</p>;
@@ -96,12 +133,20 @@ export function GridEditor({ gridId }: { gridId: number }) {
     );
   }
 
-  const clues = data.grid.clues ?? [];
   const selectedClue = clues.find((clue) => clueKey(clue) === selected) ?? null;
   const defined = clues.filter((clue) => definitions[clueKey(clue)]).length;
+  const current = selectedClue ? definitions[clueKey(selectedClue)] ?? "" : "";
 
   const setDefinition = (key: string, text: string) =>
-    setDefinitions((current) => ({ ...current, [key]: text }));
+    setDefinitions((state) => ({ ...state, [key]: text }));
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Tab et Entrée passent au mot suivant : on écrit une grille entière sans lâcher le clavier
+    if (event.key === "Tab" || event.key === "Enter") {
+      event.preventDefault();
+      move(event.key === "Tab" && event.shiftKey ? -1 : 1);
+    }
+  };
 
   const svgOf = (container: HTMLDivElement | null) => container?.querySelector("svg") ?? null;
 
@@ -120,7 +165,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
 
   return (
     <main className="container mx-auto p-4 md:p-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/grids">
@@ -129,9 +174,20 @@ export function GridEditor({ gridId }: { gridId: number }) {
             </Link>
           </Button>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">{data.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {defined} définition{defined > 1 ? "s" : ""} sur {clues.length}
-            {save.isPending && " · enregistrement…"}
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              {defined} définition{defined > 1 ? "s" : ""} sur {clues.length}
+            </span>
+            {save.isPending ? (
+              <span>· enregistrement…</span>
+            ) : (
+              defined > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5" />
+                  enregistré
+                </span>
+              )
+            )}
           </p>
         </div>
 
@@ -151,73 +207,89 @@ export function GridEditor({ gridId }: { gridId: number }) {
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
-          <div className="mb-3 flex w-fit gap-1 rounded-md border p-1">
-            <Toggle size="sm" pressed={mode === "vierge"} onPressedChange={() => setMode("vierge")}>
-              Grille vierge
-            </Toggle>
-            <Toggle size="sm" pressed={mode === "remplie"} onPressedChange={() => setMode("remplie")}>
-              Solution
-            </Toggle>
-          </div>
+          {/* On définit sur la grille remplie : le mot à définir est sous les yeux, en surbrillance */}
+          <GridSvg
+            grid={data.grid}
+            variant="edition"
+            definitions={definitions}
+            selectedKey={selected}
+            onSelect={(key) => {
+              setSelected(key);
+              inputRef.current?.focus();
+            }}
+          />
 
-          {/* La grille vierge reste montée en permanence : c'est elle que le PDF embarque */}
-          <div ref={blankRef} className={mode === "vierge" ? "" : "hidden"}>
-            <GridSvg
-              grid={data.grid}
-              mode="vierge"
-              definitions={definitions}
-              selectedKey={selected}
-              onSelect={setSelected}
-            />
+          {/*
+            Les deux rendus de l'export : hors du champ de vision, mais **mis en page**. Un `display:
+            none` suffirait à les cacher et casserait la mesure du texte dont le convertisseur PDF a
+            besoin — d'où le renvoi hors cadre plutôt que le masquage.
+          */}
+          <div ref={blankRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
+            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} />
           </div>
-          <div ref={solutionRef} className={mode === "remplie" ? "" : "hidden"} aria-hidden={mode !== "remplie"}>
-            <GridSvg grid={data.grid} mode="remplie" definitions={definitions} />
+          <div ref={solutionRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
+            <GridSvg grid={data.grid} variant="solution" />
           </div>
-
-          <p className="mt-3 text-sm text-muted-foreground">
-            Cliquez une case définition — ou un mot de la liste — puis écrivez sa définition.
-          </p>
         </div>
 
-        <div className="space-y-3">
-          {selectedClue ? (
-            <div className="space-y-2 rounded-lg border p-4">
-              <Label htmlFor="definition" className="text-xs uppercase tracking-wide text-muted-foreground">
-                {selectedClue.direction === "across" ? "Horizontal" : "Vertical"} · {selectedClue.text.length} lettres
-              </Label>
-              <p className="font-mono text-lg font-semibold">{selectedClue.text}</p>
-              <Input
-                id="definition"
-                autoFocus
-                maxLength={120}
-                placeholder="La définition telle qu'elle sera imprimée"
-                value={definitions[clueKey(selectedClue)] ?? ""}
-                onChange={(event) => setDefinition(clueKey(selectedClue), event.target.value)}
-              />
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-              Aucun mot sélectionné. Choisissez-en un dans la grille ou dans la liste.
-            </p>
-          )}
+        {/* Le panneau suit la lecture : sur un 13x18, il sortirait de l'écran dès la deuxième rangée */}
+        <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+          <div className="rounded-lg border p-4">
+            {selectedClue ? (
+              <>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="font-mono text-xl font-semibold tracking-wide">{selectedClue.text}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedClue.direction === "across" ? "horizontal" : "vertical"} ·{" "}
+                    {selectedClue.text.length} lettres
+                  </p>
+                </div>
+                <Input
+                  ref={inputRef}
+                  aria-label={`Définition de ${selectedClue.text}`}
+                  autoFocus
+                  maxLength={120}
+                  className="mt-2"
+                  placeholder="Sa définition, telle qu'elle sera imprimée"
+                  value={current}
+                  onChange={(event) => setDefinition(clueKey(selectedClue), event.target.value)}
+                  onKeyDown={onKeyDown}
+                />
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    <kbd className="rounded border px-1">Tab</kbd> ou{" "}
+                    <kbd className="rounded border px-1">Entrée</kbd> : mot suivant
+                  </span>
+                  <span>{current.length}/120</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucun mot sélectionné. Choisissez-en un dans la grille ou dans la liste.
+              </p>
+            )}
+          </div>
 
-          <ul className="max-h-[32rem] space-y-1 overflow-y-auto rounded-lg border p-2">
+          <ul className="max-h-[30rem] space-y-0.5 overflow-y-auto rounded-lg border p-2">
             {clues.map((clue) => {
               const key = clueKey(clue);
               const text = definitions[key];
               return (
-                <li key={key}>
+                <li key={key} data-clue-row={key}>
                   <button
                     type="button"
-                    onClick={() => setSelected(key)}
-                    className={`w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    onClick={() => {
+                      setSelected(key);
+                      inputRef.current?.focus();
+                    }}
+                    className={`flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       selected === key ? "bg-secondary" : ""
                     }`}
                   >
-                    <span className="font-mono font-semibold">{clue.text}</span>{" "}
-                    <span className={text ? "text-muted-foreground" : "text-destructive/70"}>
+                    <span className="w-24 shrink-0 font-mono font-semibold">{clue.text}</span>
+                    <span className={`truncate ${text ? "text-muted-foreground" : "text-destructive/70"}`}>
                       {text || "à définir"}
                     </span>
                   </button>

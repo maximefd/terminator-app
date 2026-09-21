@@ -32,10 +32,11 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 | `make curator` | Mini-app de curation du lexique (PIN dans `.env`) |
 | `make test-e2e` | Parcours end-to-end et contrôle d'accessibilité axe (API et frontend démarrés) |
 
-Les parcours end-to-end créent un compte jetable par exécution, et `RATELIMIT_REGISTER` vaut « 5 par heure » :
-en enchaîner plus de cinq fait échouer l'inscription — ce n'est pas le test qui casse, c'est le quota. Le
-compteur vit en mémoire, `docker compose restart api` le remet à zéro ; la CI, elle, desserre le quota par
-variable d'environnement.
+Les parcours end-to-end créent un compte jetable par exécution. La pile de développement desserre donc
+`RATELIMIT_REGISTER` à 100 par heure (`docker-compose.yml`), et la CI fait de même ; la valeur du code
+reste 5 par heure, et c'est elle qui s'applique partout ailleurs. Si l'inscription se met malgré tout à
+échouer en boucle, regardez le quota avant le code : le compteur vit en mémoire, et
+`docker compose restart api` le remet à zéro.
 
 Le contrôle d'accessibilité (`tests/accessibility.spec.ts`) passe **axe** sur chaque écran (WCAG A et AA).
 Il ne juge que ce qui se vérifie par le code — contraste, intitulés, rôles, ordre des titres. Un écran qui

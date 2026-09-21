@@ -5,13 +5,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
-- Saisie des définitions et export (Phase 5, #27) : sur une grille conservée, un écran **Définitions** —
-  on clique une case (ou un mot dans la liste), on écrit, c'est enregistré au fil de la frappe. Puis trois
-  sorties : **PDF vectoriel**, **PDF + solution** (la solution est la seconde page du même document, pour
-  qu'elle ne se perde pas), et **fichier de travail JSON** relisible par Terminator. Le PDF est dessiné à
-  partir du **SVG de l'écran** : un seul rendu à tenir, et un trait net à n'importe quelle taille
-  d'impression. `PATCH /api/grids/<id>` écrit les définitions (200 au plus, 120 caractères chacune) et
-  renomme la grille ; une grille d'autrui répond 404.
+- Saisie des définitions et export (Phase 5, #27) : sur une grille conservée, un écran **Définitions**.
+  On écrit **sur la grille remplie** — définir un mot qu'on ne voit pas n'a pas de sens — en cliquant une
+  case ou un mot de la liste ; **Tab** et **Entrée** passent au suivant, dans l'ordre de lecture de la
+  grille, si bien qu'une grille entière se définit sans lâcher le clavier. Enregistrement au fil de la
+  frappe (`PATCH /api/grids/<id>`, 200 définitions au plus, 120 caractères chacune ; une grille d'autrui
+  répond 404). Trois sorties : **PDF vectoriel**, **PDF + solution** (seconde page du même document) et
+  **fichier de travail JSON**. La page de solution ne porte ni flèche ni définition : elle sert à vérifier
+  des lettres. Le PDF est dessiné à partir du SVG de l'écran, avec la **police du dessin embarquée** —
+  une étroite de labeur versionnée dans le dépôt, la même à l'écran et sur le papier.
 - Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
   définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
   dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie
@@ -135,6 +137,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- Rendu des grilles repris pour ressembler à une grille de magazine (#26, #27) : police étroite
+  (Archivo Narrow, embarquée), cadre extérieur plus fort que les traits intérieurs, flèches plus fines et
+  plus petites. Le rendu connaît trois états — **édition** (lettres, flèches et définitions, cases
+  cliquables), **vierge** (celle qu'on imprime) et **solution** (les lettres seules).
 - `RATELIMIT_REGISTER` se règle par variable d'environnement **hors production**, où le quota reste celui du code : les parcours end-to-end créent un compte par exécution, et le quota de production les ferait échouer dès le deuxième (#25).
 - Supprimer le dictionnaire **actif** n'en laissait aucun d'actif : la recherche et les grilles perdaient les mots personnels alors que le sélecteur en montrait toujours un. Un dictionnaire restant est réactivé aussitôt (#21).
 - La recherche par motif passe de `/` à `/search` : `/` accueille désormais la page d'accueil (#22).
@@ -151,6 +157,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Conserver une grille répondait **500** dès que la migration des définitions était passée mais que
+  l'API tournait encore sur le code d'avant : la colonne était `NOT NULL` sans valeur par défaut côté
+  base, si bien que l'ancien code ne pouvait plus insérer une ligne. La base porte désormais le défaut
+  (`'{}'`), et l'[ADR 0010](docs/adr/0010-migrations-de-schema.md) en fait une règle : une migration doit
+  laisser écrire le code d'avant.
 - Curateur : « Aucun mot à trier dans cette famille » bloquait l'écran jusqu'au rechargement de la page. Une famille déjà triée ailleurs n'est plus une erreur — la carte affichée était simplement périmée : le curateur passe à la suivante en le disant. Un mot inconnu du lexique reste refusé.
 - Les mots très courants (bande `keep`, zipf ≥ 3,5) sont désormais hors d'atteinte des règles automatiques. `aujourd'hui`, `quelqu'un`, `parce que`, `d'abord` et `à tâtons` étaient visés par `formes-composees` et auraient quitté le lexique.
 - L'export automatique du curateur ignorait les règles automatiques : les mots retirés de la file de tri restaient dans le lexique chargé par l'API, donc invisibles à l'auteur mais toujours placés dans les grilles. L'export applique désormais les mêmes règles que le tri, et `CURATOR_EXPORT_FILTER` permet d'y ajouter le filtre positif.

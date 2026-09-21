@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Toggle } from "@/components/ui/toggle";
-import { GridSvg, type Clue } from "@/components/grid/grid-svg";
+import { GridSvg, type Clue, type GridVariant } from "@/components/grid/grid-svg";
 
 export type Cell = { x: number; y: number; char: string; is_black: boolean };
 
@@ -36,7 +36,7 @@ const SOURCES: Record<string, { label: string; cell: string; badge: string }> = 
 };
 
 export function GridDisplay({ gridData }: { gridData: GridData }) {
-  const [mode, setMode] = useState<"vierge" | "remplie">("remplie");
+  const [variant, setVariant] = useState<GridVariant>("solution");
 
   // Une case peut appartenir à deux mots : la provenance la plus « voulue » l'emporte à l'affichage
   const priority = ["common", "wish", "must"];
@@ -63,15 +63,17 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
 
         {/* La grille vierge est celle qu'on imprime ; la solution, celle qu'on relit */}
         <div className="mb-3 flex gap-1 rounded-md border p-1">
-          <Toggle size="sm" pressed={mode === "remplie"} onPressedChange={() => setMode("remplie")}>
+          <Toggle size="sm" pressed={variant === "solution"} onPressedChange={() => setVariant("solution")}>
             Solution
           </Toggle>
-          <Toggle size="sm" pressed={mode === "vierge"} onPressedChange={() => setMode("vierge")}>
+          <Toggle size="sm" pressed={variant === "vierge"} onPressedChange={() => setVariant("vierge")}>
             Grille vierge
           </Toggle>
         </div>
 
-        <GridSvg grid={gridData} mode={mode} cellSources={origin} />
+        <div className="w-full max-w-2xl">
+          <GridSvg grid={gridData} variant={variant} cellSources={origin} />
+        </div>
       </div>
 
       {/* La provenance des mots : c'est ce que l'auteur vient vérifier après avoir imposé des mots */}

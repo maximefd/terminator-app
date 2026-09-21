@@ -21,7 +21,10 @@ def upgrade():
     # Les grilles déjà conservées n'ont pas de définitions : un objet vide, pas NULL,
     # pour que le code n'ait qu'un seul cas à traiter.
     op.execute("UPDATE saved_grid SET definitions = '{}'")
-    op.alter_column('saved_grid', 'definitions', nullable=False)
+    # La valeur par défaut est portée par la base, et pas seulement par le modèle : entre le moment
+    # où la migration passe et celui où le nouveau code tourne, l'ancien continue d'insérer des
+    # lignes sans ce champ. Sans ce défaut, il reçoit une violation de contrainte (vu en vrai).
+    op.alter_column('saved_grid', 'definitions', nullable=False, server_default=sa.text("'{}'"))
 
 
 def downgrade():

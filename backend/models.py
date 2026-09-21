@@ -81,7 +81,7 @@ class SavedGrid(db.Model):
     payload = db.Column(db.JSON, nullable=False)
     # Définition de chaque mot, par clé « MOT-x-y-direction ». Séparée du payload : on la modifie
     # au fil de la frappe, la grille elle-même ne bouge plus.
-    definitions = db.Column(db.JSON, nullable=False, default=dict)
+    definitions = db.Column(db.JSON, nullable=False, default=dict, server_default=db.text("'{}'"))
     date_creation = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
