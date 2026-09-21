@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools lint-backend lint-frontend bench layouts-check \
+.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench layouts-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls
 
@@ -79,6 +79,9 @@ curator-stop: ## Arrête la mini-app de curation lancée en arrière-plan
 
 curator-logs: ## Journal de la mini-app de curation en arrière-plan
 	docker logs -f $(CURATOR_CONTAINER)
+
+test-e2e: ## Parcours end-to-end et accessibilité (API et frontend doivent tourner)
+	cd frontend && pnpm exec playwright test
 
 lint-frontend: ## ESLint + vérification TypeScript
 	cd frontend && pnpm lint && pnpm exec tsc --noEmit

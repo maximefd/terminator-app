@@ -86,3 +86,90 @@ jobs:
         run: cd frontend && pnpm build
         env:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+
+  e2e-ci:
+    name: Parcours end-to-end et accessibilité
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: terminator
+          POSTGRES_PASSWORD: terminator
+          POSTGRES_DB: terminator_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U terminator"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Start the API
+        working-directory: backend
+        env:
+          PORT: 5001
+          DATABASE_URL: postgresql://terminator:terminator@localhost:5432/terminator_test
+          SECRET_KEY: ci-secret-key-long-enough-for-tests-only
+          JWT_SECRET_KEY: ci-jwt-secret-key-long-enough-for-tests-only
+          # Les parcours créent un compte par exécution : le quota de production (5 par heure)
+          # les ferait échouer dès le deuxième test.
+          RATELIMIT_REGISTER: 1000 per hour
+          LEXICON_RELOAD_INTERVAL_S: 0
+        run: |
+          nohup python run.py > /tmp/api.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5001/api/status > /dev/null; then
+              echo "API prête"; exit 0
+            fi
+            sleep 2
+          done
+          echo "L'API n'a pas démarré :"; cat /tmp/api.log; exit 1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: cd frontend && pnpm exec playwright install --with-deps chromium
+
+      - name: Run end-to-end and accessibility tests
+        run: cd frontend && pnpm exec playwright test
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+
+      - name: Journal de l'API en cas d'échec
+        if: failure()
+        run: cat /tmp/api.log
+
+      - name: Rapport Playwright en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

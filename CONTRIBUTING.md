@@ -30,8 +30,16 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 | `make bench` | Benchmark du générateur (quelques minutes) |
 | `make lexicon-build`, `lexicon-stats`, `lexicon-export` | Pipeline du lexique (voir [LEXICON.md](docs/LEXICON.md)) |
 | `make curator` | Mini-app de curation du lexique (PIN dans `.env`) |
+| `make test-e2e` | Parcours end-to-end et contrôle d'accessibilité axe (API et frontend démarrés) |
 
-Tests end-to-end (API démarrée) : `cd frontend && pnpm exec playwright test`.
+Les parcours end-to-end créent un compte jetable par exécution, et `RATELIMIT_REGISTER` vaut « 5 par heure » :
+en enchaîner plus de cinq fait échouer l'inscription — ce n'est pas le test qui casse, c'est le quota. Le
+compteur vit en mémoire, `docker compose restart api` le remet à zéro ; la CI, elle, desserre le quota par
+variable d'environnement.
+
+Le contrôle d'accessibilité (`tests/accessibility.spec.ts`) passe **axe** sur chaque écran (WCAG A et AA).
+Il ne juge que ce qui se vérifie par le code — contraste, intitulés, rôles, ordre des titres. Un écran qui
+y passe peut rester incompréhensible : c'est le rôle de la [revue UX](docs/AUDIT-UX.md).
 
 Captures d'écran du README (API et frontend démarrés) : `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`. Playwright utilise le **Google Chrome installé** sur la machine (`channel: 'chrome'` dans `playwright.config.ts`) : inutile de lancer `playwright install chromium`, dont le téléchargement se fige sur la machine de l'auteur.
 
