@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AlertTriangle, ArrowLeft, Check, Download, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -35,6 +36,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const [definitions, setDefinitions] = useState<Record<string, string>>({});
   const [isExporting, setExporting] = useState(false);
   const [draftName, setDraftName] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
   const solutionRef = useRef<HTMLDivElement>(null);
@@ -259,17 +261,31 @@ export function GridEditor({ gridId }: { gridId: number }) {
 
       <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
+          {/* L'aperçu montre ce qui s'imprime ; on n'y écrit pas, faute de voir les mots à définir */}
+          <div className="mb-3 flex w-fit gap-1 rounded-md border p-1">
+            <Toggle size="sm" pressed={!preview} onPressedChange={() => setPreview(false)}>
+              Édition
+            </Toggle>
+            <Toggle size="sm" pressed={preview} onPressedChange={() => setPreview(true)}>
+              Aperçu imprimé
+            </Toggle>
+          </div>
+
           {/* On définit sur la grille remplie : le mot à définir est sous les yeux, en surbrillance */}
-          <GridSvg
-            grid={data.grid}
-            variant="edition"
-            definitions={definitions}
-            selectedKey={selected}
-            onSelect={(key) => {
-              setSelected(key);
-              inputRef.current?.focus();
-            }}
-          />
+          {preview ? (
+            <GridSvg grid={data.grid} variant="vierge" definitions={definitions} />
+          ) : (
+            <GridSvg
+              grid={data.grid}
+              variant="edition"
+              definitions={definitions}
+              selectedKey={selected}
+              onSelect={(key) => {
+                setSelected(key);
+                inputRef.current?.focus();
+              }}
+            />
+          )}
 
           {/*
             Les deux rendus de l'export : hors du champ de vision, mais **mis en page**. Un `display:

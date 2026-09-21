@@ -15,7 +15,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   des lettres. Le PDF est dessiné à partir du SVG de l'écran, avec la **police du dessin embarquée** —
   une étroite de labeur versionnée dans le dépôt, la même à l'écran et sur le papier. Deux garde-fous :
   une définition **trop longue pour sa case** est signalée pendant qu'on l'écrit (elle serait rognée à
-  l'impression, et le découvrir sur le papier serait pire), et la grille se **renomme** depuis son titre.
+  l'impression, et le découvrir sur le papier serait pire), et la grille se **renomme** depuis son titre. Une bascule **Édition / Aperçu imprimé** montre à tout moment ce qui sortira sur le papier, sans passer par l'export.
 - Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
   définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
   dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie

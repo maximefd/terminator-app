@@ -82,6 +82,11 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   // La définition s'écrit dans la case, à côté de sa flèche
   await expect(page.locator("svg tspan", { hasText: "Champion" }).first()).toBeVisible();
 
+  // L'aperçu montre la grille telle qu'elle s'imprime : définitions et flèches, sans les lettres
+  await page.getByRole("button", { name: "Aperçu imprimé" }).click();
+  await expect(page.locator("svg[role='img']").first().locator("tspan", { hasText: "Champion" })).toBeVisible();
+  await page.getByRole("button", { name: "Édition" }).click();
+
   // La page de solution ne porte ni flèche ni définition : elle sert à vérifier des lettres.
   // Les pointes de flèches sont les seuls polygones du dessin.
   const grids = page.locator("svg[role='img']");
