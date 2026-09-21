@@ -111,7 +111,22 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   expect((raw.match(/\sl\s/g) ?? []).length).toBeGreaterThanOrEqual(20);
   expect((raw.match(/Tj/g) ?? []).length).toBeGreaterThanOrEqual(2);
 
+  // Une définition trop longue est annoncée pendant qu'on l'écrit, et non découverte à l'impression
+  await page.getByRole("button", { name: /^ILE/ }).click();
+  await page.getByLabel("Définition de ILE").fill(
+    "Une définition beaucoup trop longue pour tenir dans une demi-case de grille",
+  );
+  await expect(page.getByText(/Trop longue pour la case/)).toBeVisible();
+  await page.getByLabel("Définition de ILE").fill("Terre entourée d'eau");
+  await expect(page.getByText(/Trop longue pour la case/)).toHaveCount(0);
+
+  // Renommer : l'API le permettait déjà, l'écran ne l'atteignait pas
+  await page.getByRole("button", { name: "Renommer la grille" }).click();
+  await page.getByLabel("Nom de la grille").fill("Grille renommée");
+  await page.getByLabel("Nom de la grille").press("Enter");
+  await expect(page.getByRole("heading", { name: "Grille renommée" })).toBeVisible();
+
   const workFile = page.waitForEvent("download");
   await page.getByRole("button", { name: "Fichier de travail" }).click();
-  expect((await workFile).suggestedFilename()).toBe("grille-a-definir.json");
+  expect((await workFile).suggestedFilename()).toBe("grille-renommee.json");
 });

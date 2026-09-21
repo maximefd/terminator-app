@@ -289,26 +289,16 @@ export function GridSvg({
 }
 
 /**
- * Une définition tient rarement sur une ligne : on la coupe en lignes qui entrent dans sa case.
+ * Découpe une définition en lignes qui entrent dans sa case, et dit si elle déborde.
  *
  * Deux contraintes apprises sur le papier, et non à l'écran : la coupe se calcule pour la police
  * embarquée (le PDF utilise le même fichier, donc les mêmes largeurs), et la place réservée dépend
  * de la flèche — celle d'un mot collé au bord gauche descend à gauche, pas à droite.
+ *
+ * `overflow` est dit à l'auteur pendant qu'il écrit : une définition rognée à l'impression sans
+ * prévenir serait le pire des silences.
  */
-function ClueText({
-  text,
-  x,
-  y,
-  height,
-  arrow,
-}: {
-  text: string;
-  x: number;
-  y: number;
-  height: number;
-  arrow: string | null;
-}) {
-  const half = height <= CELL / 2;
+export function wrapDefinition(text: string, arrow: string | null, half: boolean) {
   const reserved = { left: 0, right: 0, bottom: 0 };
   if (arrow === "coudee_bas_droite") reserved.left = 30;
   else if (arrow === "bas") {
@@ -316,6 +306,7 @@ function ClueText({
     else reserved.bottom = 26;
   } else reserved.right = 26;
 
+  const height = half ? CELL / 2 : CELL;
   const fontSize = half ? CELL * 0.125 : CELL * 0.135;
   const usable = CELL - reserved.left - reserved.right - 8;
   // Archivo Narrow tourne autour de 0,43 em par caractère : c'est ce qui fixe la coupe
@@ -334,7 +325,32 @@ function ClueText({
     }
   }
   if (current) lines.push(current);
-  const shown = lines.slice(0, maxLines);
+
+  return {
+    lines: lines.slice(0, maxLines),
+    overflow: lines.length > maxLines,
+    fontSize,
+    lineHeight,
+    reserved,
+    usable,
+  };
+}
+
+function ClueText({
+  text,
+  x,
+  y,
+  height,
+  arrow,
+}: {
+  text: string;
+  x: number;
+  y: number;
+  height: number;
+  arrow: string | null;
+}) {
+  const half = height <= CELL / 2;
+  const { lines: shown, fontSize, lineHeight, reserved, usable } = wrapDefinition(text, arrow, half);
 
   const centerX = x + reserved.left + usable / 2 + 4;
   const centerY = y + (height - reserved.bottom) / 2;

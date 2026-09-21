@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Download, FileText } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Download, FileText, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
 import { useDebounce } from "@/hooks/use-debounce";
-import { GridSvg, clueKey, type Clue } from "@/components/grid/grid-svg";
+import { GridSvg, clueKey, wrapDefinition, type Clue } from "@/components/grid/grid-svg";
 import type { GridData } from "@/components/grid/grid-display";
 import { exportJson, exportPdf } from "@/lib/grid-export";
 
@@ -34,6 +34,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [definitions, setDefinitions] = useState<Record<string, string>>({});
   const [isExporting, setExporting] = useState(false);
+  const [draftName, setDraftName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
   const solutionRef = useRef<HTMLDivElement>(null);
@@ -47,6 +48,12 @@ export function GridEditor({ gridId }: { gridId: number }) {
   useEffect(() => {
     if (data) setDefinitions(data.definitions ?? {});
   }, [data]);
+
+  const rename = useMutation({
+    mutationFn: (name: string) => apiFetch(`/api/grids/${gridId}`, { method: "PATCH", body: { name } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["saved-grids"] }),
+    onError: (mutationError: Error) => toast.error(mutationError.message),
+  });
 
   const save = useMutation({
     mutationFn: (next: Record<string, string>) =>
@@ -137,6 +144,13 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const defined = clues.filter((clue) => definitions[clueKey(clue)]).length;
   const current = selectedClue ? definitions[clueKey(selectedClue)] ?? "" : "";
 
+  /** Deux définitions dans la même case : chacune n'en occupe que la moitié, donc moitié moins de place. */
+  const sharesItsCell = (clue: Clue) =>
+    clues.some((other) => other !== clue && other.cell_x === clue.cell_x && other.cell_y === clue.cell_y);
+  const overflows = (clue: Clue, text: string) =>
+    Boolean(text) && wrapDefinition(text, clue.arrow, sharesItsCell(clue)).overflow;
+  const tooLong = clues.filter((clue) => overflows(clue, definitions[clueKey(clue)] ?? ""));
+
   const setDefinition = (key: string, text: string) =>
     setDefinitions((state) => ({ ...state, [key]: text }));
 
@@ -173,11 +187,47 @@ export function GridEditor({ gridId }: { gridId: number }) {
               Mes grilles
             </Link>
           </Button>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">{data.name}</h1>
+          {draftName === null ? (
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight">
+              {data.name}
+              <button
+                type="button"
+                aria-label="Renommer la grille"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setDraftName(data.name)}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            </h1>
+          ) : (
+            <Input
+              autoFocus
+              className="mt-1 max-w-sm text-xl font-semibold"
+              aria-label="Nom de la grille"
+              maxLength={100}
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+              onBlur={() => {
+                const name = draftName.trim();
+                if (name && name !== data.name) rename.mutate(name);
+                setDraftName(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") setDraftName(null);
+              }}
+            />
+          )}
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>
               {defined} définition{defined > 1 ? "s" : ""} sur {clues.length}
             </span>
+            {tooLong.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-500">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {tooLong.length} trop longue{tooLong.length > 1 ? "s" : ""}
+              </span>
+            )}
             {save.isPending ? (
               <span>· enregistrement…</span>
             ) : (
@@ -264,6 +314,13 @@ export function GridEditor({ gridId }: { gridId: number }) {
                   </span>
                   <span>{current.length}/120</span>
                 </div>
+                {/* Une définition rognée à l'impression sans prévenir serait le pire des silences */}
+                {overflows(selectedClue, current) && (
+                  <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    Trop longue pour la case : la fin sera coupée à l&apos;impression.
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -292,6 +349,9 @@ export function GridEditor({ gridId }: { gridId: number }) {
                     <span className={`truncate ${text ? "text-muted-foreground" : "text-destructive/70"}`}>
                       {text || "à définir"}
                     </span>
+                    {overflows(clue, text ?? "") && (
+                      <AlertTriangle className="ml-auto h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
+                    )}
                   </button>
                 </li>
               );

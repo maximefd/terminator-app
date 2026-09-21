@@ -13,7 +13,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   répond 404). Trois sorties : **PDF vectoriel**, **PDF + solution** (seconde page du même document) et
   **fichier de travail JSON**. La page de solution ne porte ni flèche ni définition : elle sert à vérifier
   des lettres. Le PDF est dessiné à partir du SVG de l'écran, avec la **police du dessin embarquée** —
-  une étroite de labeur versionnée dans le dépôt, la même à l'écran et sur le papier.
+  une étroite de labeur versionnée dans le dépôt, la même à l'écran et sur le papier. Deux garde-fous :
+  une définition **trop longue pour sa case** est signalée pendant qu'on l'écrit (elle serait rognée à
+  l'impression, et le découvrir sur le papier serait pire), et la grille se **renomme** depuis son titre.
 - Flèches et cases définitions (Phase 5, #26) : la grille se dessine désormais en **SVG**, avec les cases
   définitions, leurs flèches, et une bascule **Solution / Grille vierge**. Les flèches ne sont pas encodées
   dans les layouts ([ADR 0006](docs/adr/0006-format-des-layouts.md)) : le moteur les déduit de la géométrie
