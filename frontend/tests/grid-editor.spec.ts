@@ -199,3 +199,50 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await page.getByRole("button", { name: "Fichier de travail" }).click();
   expect((await workFile).suggestedFilename()).toBe("grille-renommee.json");
 });
+
+test("une grande grille se voit en entier, quelle que soit la fenêtre", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const generated = await (await fetch(`${API}/api/grids/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ size: { width: 13, height: 18 }, seed: 99 }),
+  })).json();
+
+  await page.goto("/register");
+  await page.getByLabel("Email").fill(`grande_${Date.now()}@test.com`);
+  await page.getByLabel("Mot de passe").fill("TestPassword123");
+  await page.getByRole("button", { name: "Créer un compte" }).click();
+  await expect(page.getByTestId("logout-button")).toBeVisible();
+
+  const gridId = await page.evaluate(
+    async ([api, grid]) => {
+      const response = await fetch(`${api}/api/grids`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+        body: JSON.stringify({ name: "Treize sur dix-huit", grid }),
+      });
+      return (await response.json()).id as number;
+    },
+    [API, generated.grid] as const,
+  );
+
+  // On travaille une grille en la voyant entière : un 13×18 qui déborde oblige à faire défiler
+  // entre deux lettres. La promesse vaut pour toute taille de fenêtre, pas seulement la nôtre.
+  for (const fenetre of [{ width: 1280, height: 720 }, { width: 1100, height: 560 }]) {
+    await page.setViewportSize(fenetre);
+    await page.goto(`/grids/${gridId}`);
+    await expect(page.getByRole("heading", { name: "Treize sur dix-huit" })).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const boite = await page.locator("svg[role='img']").first().boundingBox();
+    expect(boite, `grille absente en ${fenetre.width}×${fenetre.height}`).not.toBeNull();
+    expect(
+      Math.round(boite!.y + boite!.height),
+      `la grille dépasse en ${fenetre.width}×${fenetre.height}`,
+    ).toBeLessThanOrEqual(fenetre.height);
+  }
+});

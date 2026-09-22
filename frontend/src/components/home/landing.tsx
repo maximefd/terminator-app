@@ -19,23 +19,23 @@ import { ExampleDictionary, ExamplePattern } from "@/components/home/example-gri
 const STEPS = [
   {
     title: "Générer",
-    text: "Choisissez un format, donnez les mots que vous voulez y voir — obligatoires ou simplement souhaités. Le logiciel annonce la difficulté avant de chercher, plutôt que de vous faire attendre pour rien.",
+    text: "Un format, vos mots imposés, et le moteur remplit le reste. Il annonce la difficulté avant de chercher.",
     href: "/grid",
     action: "Remplir une grille",
   },
   {
     title: "Conserver",
-    text: "La grille qui vous convient se garde. Vous la retrouvez dans « Mes grilles », avec un bloc-notes pour les idées et l'avancement de vos définitions.",
+    text: "La grille qui vous convient se garde, avec un bloc-notes pour vos idées.",
     href: "/grids",
     action: "Voir mes grilles",
   },
   {
     title: "Retoucher",
-    text: "Un mot ne vous plaît pas ? Changez ses lettres. Les mots se recalculent, ceux qui sortent du lexique sont signalés, et le logiciel propose ceux qui entrent sans casser un croisement.",
+    text: "Changez les lettres qui ne vous plaisent pas : le logiciel propose les mots qui entrent sans casser un croisement.",
   },
   {
     title: "Définir, puis imprimer",
-    text: "Écrivez les définitions à même la grille, en enchaînant au clavier. Exportez en PDF vectoriel, avec la solution en seconde page.",
+    text: "Les définitions s'écrivent à même la grille. Export en PDF, solution en seconde page.",
   },
 ];
 
@@ -48,8 +48,7 @@ export function Landing() {
       <section className="mx-auto max-w-2xl text-center">
         <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Composez vos mots fléchés</h1>
         <p className="mt-4 text-lg text-muted-foreground">
-          L&apos;atelier complet : remplir une grille autour de vos mots, la retoucher lettre par
-          lettre, écrire les définitions, et l&apos;imprimer.
+          Remplir, retoucher, définir, imprimer. L&apos;atelier complet.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button asChild size="lg">
@@ -59,9 +58,7 @@ export function Landing() {
             <Link href="/search">Chercher un mot</Link>
           </Button>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">
-          Sans compte et sans installation : générer et chercher fonctionnent tout de suite.
-        </p>
+        <p className="mt-4 text-sm text-muted-foreground">Sans compte, tout de suite.</p>
       </section>
 
       {/* Une grille finie, produite par le moteur : c'est l'argument, autant le montrer */}
@@ -86,9 +83,7 @@ export function Landing() {
             />
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Grille 6×7 produite par le moteur autour du mot imposé <strong>PIANO</strong>, définitions
-            écrites dans l&apos;éditeur. Les flèches sont déduites de la géométrie : aucun layout ne
-            les décrit.
+            Une vraie sortie du moteur, autour du mot imposé <strong>PIANO</strong>.
           </p>
         </div>
 
@@ -131,8 +126,8 @@ export function Landing() {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Trouver le mot manquant</h3>
               <p className="text-sm text-muted-foreground">
-                Vous remplissez une grille à la main et il vous manque un mot : tapez les lettres que
-                vous connaissez et un <span className="font-mono font-semibold">?</span> par case vide.
+                Les lettres que vous connaissez, un <span className="font-mono font-semibold">?</span>{" "}
+                par case vide.
               </p>
             </div>
             <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-primary">
@@ -151,8 +146,8 @@ export function Landing() {
             <div className="space-y-2">
               <h3 className="text-lg font-semibold">Vos propres dictionnaires</h3>
               <p className="text-sm text-muted-foreground">
-                Rassemblez vos mots par thème. Ils remontent dans la recherche, et vous les versez à une
-                grille en les cochant — aucun n&apos;entre de lui-même.
+                Vos mots par thème. Ils remontent dans la recherche, et alimentent les grilles que vous
+                cochez.
               </p>
             </div>
             <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-primary">
@@ -184,8 +179,7 @@ export function Landing() {
           <>
             <h2 className="font-semibold">Un compte sert à garder votre travail</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Chercher et générer marchent en invité. Le compte ajoute ce qui se garde : vos grilles —
-              avec leurs définitions, leurs notes et vos retouches — et vos dictionnaires thématiques.
+              Chercher et générer marchent en invité. Le compte garde vos grilles et vos dictionnaires.
             </p>
             <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
               <Button asChild size="sm">

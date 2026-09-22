@@ -11,6 +11,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
+import { GridThumbnail } from "@/components/grid/grid-thumbnail";
 
 type SavedGrid = {
   id: number;
@@ -22,6 +23,7 @@ type SavedGrid = {
   word_count: number;
   must_words: string[];
   defined_count: number;
+  shape: string[];
   archived: boolean;
   has_notes: boolean;
   date_creation: string | null;
@@ -218,24 +220,38 @@ export function SavedGridsClientLayout() {
                 const part = grid.word_count ? Math.round((grid.defined_count / grid.word_count) * 100) : 0;
                 return (
                   <li key={grid.id} className="flex flex-col rounded-lg border p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={`/grids/${grid.id}`}
-                        className="font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {grid.name}
-                      </Link>
-                      {grid.has_notes && (
-                        <NotebookPen
-                          className="h-4 w-4 shrink-0 text-muted-foreground"
-                          aria-label="Contient des notes"
-                        />
-                      )}
-                    </div>
+                    <div className="flex items-start gap-3">
+                      {/*
+                        La silhouette : c'est elle qu'on reconnaît quand on en a cent. Une image,
+                        pas un lien — un second lien vers la même page, sans intitulé, n'apporterait
+                        rien et encombrerait la navigation au clavier.
+                      */}
+                      <div className="flex h-20 w-16 shrink-0 items-center">
+                        <GridThumbnail shape={grid.shape} className="max-h-20" />
+                      </div>
 
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {grid.width}×{grid.height} · {grid.word_count} mots · {formatDate(grid.date_creation)}
-                    </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <Link
+                            href={`/grids/${grid.id}`}
+                            className="font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {grid.name}
+                          </Link>
+                          {grid.has_notes && (
+                            <NotebookPen
+                              className="h-4 w-4 shrink-0 text-muted-foreground"
+                              aria-label="Contient des notes"
+                            />
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {grid.width}×{grid.height} · {grid.word_count} mots ·{" "}
+                          {formatDate(grid.date_creation)}
+                        </p>
+                      </div>
+                    </div>
 
                     {/* L'avancement des définitions : c'est ce qu'on cherche en revenant sur une grille */}
                     <div className="mt-3">

@@ -99,6 +99,19 @@ class SavedGrid(db.Model):
     def __repr__(self):
         return f"<SavedGrid '{self.name}' ({self.layout_id})>"
 
+    def shape(self) -> list[str]:
+        """La forme de la grille, une ligne par rangée : « x » case définition, « - » case lettre.
+
+        De quoi dessiner une miniature dans la liste sans transporter les lettres ni les mots :
+        c'est la silhouette qui distingue deux grilles d'un coup d'œil, pas leur contenu.
+        """
+        cells = (self.payload or {}).get("cells", []) if isinstance(self.payload, dict) else []
+        rows = [["-"] * self.width for _ in range(self.height)]
+        for cell in cells:
+            if 0 <= cell.get("y", -1) < self.height and 0 <= cell.get("x", -1) < self.width:
+                rows[cell["y"]][cell["x"]] = "x" if cell.get("is_black") else "-"
+        return ["".join(row) for row in rows]
+
     def summary(self):
         """Ce qu'il faut pour lister les grilles sans transporter toutes leurs cases."""
         words = self.payload.get('words', []) if isinstance(self.payload, dict) else []
@@ -112,6 +125,7 @@ class SavedGrid(db.Model):
             'word_count': len(words),
             'must_words': self.payload.get('must_words', []) if isinstance(self.payload, dict) else [],
             'defined_count': len(self.definitions or {}),
+            'shape': self.shape(),
             'archived': self.archived,
             'has_notes': bool((self.notes or "").strip()),
             'date_creation': self.date_creation.isoformat() if self.date_creation else None,

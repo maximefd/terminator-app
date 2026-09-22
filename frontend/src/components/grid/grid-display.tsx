@@ -77,8 +77,14 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
           </Toggle>
         </div>
 
-        <div className="w-full max-w-2xl">
-          <GridSvg grid={gridData} variant={variant} cellSources={origin} />
+        {/* La grille se voit en entier : une grande mise en page ne doit pas obliger à défiler */}
+        <div className="flex w-full max-w-2xl justify-center">
+          <GridSvg
+            grid={gridData}
+            variant={variant}
+            cellSources={origin}
+            className="max-h-[80vh] w-auto max-w-full"
+          />
         </div>
       </div>
 

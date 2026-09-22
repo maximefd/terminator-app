@@ -352,3 +352,16 @@ def test_suggestions_fill_the_holes_by_default(grid_app, client):
 
     # En remplacement, plus rien n'est imposé par les lettres en place
     assert remplace["pattern"].count("?") >= garde["pattern"].count("?")
+
+
+def test_the_list_carries_the_shape_of_each_grid(grid_app, client):
+    """Une miniature vaut mieux qu'une ligne de texte quand on a cent grilles : on envoie la forme."""
+    headers = auth_headers(client)
+    save(client, headers)
+
+    resume = client.get("/api/grids", headers=headers).get_json()[0]
+
+    # 3x2 : la seule case définition est en haut à gauche
+    assert resume["shape"] == ["x--", "---"]
+    # La forme suffit à dessiner : ni lettres ni mots ne transitent
+    assert "cells" not in resume and "words" not in resume

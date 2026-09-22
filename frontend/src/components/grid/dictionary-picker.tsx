@@ -59,6 +59,8 @@ export function DictionaryPicker({ selected, onChange, disabled }: DictionaryPic
             onPressedChange={() => toggle(dictionary.id)}
             disabled={disabled || (!selected.includes(dictionary.id) && selected.length >= MAX_DICTIONARIES)}
             aria-label={`Utiliser le dictionnaire ${dictionary.name}`}
+            // Coché = vert : le gris du réglage par défaut ne se distingue pas d'un bouton inactif
+            className="data-[state=on]:border-emerald-500/60 data-[state=on]:bg-emerald-500/15 data-[state=on]:text-emerald-800 dark:data-[state=on]:text-emerald-300"
           >
             {dictionary.name}
             {dictionary.is_active && (

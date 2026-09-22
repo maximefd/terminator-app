@@ -5,6 +5,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- Miniature de chaque grille dans « Mes grilles » : l'API envoie la **forme** avec le résumé
+  (`x` case définition, `-` case lettre), et la liste la dessine. Avec cent grilles, c'est la
+  silhouette qu'on reconnaît — ni lettres ni mots ne transitent pour l'afficher.
 - Page d'accueil reprise : elle montre désormais **une grille finie produite par le moteur** —
   définitions, flèches, et une bascule vers la solution — rendue par le composant de l'application,
   si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
@@ -176,6 +179,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- L'éditeur devient un **plan de travail** : sur grand écran il occupe la fenêtre, et la grille se
+  voit **en entier quelle que soit sa taille** — un 13×18 n'oblige plus à faire défiler entre deux
+  lettres. Un test le vérifie à deux tailles de fenêtre plutôt que de s'en remettre à une marge fixe.
+- Un dictionnaire coché pour une grille s'allume en **vert** : le gris du réglage par défaut ne se
+  distinguait pas d'un bouton inactif.
+- Page d'accueil allégée : le texte disait trois fois ce que la grille montre déjà.
 - La clé d'une définition est désormais la **position** de son emplacement (`1-2-across`) et non le texte
   du mot (`PORTE-1-2-across`) : corriger une lettre renomme le mot, et une clé fondée sur le texte aurait
   laissé la définition orpheline. Migration `0004` : les clés existantes sont réécrites.
@@ -206,6 +215,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **La police des grilles ne se chargeait pas dans le navigateur.** Un chunk CSS périmé du serveur de
+  développement omettait la règle `@font-face` : l'écran affichait la police de secours depuis le
+  début, alors que le PDF — qui embarque le fichier lui-même — était correct. Conséquence moins
+  visible et plus gênante : les largeurs de caractères que j'avais « mesurées » portaient sur la
+  mauvaise police. Remesurées sur Archivo Narrow (0,527 em en gras au lieu de 0,64), les définitions
+  occupent enfin la place qui leur revient.
 - Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
   est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
   et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.

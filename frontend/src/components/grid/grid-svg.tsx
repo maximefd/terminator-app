@@ -135,6 +135,8 @@ type GridSvgProps = {
   selectedCell?: { x: number; y: number } | null;
   onSelectCell?: (cell: { x: number; y: number }) => void;
   litCells?: string[];
+  /** Classe du `<svg>` : c'est par elle qu'un écran borne la taille de la grille. */
+  className?: string;
   /** Mots absents du lexique : soulignés dans la grille, pour qu'on les voie sans lire la liste. */
   unknownCells?: string[];
 };
@@ -151,6 +153,7 @@ export function GridSvg({
   onSelectCell,
   litCells,
   unknownCells,
+  className = "h-auto w-full",
 }: GridSvgProps) {
   const clues = grid.clues ?? [];
   const showLetters = variant !== "vierge";
@@ -188,7 +191,7 @@ export function GridSvg({
   return (
     <svg
       viewBox={`${-BORDER / 2} ${-BORDER / 2} ${grid.width * CELL + BORDER} ${grid.height * CELL + BORDER}`}
-      className="h-auto w-full"
+      className={className}
       role="img"
       aria-label={`Grille ${grid.width} sur ${grid.height}, ${grid.words.length} mots`}
     >
@@ -364,17 +367,20 @@ export function GridSvg({
  * prévenir serait le pire des silences.
  */
 /**
- * Largeur moyenne d'un caractère, en em, mesurée sur Archivo Narrow avec de vraies définitions.
- * Les capitales sont **50 % plus larges** que le bas de casse (0,60 contre 0,42) : la coupe des
- * lignes en dépend directement, et la même formule pour les deux tronquerait une ligne sur deux.
+ * Largeur moyenne d'un caractère, en em, mesurée sur **Archivo Narrow** avec de vraies définitions
+ * en capitales : 0,527 en gras, 0,523 en maigre.
+ *
+ * Les premières valeurs inscrites ici (0,64) mesuraient en réalité la police de secours : un chunk
+ * CSS périmé du serveur de développement empêchait Archivo Narrow de se charger, sans rien dire.
+ * Leçon : mesurer une police suppose d'abord de vérifier qu'elle est chargée (`document.fonts`).
  */
-const CHAR_WIDTH = { bold: 0.64, regular: 0.6 };
+const CHAR_WIDTH = { bold: 0.53, regular: 0.52 };
 /**
  * Largeur du **pire mot** plutôt que du mot moyen, pour la borne qui empêche un mot de sortir de sa
- * case. Mesuré : « ILLICITE » 0,57, « DÉSAVANTAGÉS » 0,66, « RECOMMANDÉES » 0,74, « CŒUR » 0,79.
- * La moyenne suffit à répartir les lignes ; elle laissait déborder les mots les plus larges.
+ * case. Mesuré sur Archivo Narrow gras : « DÉSAVANTAGÉS » 0,554, « RECOMMANDÉES » 0,596,
+ * « CŒUR » 0,649. La moyenne suffit à répartir les lignes ; elle laisse déborder les mots larges.
  */
-const WIDEST_CHAR = 0.78;
+const WIDEST_CHAR = 0.68;
 
 /** Comme dans les magazines : capitales accentuées. La saisie de l'auteur, elle, reste telle quelle. */
 export const printedCase = (text: string) => text.toLocaleUpperCase("fr");

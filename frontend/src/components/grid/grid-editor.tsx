@@ -32,6 +32,16 @@ type Mode = "definitions" | "lettres" | "apercu";
 type CellEdit = { x: number; y: number; char: string };
 
 /**
+ * La grille tient dans la fenêtre, quelle qu'elle soit.
+ *
+ * On travaille une grille en la voyant **entière** : un 13×18 qui déborde oblige à faire défiler
+ * entre deux lettres. Plutôt qu'une marge fixe — qui suppose une hauteur d'en-tête et se trompe dès
+ * qu'on change de fenêtre —, la colonne occupe la hauteur disponible et le dessin prend ce qui
+ * reste (`flex-1` + `min-h-0`), la largeur suivant le rapport du SVG.
+ */
+const FITS_SCREEN = "h-full max-h-full w-auto max-w-full";
+
+/**
  * L'éditeur d'une grille conservée : définitions, lettres, notes, export.
  *
  * Les définitions s'écrivent **sur la grille remplie** — définir un mot qu'on ne voit pas n'a pas de
@@ -412,8 +422,14 @@ export function GridEditor({ gridId }: { gridId: number }) {
   };
 
   return (
-    <main className="container mx-auto p-4 md:p-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    /*
+     * Un plan de travail, pas une page qui défile : sur grand écran l'éditeur occupe la fenêtre
+     * (moins l'en-tête de 4 rem), la grille prend la hauteur qui reste et le panneau défile seul.
+     * En dessous de `lg`, la page redevient un document qu'on fait défiler — une grille et un
+     * panneau côte à côte n'y tiendraient pas.
+     */
+    <main className="container mx-auto flex flex-col p-4 md:p-6 lg:h-[calc(100svh-4rem)] lg:overflow-hidden">
+      <div className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/grids">
@@ -495,9 +511,11 @@ export function GridEditor({ gridId }: { gridId: number }) {
         </div>
       </div>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div>
-          <div className="mb-3 flex w-fit flex-wrap gap-1 rounded-md border p-1">
+      <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* Hauteur **définie** et non plafonnée : sans elle, le `100 %` du dessin n'a rien à quoi se
+            rapporter et le SVG reprend sa taille intrinsèque — le piège classique des pourcentages. */}
+        <div className="flex min-h-0 flex-col lg:h-full">
+          <div className="mb-3 flex w-fit shrink-0 flex-wrap gap-1 rounded-md border p-1">
             <Toggle size="sm" pressed={mode === "definitions"} onPressedChange={() => setMode("definitions")}>
               Définitions
             </Toggle>
@@ -517,14 +535,21 @@ export function GridEditor({ gridId }: { gridId: number }) {
           <div
             tabIndex={mode === "lettres" ? 0 : -1}
             onKeyDown={mode === "lettres" ? onLetterKey : undefined}
-            className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-0 flex-1 items-start justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={mode === "lettres" ? "Grille, correction des lettres" : undefined}
           >
             {mode === "apercu" ? (
-              <GridSvg grid={content} variant="vierge" definitions={definitions} boldDefinitions={bold} />
+              <GridSvg
+                grid={content}
+                variant="vierge"
+                definitions={definitions}
+                boldDefinitions={bold}
+                className={FITS_SCREEN}
+              />
             ) : mode === "lettres" ? (
               <GridSvg
                 grid={content}
+                className={FITS_SCREEN}
                 variant="lettres"
                 definitions={definitions}
                 boldDefinitions={bold}
@@ -536,6 +561,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
             ) : (
               <GridSvg
                 grid={content}
+                className={FITS_SCREEN}
                 variant="edition"
                 definitions={definitions}
                 boldDefinitions={bold}
@@ -550,7 +576,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
           </div>
 
           {mode === "lettres" && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 shrink-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => void undo()} disabled={past.length === 0}>
                   <Undo2 className="mr-1 h-4 w-4" />
@@ -586,7 +612,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
           </div>
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+        <div className="space-y-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
           {mode === "lettres" ? (
             <LetterPanel
               gridId={gridId}
@@ -648,7 +674,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
                 )}
               </div>
 
-              <ul className="max-h-[22rem] space-y-0.5 overflow-y-auto rounded-lg border p-2">
+              <ul className="space-y-0.5 rounded-lg border p-2">
                 {clues.map((clue) => {
                   const key = clueKey(clue);
                   const text = definitions[key];
