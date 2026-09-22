@@ -226,8 +226,8 @@ export function SavedGridsClientLayout() {
                         pas un lien — un second lien vers la même page, sans intitulé, n'apporterait
                         rien et encombrerait la navigation au clavier.
                       */}
-                      <div className="flex h-20 w-16 shrink-0 items-center">
-                        <GridThumbnail shape={grid.shape} className="max-h-20" />
+                      <div className="flex h-12 w-11 shrink-0 items-center">
+                        <GridThumbnail shape={grid.shape} className="max-h-12" />
                       </div>
 
                       <div className="min-w-0 flex-1">

@@ -29,6 +29,8 @@ test("une grille générée se conserve et se retrouve", async ({ page }) => {
   await expect(saved).toBeVisible();
   // La liste ne transporte que des résumés : l'avancement des définitions est ce qu'on y cherche
   await expect(saved.getByText(/définition|Définitions complètes/)).toBeVisible();
+  // Et sa silhouette, dessinée depuis la forme envoyée avec le résumé — c'est ce qu'on reconnaît
+  await expect(saved.getByRole("img", { name: /Silhouette d'une grille 6 sur 7/ })).toBeVisible();
 
   // Archiver range la grille sans rien perdre : elle sort de la liste de travail, pas de la base
   await saved.getByRole("button", { name: "Archiver" }).click();

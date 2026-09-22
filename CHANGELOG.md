@@ -7,7 +7,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ### Ajouté
 - Miniature de chaque grille dans « Mes grilles » : l'API envoie la **forme** avec le résumé
   (`x` case définition, `-` case lettre), et la liste la dessine. Avec cent grilles, c'est la
-  silhouette qu'on reconnaît — ni lettres ni mots ne transitent pour l'afficher.
+  silhouette qu'on reconnaît — ni lettres ni mots ne transitent pour l'afficher. Vignette de 44 px,
+  cadre épais, sans quadrillage : à cette taille les traits d'un 13×18 ne feraient qu'un gris sale.
 - Page d'accueil reprise : elle montre désormais **une grille finie produite par le moteur** —
   définitions, flèches, et une bascule vers la solution — rendue par le composant de l'application,
   si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
