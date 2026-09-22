@@ -14,6 +14,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
   parce qu'il l'est vraiment : générer, conserver, retoucher, définir puis imprimer. La recherche par
   motif et les dictionnaires, qui ne sont pas dans cette séquence, gardent leur propre bloc.
+- `make preview-remote` : tunnel Cloudflare **temporaire** pour faire tester l'app à quelqu'un à
+  distance sans qu'il clone le repo, sans rien déployer (cohérent avec
+  [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) — l'URL n'existe que tant que la commande
+  tourne. Corrige au passage `allowedDevOrigins` (mal placé sous `experimental`, ignoré depuis
+  Next 15.5) pour que l'accès distant au serveur de dev fonctionne à nouveau.
 - Effacer des lettres dans l'éditeur ([ADR 0012](docs/adr/0012-grille-modifiable.md)) :
   `Retour arrière` efface en remontant — maintenu, il vide le mot — et `Suppr` efface sur place. Les
   trous sont un **état de travail** : le mot garde sa longueur (`P?RTE`, jamais `PRTE`), il est dit

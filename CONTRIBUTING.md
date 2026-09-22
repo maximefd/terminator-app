@@ -18,6 +18,23 @@ Le premier démarrage de l'API charge tout le dictionnaire en mémoire : comptez
 
 > Le backend requiert **Python 3.11**. Si votre machine a une version plus ancienne, les commandes `make` lancent Python dans Docker.
 
+### Tester à distance (tunnel temporaire)
+
+Pour faire tester l'état actuel à quelqu'un sans qu'il clone et lance le repo :
+
+```bash
+brew install cloudflared   # une fois
+make preview-remote        # API et frontend doivent déjà tourner (dev-api / dev-front)
+```
+
+Affiche une URL `https://...trycloudflare.com` à transmettre à la personne. C'est un tunnel **éphémère** (rien n'est déployé, cohérent avec [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) : il ne fonctionne que tant que la commande tourne, et votre Mac doit rester allumé. `Ctrl+C` referme les tunnels et restaure `CORS_ORIGINS`.
+
+Toutes les fonctionnalités sont testables à distance, y compris celles qui demandent un compte : l'authentification
+utilise un token Bearer (`Authorization`, stocké côté client), pas des cookies, donc rien ne bloque entre les deux
+origines du tunnel (front et API). La personne peut s'inscrire normalement (`/api/auth/register`, email + mot de
+passe) pour tester la sauvegarde et les autres fonctionnalités connectées ; la recherche et la génération de grille
+restent aussi accessibles sans compte (mode invité).
+
 ## 2. Vérifier son travail
 
 | Commande | Ce qu'elle fait |

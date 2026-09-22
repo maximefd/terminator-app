@@ -1,3 +1,5 @@
+import type { NextConfig } from 'next';
+
 const isDev = process.env.NODE_ENV === 'development';
 
 // Origines de l'API appelées par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
@@ -32,28 +34,21 @@ const securityHeaders = [
   ...(isDev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]),
 ];
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    // On garde cette option pour les tests locaux, mais elle peut causer des avertissements.
-    // La configuration ci-dessous est une version plus robuste.
-  },
+const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
 };
 
-// LA CORRECTION DÉFINITIVE EST ICI :
-// On applique la configuration expérimentale uniquement en mode développement.
+// allowedDevOrigins doit être au niveau racine (pas sous experimental) depuis Next 15.5,
+// et ses entrées sont juste des hostnames (sans schéma, port seulement si non standard) :
+// https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
 if (isDev) {
-  nextConfig.experimental = {
-    ...nextConfig.experimental,
-    allowedDevOrigins: [
-      "http://localhost:3000",
-      "http://192.168.1.56:3000",
-      "http://192.0.0.2:3000", // On garde les adresses possibles
-    ],
-  };
+  nextConfig.allowedDevOrigins = [
+    "localhost:3000",
+    "192.168.1.147:3000", // téléphone sur le même Wi-Fi que le Mac
+    "*.trycloudflare.com", // tunnel temporaire (make preview-remote)
+  ];
 }
 
 export default nextConfig;
