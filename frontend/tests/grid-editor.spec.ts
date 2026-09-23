@@ -210,26 +210,20 @@ test("une grande grille se voit en entier, quelle que soit la fenêtre", async (
   await page.getByRole("button", { name: "Créer un compte" }).click();
   await expect(page.getByTestId("logout-button")).toBeVisible();
 
-  const gridId = await page.evaluate(
-    async ([api, grid]) => {
-      const response = await fetch(`${api}/api/grids`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-        body: JSON.stringify({ name: "Treize sur dix-huit", grid }),
-      });
-      return (await response.json()).id as number;
-    },
-    [API, generated.grid] as const,
-  );
+  // Session en cookies (ADR 0015) : la requête du test les partage avec la page, et recopie le jeton CSRF
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "csrf_access_token")!.value;
+  const created = await page.request.post(`${API}/api/grids`, {
+    headers: { "X-CSRF-TOKEN": csrf },
+    data: { name: "Treize sur dix-huit", grid: generated.grid },
+  });
+  expect(created.status()).toBe(201);
+  const gridId = (await created.json()).id as number;
 
   // On travaille une grille en la voyant entière : un 13×18 qui déborde oblige à faire défiler
   // entre deux lettres. La promesse vaut pour toute taille de fenêtre, pas seulement la nôtre.
   for (const fenetre of [{ width: 1280, height: 720 }, { width: 1100, height: 560 }]) {
     await page.setViewportSize(fenetre);
-    await page.goto(`/grids/${gridId}`);
+    await page.goto(`/grids/edit?id=${gridId}`);
     await expect(page.getByRole("heading", { name: "Treize sur dix-huit" })).toBeVisible();
     await page.waitForTimeout(500);
 
