@@ -34,7 +34,7 @@ DEFAULT_SETTINGS = dict(
     # Dossier des verrous de ces places ; il doit être commun à tous les workers d'une même machine
     GENERATION_LOCK_DIR=os.path.join(tempfile.gettempdir(), 'terminator-generations'),
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
-    TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
+    TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API qui ajoutent X-Forwarded-For
     # En-tête portant l'adresse du visiteur, posé par un proxy de confiance (Cloudflare : CF-Connecting-IP).
     # Vide : l'adresse de la connexion. Voir security.client_ip et l'ADR 0013.
     CLIENT_IP_HEADER='',
@@ -168,7 +168,7 @@ def create_app(test_config=None):
     else:
         app.config.from_mapping(test_config)
 
-    # Derrière un reverse proxy (Render), l'IP réelle du client est dans X-Forwarded-For :
+    # Derrière un reverse proxy classique, l'IP réelle du client est dans X-Forwarded-For :
     # indispensable pour que le rate limiting ne compte pas tout le monde comme une seule IP.
     if app.config['TRUST_PROXY_HOPS']:
         hops = app.config['TRUST_PROXY_HOPS']

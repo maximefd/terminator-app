@@ -244,6 +244,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- Plus de repli vers l'ancienne API Render : sans `NEXT_PUBLIC_API_BASE_URL`, un build de production visait
+  `motsfleches-terminator-backend.onrender.com`, autorisé aussi par la CSP. Le service est supprimé, et son
+  sous-domaine peut être réservé par n'importe qui, qui recevrait alors e-mails et mots de passe. Le build de
+  production **échoue** désormais sans adresse d'API ; Render et Vercel sont retirés du code et de la
+  documentation, ainsi que les images de démarrage de Next.js inutilisées.
 - Rate limiting derrière Cloudflare Tunnel : toutes les requêtes arrivent de cloudflared, et le limiteur
   aurait bloqué tous les visiteurs ensemble. L'adresse vient désormais de `CF-Connecting-IP`, lue seulement
   si `CLIENT_IP_HEADER` le demande : sans tunnel, un client pourrait l'inventer pour échapper aux limites.
