@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Revue des licences** ([docs/LICENCES.md](docs/LICENCES.md)) : sources linguistiques, polices, dépendances
+  et dépôt public, avec ce que chaque licence demande. Le DELA versionné est sous LGPLLR, qui impose de
+  joindre sa licence : c'est fait (`backend/DELA-NOTICE.md`, `backend/LGPLLR.txt`), comme la licence OFL de
+  la police des grilles (`frontend/public/fonts/OFL.txt`). Aucune dépendance sous GPL ou AGPL. Restent à
+  trancher : la provenance des layouts recopiés de livres, et le dépôt public ou privé.
 - `make bench-load` (`backend/benchmarks/load_profile.py`) : profil de charge de l'API — RAM après
   chargement, CPU et durées par génération, générations simultanées en threads et en processus — dans un
   conteneur de 2 CPU et 2 Go. Ce sont les mesures de l'[ADR 0013](docs/adr/0013-cible-hebergement-production.md),

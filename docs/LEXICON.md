@@ -35,9 +35,11 @@ make lexicon-export     # produit le lexique curé
 
 | Source | Apporte | Licence |
 |--------|---------|---------|
-| `backend/dela_clean.csv` | La liste de mots et leurs formes affichées | — |
+| `backend/dela_clean.csv` | La liste de mots et leurs formes affichées | LGPLLR ([notice](../backend/DELA-NOTICE.md)) |
 | [Lexique 3.83](http://www.lexique.org) | Fréquence (films et livres), lemme, catégorie grammaticale | CC BY-SA 4.0 |
 | [Wiktionnaire](https://fr.wiktionary.org), extrait [kaikki.org](https://kaikki.org/frwiktionary/) | Définitions ; une forme fléchie est expliquée par son lemme | CC BY-SA 4.0 |
+
+Obligations de chaque licence : [LICENCES.md](LICENCES.md).
 
 Les fichiers téléchargés vont dans `data/lexicon/raw/` (non versionné). Leurs empreintes sont consignées dans `data/lexicon/sources.lock.json` (versionné), qui dit exactement quelles données ont servi. `make lexicon-download` refuse un fichier dont l'empreinte a changé ; `python -m tools.lexicon download --refresh` met la source à jour.
 

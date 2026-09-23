@@ -1,6 +1,6 @@
 # Polices embarquées
 
-**Archivo Narrow** (Omnibus-Type), sous [SIL Open Font License 1.1](https://openfontlicense.org/) :
+**Archivo Narrow** (Omnibus-Type), sous [SIL Open Font License 1.1](https://openfontlicense.org/), texte et notice dans [`OFL.txt`](OFL.txt) :
 `archivo-narrow-500.ttf` (Medium, déclaré en graisse 400) et `archivo-narrow-700.ttf` (Bold).
 
 Elle sert au rendu des grilles — définitions et lettres — à l'écran **et** dans le PDF exporté.
