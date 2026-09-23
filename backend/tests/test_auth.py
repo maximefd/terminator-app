@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 
 def assert_session_in_cookies_only(response):
     cookies = " ".join(response.headers.getlist("Set-Cookie"))
@@ -61,3 +63,26 @@ def test_login_invalid_password(client):
     assert response.status_code == 401
     data = response.get_json()
     assert data['error'] == "Identifiants invalides."
+
+
+@pytest.mark.parametrize("password", ["a" * 100, "é" * 64, "x" * 128])
+def test_passwords_longer_than_bcrypt_limit_work(client, password):
+    """Audit ASVS : bcrypt 5 refuse plus de 72 octets. 100 lettres, ou 64 lettres accentuées (128 octets),
+    faisaient échouer l'inscription en erreur 500, alors que l'API annonce 128 caractères."""
+    from tests.helpers import send, unique_email
+
+    email = unique_email()
+    assert send(client, "post", "/api/auth/register", {"email": email, "password": password}).status_code == 201
+    assert send(client, "post", "/api/auth/login", {"email": email, "password": password}).status_code == 200
+    # Chaque caractère compte, même au-delà de 72 octets
+    other = password[:-1] + ("b" if password[-1] != "b" else "c")
+    assert send(client, "post", "/api/auth/login", {"email": email, "password": other}).status_code == 401
+
+
+def test_existing_short_password_hashes_still_match():
+    """Les mots de passe de 72 octets au plus sont hachés comme avant : les comptes existants restent valides."""
+    from auth import password_matches
+    from extensions import bcrypt
+
+    legacy = bcrypt.generate_password_hash("motdepasse-historique").decode("utf-8")
+    assert password_matches(legacy, "motdepasse-historique")

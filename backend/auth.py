@@ -1,3 +1,5 @@
+import base64
+import hashlib
 from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, jsonify, request
@@ -26,13 +28,30 @@ def _get_dummy_password_hash() -> str:
     """Hash factice, calculé une fois, pour vérifier un mot de passe même si le compte n'existe pas."""
     global _dummy_password_hash
     if _dummy_password_hash is None:
-        _dummy_password_hash = bcrypt.generate_password_hash("mot-de-passe-factice").decode('utf-8')
+        _dummy_password_hash = hash_password("mot-de-passe-factice")
     return _dummy_password_hash
+
+
+# bcrypt ne lit que les 72 premiers octets d'un mot de passe, et depuis sa version 5 il refuse le reste (erreur
+# 500 à l'inscription). Au-delà, on lui passe l'empreinte du mot de passe entier : chaque caractère compte, et
+# les mots de passe plus courts, ceux de tous les comptes existants, sont traités exactement comme avant.
+BCRYPT_MAX_BYTES = 72
+
+
+def _bcrypt_input(password: str) -> str:
+    raw = password.encode("utf-8")
+    if len(raw) <= BCRYPT_MAX_BYTES:
+        return password
+    return base64.b64encode(hashlib.sha256(raw).digest()).decode("ascii")
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.generate_password_hash(_bcrypt_input(password)).decode("utf-8")
 
 
 def password_matches(password_hash: str, password: str) -> bool:
     try:
-        return bcrypt.check_password_hash(password_hash, password)
+        return bcrypt.check_password_hash(password_hash, _bcrypt_input(password))
     except ValueError:
         # Hash illisible (ex : anciens comptes anonymisés avec la valeur "deleted")
         return False
@@ -73,7 +92,7 @@ def register():
     if _find_user_by_email(payload.email):
         return jsonify({"error": "Cet email est déjà utilisé."}), 409
 
-    hashed_password = bcrypt.generate_password_hash(payload.password).decode('utf-8')
+    hashed_password = hash_password(payload.password)
 
     new_user = User(email=payload.email, password=hashed_password)
     db.session.add(new_user)
@@ -196,7 +215,7 @@ def reset_password():
     if not user:
         return jsonify({"error": INVALID_LINK}), 400
 
-    user.password = bcrypt.generate_password_hash(payload.password).decode('utf-8')
+    user.password = hash_password(payload.password)
     # Qui a changé le mot de passe veut aussi fermer les sessions ouvertes avec l'ancien (ADR 0015)
     user.sessions_revoked_at = _utcnow()
     # Le lien est arrivé par e-mail : s'en servir prouve aussi que l'adresse est la bonne

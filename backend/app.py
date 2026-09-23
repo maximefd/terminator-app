@@ -18,6 +18,7 @@ from monitoring import init_sentry
 
 DEV_SECRET = 'default-secret-for-dev'
 DEFAULT_MAIL_FROM = 'Terminator <terminator@localhost>'
+MIN_SECRET_BYTES = 32
 # Première migration : le schéma tel qu'il existait avant l'arrivée d'Alembic
 BASELINE_REVISION = '0001_schema_initial'
 DEFAULT_CORS_ORIGINS = 'http://localhost:3000'
@@ -122,16 +123,20 @@ def _load_config_from_env() -> dict:
 
     if app_env == 'production':
         problems = []
-        if secret_key == DEV_SECRET:
+        # Ces clés signent les sessions (JWT) et les liens envoyés par e-mail : 32 octets au moins, comme le
+        # recommande la RFC 7518 pour HS256, et deux clés distinctes
+        if secret_key == DEV_SECRET or len(secret_key.encode()) < MIN_SECRET_BYTES:
             problems.append('SECRET_KEY')
-        if jwt_secret_key == DEV_SECRET:
+        if jwt_secret_key == DEV_SECRET or len(jwt_secret_key.encode()) < MIN_SECRET_BYTES:
             problems.append('JWT_SECRET_KEY')
+        elif jwt_secret_key == secret_key:
+            problems.append('JWT_SECRET_KEY (identique à SECRET_KEY)')
         if not database_url:
             problems.append('DATABASE_URL')
         if '*' in parse_cors_origins(cors_origins):
             problems.append('CORS_ORIGINS')
         if problems:
-            raise RuntimeError(f"Configuration de production invalide, variables manquantes ou par défaut : {', '.join(problems)}")
+            raise RuntimeError(f"Configuration de production invalide (variables manquantes, par défaut ou trop courtes) : {', '.join(problems)}")
 
     return dict(
         APP_ENV=app_env,
