@@ -48,7 +48,8 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Mots de passe | bcrypt ; 8 à 128 caractères à l'inscription | `backend/auth.py` |
 | Énumération | Même message et même coût (hash factice) pour e-mail inconnu ou mauvais mot de passe | `backend/auth.py` |
 | Jetons | Access token 15 min, refresh token 7 jours, endpoint `/api/auth/refresh` ; jeton d'un compte supprimé ⇒ 401 ; refresh token refusé sur l'API et inversement | `backend/security.py` |
-| Force brute / DoS | Rate limiting par IP : login 10/min, inscription 5/h, refresh 30/min, recherche 120/min, génération 10/min | `backend/security.py` |
+| Force brute / DoS | Rate limiting par IP : login 10/min, inscription 5/h, refresh 30/min, recherche 120/min, génération 10/min. Derrière Cloudflare, l'IP vient de `CF-Connecting-IP`, lu seulement si `CLIENT_IP_HEADER` le désigne (sinon l'en-tête s'inventerait) | `backend/security.py` (`client_ip`) |
+| Saturation CPU | Au plus 2 générations simultanées (une par cœur), une seule par visiteur (compte, sinon IP) : 429 au-delà. Verrous de fichiers partagés entre les workers gunicorn ([ADR 0013](adr/0013-cible-hebergement-production.md)) | `backend/generation_slots.py` |
 | Coût des requêtes | Corps ≤ 64 Ko ; recherche arrêtée à la limite pendant le parcours du Trie ; génération bornée par un budget temps ; 20 dictionnaires et 5 000 mots max | `backend/app.py` |
 | Erreurs | Réponses JSON génériques, détails uniquement dans les logs serveur ; débogueur Werkzeug désactivé hors `FLASK_DEBUG=1` | `backend/security.py`, `backend/run.py` |
 | En-têtes API | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, CSP `default-src 'none'`, `Cache-Control: no-store`, HSTS en production | `backend/security.py` |
@@ -66,11 +67,11 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Jetons stockés dans `localStorage` | Vol de session en cas de faille XSS (atténué par la CSP et l'absence de HTML utilisateur rendu) | Phase 6 : cookies `httpOnly` + protection CSRF |
 | Pas de révocation des jetons à la déconnexion | Un jeton volé reste valable jusqu'à expiration (refresh : 7 jours) | Phase 6 : liste de révocation ou rotation des refresh tokens |
 | CSP frontend avec `'unsafe-inline'` pour les scripts | Protection XSS partielle | Phase 6 : nonces CSP |
-| Rate limiting en mémoire | Compteurs non partagés entre processus/instances | Redis (`RATELIMIT_STORAGE_URI`) avant tout passage multi-instance |
+| Rate limiting en mémoire | Compteurs non partagés entre processus : avec 3 workers gunicorn, une limite de 10/min vaut jusqu'à 30/min (les places de génération, elles, sont communes) | Redis (`RATELIMIT_STORAGE_URI`) si l'écart devient un problème, et avant tout passage multi-instance |
 | L'inscription révèle si un e-mail existe (409) | Énumération de comptes | Acceptable tant que l'app est personnelle ; vérification par e-mail plus tard |
 | Pas de vérification d'e-mail ni de réinitialisation de mot de passe | Comptes jetables, perte d'accès | Avant ouverture à d'autres utilisateurs |
 | Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
-| Génération synchrone dans la requête | Saturation CPU malgré le rate limiting | Phase 7 : file de jobs ou moteur côté client |
+| Génération synchrone dans la requête | Un worker occupé jusqu'à 20 s ; au-delà des places de génération, les visiteurs reçoivent 429 plutôt que d'attendre | Atténué par les places de génération ; Phase 7 : file de jobs ou moteur côté client |
 | Écritures utilisateur nouvelles (définitions, notes, lettres d'une grille) | Contenu arbitraire en base | Validées par schéma et bornées (120 caractères par définition, 5 000 pour les notes, une lettre A-Z par case) ; chaque accès passe par `get_owned_grid()`, une grille d'autrui répond 404 |
 | Pas de sauvegardes de base | Perte de données | Phase 6. Les migrations existent depuis la Phase 4 ([ADR 0010](adr/0010-migrations-de-schema.md)) |
 
@@ -81,11 +82,13 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] `APP_ENV=production`
 - [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets), jamais commités
 - [ ] `DATABASE_URL` vers PostgreSQL
-- [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://terminator.vercel.app`)
-- [ ] `TRUST_PROXY_HOPS=1` sur Render (sinon le rate limiting voit toutes les requêtes venir du proxy)
+- [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://terminator.fr`)
+- [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
+- [ ] L'API n'est joignable que par le tunnel : aucun port web ouvert sur le serveur (sinon `CF-Connecting-IP` s'invente)
+- [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
-- [ ] HTTPS uniquement (fourni par Render / Vercel)
+- [ ] HTTPS uniquement (fourni par Cloudflare)
 
 ---
 

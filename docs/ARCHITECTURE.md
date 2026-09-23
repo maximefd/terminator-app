@@ -32,11 +32,13 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | Module | Rôle |
 |--------|------|
 | `app.py` | Fabrique `create_app()` : configuration (variables d'environnement), CORS, extensions, sécurité, blueprints, chargement du dictionnaire |
-| `run.py` | Point d'entrée (`python run.py`) |
+| `run.py` | Point d'entrée : `python run.py` en développement, `run:app` sous gunicorn en production |
+| `gunicorn.conf.py` | Serveur de production : 3 workers synchrones, application chargée une fois avant de les créer ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
 | `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton |
 | `routes.py` | Blueprint `/api` : dictionnaires, mots, recherche, formats, génération, suppression de compte |
 | `schemas.py` | Schémas pydantic de chaque corps de requête + messages d'erreur en français |
-| `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting |
+| `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting, adresse du visiteur (`client_ip`) |
+| `generation_slots.py` | Places de génération : au plus 2 générations à la fois, une par visiteur (verrous de fichiers partagés entre workers) |
 | `models.py` / `extensions.py` | Modèles SQLAlchemy et instances des extensions |
 | `trie_engine.py` | `DictionnaireTrie` : normalisation des mots et recherche par motif (`P??LE`) |
 | `grid_generator.py` | Chef d'orchestre de la génération (choix du layout, dépôt de mots, solveur) |
@@ -126,7 +128,7 @@ sequenceDiagram
     participant G as GridGenerator
     participant S as GridSolver
     F->>A: POST {size, seed, must_words, wish_words}
-    A->>A: validation (schemas.py) + rate limit
+    A->>A: validation (schemas.py) + rate limit + place de génération (429 si occupé)
     A->>G: pools : lexique commun, mots souhaités (+ dictionnaire perso actif), mots obligatoires
     G->>G: choix du layout (backend/layouts/LxH)
     A->>A: un mot obligatoire n'entre pas ? 422 avant toute résolution
@@ -175,7 +177,7 @@ Choix et limites : [ADR 0003](adr/0003-jwt-en-en-tete.md), [SECURITY.md](SECURIT
 |---------------|---------|-----------------|
 | Développement | `docker compose up` (API + PostgreSQL) et `pnpm dev` (frontend) | PostgreSQL (conteneur `db`) |
 | Tests | `pytest` | SQLite en mémoire, dictionnaire de test réduit |
-| Production | Pas encore (Phase 6) | — |
+| Production | Pas encore. Cible : un VPS derrière Cloudflare, API sous gunicorn ([ADR 0013](adr/0013-cible-hebergement-production.md)) | PostgreSQL sur le VPS |
 
 Toute la configuration passe par des variables d'environnement, documentées dans [`.env.example`](../.env.example).
 

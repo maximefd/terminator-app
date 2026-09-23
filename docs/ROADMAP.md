@@ -17,9 +17,10 @@
 | 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve levée, et elle révèle un problème** : la baseline comporte désormais des cas avec mots obligatoires (`--must-words`). Un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %**, tous layouts sous le critère ([mesures](../backend/benchmarks/README.md)). Le changement de layout (#73) améliore le cas où un format compte plusieurs layouts — 6×7 de 6/20 à 11/20 — sans rien résoudre sur le fond. **Traité non par le taux mais par l'aveu** : l'écran annonce la difficulté avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)), et la mesure a désigné le vrai facteur — la **longueur** des mots imposés, pas leur nombre (#73 reste ouverte). Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
 | 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed. page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair |
 | 5 — Rendu professionnel | ✅ flèches et cases définitions (#26), saisie des définitions et export PDF (#27), retouche manuelle d'une grille ([ADR 0012](adr/0012-grille-modifiable.md)) |
-| 6 et 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
+| 6 — Durcissement production | 🚧 démarrée : cible d'hébergement choisie sur mesures ([ADR 0013](adr/0013-cible-hebergement-production.md)) et prérequis faits (gunicorn, places de génération, rate limiting derrière Cloudflare, lexique préparé au chargement). Restent l'export statique du frontend, les cookies httpOnly (#28), le serveur lui-même (#29) |
+| 7 — Passage à l'échelle | ⏳ pas avant que les mesures sur le VPS le demandent (#30) |
 
-Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
+Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)). Le serveur visé est choisi depuis le 22/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)).
 
 ## Contexte
 
@@ -180,6 +181,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Reste** : l'impression directe (mise en page A4 multi-grilles) et la relecture d'un fichier de travail, si le besoin s'en fait sentir.
 
 ## Phase 6 — Durcissement production
+- **Cible d'hébergement** ✅ ([ADR 0013](adr/0013-cible-hebergement-production.md)) : un VPS OVH derrière Cloudflare (~65 € par an), choisi sur mesures. Prérequis faits : clé du rate limiting derrière le tunnel, gunicorn, places de génération, lexique préparé au chargement, rechargement à chaud coupé en production. **Reste** : export statique du frontend, commande de déploiement, et les points ci-dessous.
 - Cookies httpOnly + CSRF au lieu de localStorage ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes, Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences (Lexique / Wiktionnaire, CC BY-SA).
 
 ## Phase 7 — Décision de passage à l'échelle : file serveur ou moteur client

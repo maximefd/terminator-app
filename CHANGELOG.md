@@ -5,6 +5,17 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- [ADR 0013](docs/adr/0013-cible-hebergement-production.md) — **cible d'hébergement de production** : un VPS
+  OVH derrière Cloudflare (tunnel, frontend statique sur Pages), environ 65 € par an, choisi sur mesures
+  (RAM, CPU par génération, concurrence, PyPy). L'hébergement mutualisé est écarté : il aurait partagé ses
+  ressources et son utilisateur système avec un site en activité.
+- **gunicorn** pour la production (`backend/gunicorn.conf.py`, commande par défaut de l'image) : 3 workers
+  synchrones, application chargée une fois avant de les créer. Le développement reste sur `python run.py`,
+  qui recharge le lexique du curateur.
+- **Places de génération** : au plus 2 générations à la fois (une par cœur) et une seule par visiteur,
+  429 au-delà (« Le générateur est occupé »). Les verrous sont des fichiers, communs à tous les workers et
+  rendus si l'un d'eux meurt. Le rate limiting comptait les requêtes par minute, pas leur recouvrement :
+  quatre générations sur deux cœurs doublaient la durée médiane.
 - `make preview-remote` : tunnel Cloudflare **temporaire** pour faire tester l'app à quelqu'un à
   distance sans qu'il clone le repo, sans rien déployer (cohérent avec
   [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) — l'URL n'existe que tant que la commande
@@ -176,6 +187,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Une génération ne recopie plus le lexique** : l'API désigne « tout le lexique jusqu'à N lettres »
+  (`WholeLexicon`) au lieu de trier puis répartir 700 000 mots à chaque requête. La préparation passe de
+  0,09 à 0,76 s à environ 1 ms. Le CPU moyen d'une génération libre baisse de 30 % (1,78 → 1,25 s), et les
+  workers partagent désormais le lexique au lieu d'en porter chacun une copie (4 processus : 2 037 → 782 Mo).
+  Les grilles produites sont identiques : le benchmark donne les mêmes trajectoires sur ses 420 générations,
+  et 36 grilles du vrai lexique ont été comparées une à une.
+- Les index du lexique sont construits **au chargement** au lieu de la première génération de chaque longueur.
+- En production, le lexique **n'est plus rechargé à chaud** : il est livré avec l'application, et sous
+  gunicorn le rechargement ne profiterait qu'au processus maître.
 - La clé d'une définition est désormais la **position** de son emplacement (`1-2-across`) et non le texte
   du mot (`PORTE-1-2-across`) : corriger une lettre renomme le mot, et une clé fondée sur le texte aurait
   laissé la définition orpheline. Migration `0004` : les clés existantes sont réécrites.
@@ -206,6 +226,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- Les migrations jouées au démarrage éteignaient tous les loggers déjà créés (`fileConfig` d'Alembic) :
+  sous gunicorn, plus aucun journal d'accès ni de démarrage des workers.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
   chaque lettre posée : elles ne sont plus relues qu'à l'ouverture de la grille. Elles s'enregistrent
   aussi en quittant le champ, sans attendre la pause de 600 ms.
@@ -222,6 +244,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- Rate limiting derrière Cloudflare Tunnel : toutes les requêtes arrivent de cloudflared, et le limiteur
+  aurait bloqué tous les visiteurs ensemble. L'adresse vient désormais de `CF-Connecting-IP`, lue seulement
+  si `CLIENT_IP_HEADER` le demande : sans tunnel, un client pourrait l'inventer pour échapper aux limites.
 - Frontend : versions corrigées de postcss, nanoid et sharp imposées par des overrides pnpm (9 vulnérabilités transitives de next 15.5.25, #7).
 
 ## [0.1.0] — 2026-09-14
