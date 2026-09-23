@@ -9,10 +9,12 @@ from flask_jwt_extended import jwt_required, get_current_user
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord, SavedGrid
 from engine.difficulty import request_difficulty
+from engine.word_repository import WholeLexicon
 from engine.grid_edit import (
     HOLE, allowed_letters, apply_letters, cells_of_slot, fill_ratio, letters_of, slot_at,
     words_from_cells,
 )
+from generation_slots import GenerationBusy, generation_slot
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
 from schemas import (
@@ -27,6 +29,7 @@ from schemas import (
     WordCreateRequest,
     parse_body,
 )
+from security import client_ip
 
 # On crée un nouveau Blueprint pour les routes principales
 main_bp = Blueprint('main', __name__, url_prefix='/api')
@@ -239,11 +242,10 @@ def generate_grid():
 
     longest = max(width, height)
 
-    common_words = []
-    if payload.use_global:
-        # Tous les mots de longueur utile : un échantillon (ex-30 000 mots, ~4 % du DELA)
-        # rendait presque tous les croisements impossibles.
-        common_words.extend(w for w in dela_trie.words if 2 <= len(w) <= longest)
+    # Tous les mots de longueur utile : un échantillon (ex-30 000 mots, ~4 % du DELA) rendait presque
+    # tous les croisements impossibles. Désignés sans être recopiés : trier 700 000 mots à chaque
+    # requête coûtait jusqu'à 0,7 s avant la première lettre posée (ADR 0013).
+    common_words = WholeLexicon(longest) if payload.use_global else ()
 
     # Pool « souhaité » : les mots saisis, plus ceux des dictionnaires **explicitement choisis**.
     # Le dictionnaire actif n'y entre plus de lui-même ([ADR 0011](docs/adr/0011-dictionnaires-choisis.md)) :
@@ -263,15 +265,34 @@ def generate_grid():
     # Un mot obligatoire est aussi souhaité : inutile de le répéter dans les deux listes (ADR 0007)
     must_words = sorted({normalize_pattern(word) for word in payload.must_words})
 
-    if not common_words and not wish_words and not must_words:
+    if not payload.use_global and not wish_words and not must_words:
         return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
 
-    # Tri : ordre stable des mots
+    # Une génération occupe un cœur jusqu'à 20 s : au plus quelques-unes à la fois, une par visiteur
+    # (ADR 0013). Un compte est un visiteur où qu'il se connecte ; un invité, une adresse.
+    visitor = f"compte:{user.id}" if user else f"ip:{client_ip()}"
+    try:
+        with generation_slot(current_app.config['GENERATION_LOCK_DIR'], visitor,
+                             current_app.config['GENERATION_MAX_CONCURRENT']):
+            return run_generation(width, height, common_words, dela_trie, payload, wish_words, must_words)
+    except GenerationBusy as busy:
+        message = (
+            "Une génération est déjà en cours pour vous : attendez son résultat avant d'en lancer une autre."
+            if busy.reason == "visitor" else
+            "Le générateur est occupé. Réessayez dans quelques secondes."
+        )
+        response = jsonify({"error": message, "reason": f"busy_{busy.reason}"})
+        response.headers["Retry-After"] = "5"
+        return response, 429
+
+
+def run_generation(width, height, common_words, dela_trie, payload, wish_words, must_words):
+    """Construit le générateur et résout la grille ; appelé une fois la place de génération obtenue."""
     layouts_dir = current_app.config.get('LAYOUTS_DIR')
 
     try:
         generator = GridGenerator(
-            width, height, sorted(set(common_words)),
+            width, height, common_words,
             prebuilt_trie=dela_trie,
             seed=payload.seed,
             layouts_dir=layouts_dir,

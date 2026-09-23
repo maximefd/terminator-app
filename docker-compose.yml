@@ -21,6 +21,9 @@ services:
   api:
     container_name: terminator_api
     build: ./backend
+    # Serveur de développement : un seul processus, qui recharge le lexique exporté par le curateur.
+    # L'image lance gunicorn par défaut (production, ADR 0013).
+    command: ["python", "run.py"]
     ports:
       - "5001:5000"
     volumes:

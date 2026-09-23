@@ -4,6 +4,8 @@ from typing import get_args
 import pytest
 import routes
 from engine.grid_solver import FREQUENCY_MODES
+from engine.word_repository import WholeLexicon
+from generation_slots import generation_slot
 from schemas import GenerateRequest
 
 from tests.helpers import auth_headers, default_dictionary_id
@@ -94,7 +96,8 @@ def test_a_chosen_dictionary_feeds_the_wished_pool(grid_app, client, spy_on_gene
 
     assert response.status_code == 200, response.get_json()
     call = spy_on_generator[0]
-    assert call["wish"] == ["ZORGL"] and "ZORGL" not in call["common"]
+    # Le pool commun est le lexique seul, désigné sans être recopié (ADR 0013) : ZORGL n'y est pas mêlé
+    assert call["wish"] == ["ZORGL"] and call["common"] == WholeLexicon(5)
     assert call["generator"].repository.source_of("ZORGL") == "wish"
     assert "wish_ratio" in response.get_json()["grid"]
 
@@ -273,6 +276,40 @@ def test_no_word_is_no_difficulty(grid_app, client):
 def test_the_difficulty_request_is_validated(grid_app, client):
     assert post_difficulty(client, {"must_words": ["A"]}).status_code == 400
     assert post_difficulty(client, {"must_words": ["MOT"] * 51}).status_code == 400
+
+
+def test_a_guest_waits_for_their_generation_before_starting_another(grid_app, client, tmp_path, monkeypatch):
+    """ADR 0013 : une génération occupe un cœur ; un visiteur n'en lance pas une seconde en parallèle."""
+    monkeypatch.setitem(grid_app.config, "GENERATION_LOCK_DIR", str(tmp_path))
+
+    with generation_slot(str(tmp_path), "ip:127.0.0.1", max_concurrent=2):  # sa génération en cours
+        response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42})
+
+    assert response.status_code == 429
+    assert response.get_json()["reason"] == "busy_visitor"
+    assert response.headers["Retry-After"] == "5"
+    assert post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42}).status_code == 200
+
+
+def test_a_signed_in_author_is_not_blocked_by_a_guest_on_the_same_address(grid_app, client, tmp_path, monkeypatch):
+    monkeypatch.setitem(grid_app.config, "GENERATION_LOCK_DIR", str(tmp_path))
+
+    with generation_slot(str(tmp_path), "ip:127.0.0.1", max_concurrent=2):
+        response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42}, auth_headers(client))
+
+    assert response.status_code == 200
+
+
+def test_generation_is_refused_when_every_place_is_taken(grid_app, client, tmp_path, monkeypatch):
+    monkeypatch.setitem(grid_app.config, "GENERATION_LOCK_DIR", str(tmp_path))
+    monkeypatch.setitem(grid_app.config, "GENERATION_MAX_CONCURRENT", 1)
+
+    with generation_slot(str(tmp_path), "compte:un-autre-auteur", max_concurrent=1):
+        response = post_generate(client, {"size": {"width": 5, "height": 5}, "seed": 42})
+
+    assert response.status_code == 429
+    assert response.get_json() == {"error": "Le générateur est occupé. Réessayez dans quelques secondes.",
+                                   "reason": "busy_server"}
 
 
 def test_generate_unknown_format_returns_available_formats(grid_app, client):
