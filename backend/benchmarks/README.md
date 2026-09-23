@@ -6,6 +6,13 @@ Résultats produits par `backend/test_harness.py` (seeds fixes `0..N-1`, un Trie
 |---------|------|
 | `baseline.json` | Référence versionnée. Toute modification du moteur doit être comparée à ce fichier. |
 | `latest.json` | Dernière exécution locale (sortie par défaut du harness, non destinée à être commitée). |
+| `load.json` | Dernier profil de charge (`make bench-load`, non commité). |
+
+## Profil de charge (`make bench-load`)
+
+`test_harness.py` mesure le **moteur** : le taux de succès de chaque layout. `load_profile.py` mesure la **machine** : RAM après chargement du lexique, CPU et durées par génération (libre, puis avec deux mots imposés), et ce que deviennent 8 générations 10×13 en série, en 2 threads, en 2 puis 4 processus forkés, comme les workers de gunicorn. Il suit le chemin de l'API (lexique entier, layout tiré dans le format) : ce sont les chiffres de l'[ADR 0013](../../docs/adr/0013-cible-hebergement-production.md).
+
+`make bench-load` le lance dans un conteneur limité à 2 CPU et 2 Go, comme un petit VPS, avec le lexique curé s'il a été exporté. Sur le serveur, dans le conteneur de l'API : `python benchmarks/load_profile.py --output /tmp/load.json`. Linux uniquement (mémoire lue dans `/proc`). La mémoire de plusieurs processus se lit en **PSS** (`peak_total_pss_mb`) : leurs RSS compteraient plusieurs fois le lexique qu'ils partagent.
 
 ## Lancer
 

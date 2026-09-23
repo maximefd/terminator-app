@@ -83,7 +83,7 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
   - la Phase 6 de la [roadmap](../ROADMAP.md) : cookies httpOnly, mot de passe oublié, Sentry, revue des licences ;
   - une commande de déploiement ;
   - la checklist de [SECURITY.md](../SECURITY.md).
-- **Première semaine en ligne** : refaire ces mesures sur le VPS. Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.
+- **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.
 - **Rate limiting** : ses compteurs restent en mémoire, par worker. Une limite de 10 par minute vaut donc jusqu'à 30 avec 3 workers. Les générations simultanées, elles, sont comptées entre tous les workers.
 - **Dépôt GitHub** : le passer en privé protégerait la curation (`decisions.csv`) et les layouts. Mais sur GitHub Free, un dépôt privé perd la protection de branche qui impose la CI verte. Décision à prendre avant la mise en ligne.
 - **L'ADR 0004 reste en vigueur** jusqu'à la mise en ligne. Ce jour-là, elle sera remplacée par la présente.
