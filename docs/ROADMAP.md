@@ -182,7 +182,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 
 ## Phase 6 — Durcissement production
 - **Cible d'hébergement** ✅ ([ADR 0013](adr/0013-cible-hebergement-production.md)) : un VPS OVH derrière Cloudflare (~65 € par an), choisi sur mesures. Prérequis faits : clé du rate limiting derrière le tunnel, gunicorn, places de génération, lexique préparé au chargement, rechargement à chaud coupé en production. **Reste** : export statique du frontend, commande de déploiement, et les points ci-dessous.
-- Cookies httpOnly + CSRF au lieu de localStorage ✅ ([ADR 0015](adr/0015-session-en-cookies.md)) ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes ✅ (`make db-backup`), Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences ✅ ([LICENCES.md](LICENCES.md) : restent la provenance des layouts recopiés et le choix dépôt public ou privé).
+- Cookies httpOnly + CSRF au lieu de localStorage ✅ ([ADR 0015](adr/0015-session-en-cookies.md)) ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes ✅ (`make db-backup`), Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences ✅ ([LICENCES.md](LICENCES.md)) ; dépôt passé en privé à la mise en ligne.
 
 ## Phase 7 — Décision de passage à l'échelle : file serveur ou moteur client
 - **Déclencheur** : charge ou latence de génération problématique, ou avant ouverture à d'autres utilisateurs.

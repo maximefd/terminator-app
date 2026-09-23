@@ -1,6 +1,6 @@
 # ⚖️ Licences — Terminator
 
-> Revue du 23/09/2026, préalable à la mise en ligne (Phase 6, [ADR 0013](adr/0013-cible-hebergement-production.md)). Ce document recense ce que Terminator emprunte, sous quelle licence, et ce que chaque licence demande. Ce n'est pas un avis juridique : les points marqués ⚠️ restent à trancher avant d'ouvrir l'application à d'autres utilisateurs.
+> Revue du 23/09/2026, préalable à la mise en ligne (Phase 6, [ADR 0013](adr/0013-cible-hebergement-production.md)). Ce document recense ce que Terminator emprunte, sous quelle licence, et ce que chaque licence demande. Ce n'est pas un avis juridique. Les décisions de l'auteur (24/09/2026) sont notées en fin de document ; reste un point marqué ⚠️, à traiter dans #83.
 
 ## Ce qui compte : distribuer ou servir
 
@@ -12,16 +12,16 @@ Aujourd'hui, le dépôt GitHub est **public** : tout fichier versionné est dist
 
 | Ressource | Licence | Usage dans Terminator | Distribuée ? | Obligations | État |
 |-----------|---------|-----------------------|--------------|-------------|------|
-| **DELA** (`backend/dela_clean.csv`), formes fléchies du français, issu du DELAF du LADL diffusé avec [Unitex/GramLab](https://unitexgramlab.org/fr/language-resources) | [LGPLLR](https://spdx.org/licenses/LGPLLR.html) | Liste de mots de la recherche et de la génération ; base du lexique curé | **Oui** : versionné dans le dépôt public | Joindre la licence et une notice de copyright ; signaler et dater les modifications ; une version modifiée reste sous LGPLLR. Rien pour un usage serveur | ✅ [`backend/DELA-NOTICE.md`](../backend/DELA-NOTICE.md) et [`backend/LGPLLR.txt`](../backend/LGPLLR.txt). ⚠️ Provenance exacte du fichier (version, date) à confirmer |
+| **DELA** (`backend/dela_clean.csv`), formes fléchies du français, issu du DELAF du LADL diffusé avec [Unitex/GramLab](https://unitexgramlab.org/fr/language-resources) | [LGPLLR](https://spdx.org/licenses/LGPLLR.html) | Liste de mots de la recherche et de la génération ; base du lexique curé | **Oui** : versionné dans le dépôt public | Joindre la licence et une notice de copyright ; signaler et dater les modifications ; une version modifiée reste sous LGPLLR. Rien pour un usage serveur | ✅ [`backend/DELA-NOTICE.md`](../backend/DELA-NOTICE.md) et [`backend/LGPLLR.txt`](../backend/LGPLLR.txt). Provenance exacte non retracée : le fichier a été retouché trop souvent pour qu'elle ait un sens (décision de l'auteur) |
 | **Lexique 3.83** ([lexique.org](http://www.lexique.org)), B. New, C. Pallier et coll. | CC BY-SA 4.0 | Fréquence (zipf) : tri et filtres du curateur, colonne du lexique curé, critère facultatif du solveur | Non : `data/lexicon/raw/` et `data/lexicon/build/` ne sont pas versionnés ; aucune fréquence n'est affichée dans l'application | Si le lexique curé (qui porte la fréquence) est un jour publié : attribution et même licence pour lui | ✅ Rien à faire tant qu'il n'est pas publié ; citer Lexique dans les crédits (voir plus bas) |
 | **Wiktionnaire**, via [kaikki.org](https://kaikki.org/frwiktionary/) (wiktextract, T. Ylonen) | CC BY-SA 4.0 et GFDL | Définitions affichées **dans le curateur**, outil local ; colonne du lexique curé | Non : ni versionnées, ni servies par l'API (la recherche renvoie `definition: null` pour les mots du lexique) | Si des définitions du Wiktionnaire s'affichent un jour dans l'application (piste de #83) : attribution visible (« Wiktionnaire, CC BY-SA ») et même licence pour ces définitions | ⚠️ À prévoir **dans #83** avant d'afficher la moindre définition |
-| **Décisions de curation** (`data/lexicon/decisions.csv`) | Travail de l'auteur | Tri du lexique | Oui (dépôt public) | Aucune : ce sont les choix de l'auteur | ⚠️ Voir « Dépôt public » |
+| **Décisions de curation** (`data/lexicon/decisions.csv`) | Travail de l'auteur | Tri du lexique | Oui (dépôt public) | Aucune : ce sont les choix de l'auteur | ✅ Dépôt privé à la mise en ligne (voir « Dépôt public ») |
 
 ## Mises en page (layouts)
 
 `backend/layouts/` contient des géométries de grilles, dont certaines sont **recopiées de livres** de mots fléchés (#15). Une géométrie seule (où sont les cases définitions) est probablement trop pauvre pour être protégée par le droit d'auteur. Recopier méthodiquement les grilles d'un même éditeur peut en revanche toucher son droit de producteur de base de données, qui protège la collection.
 
-⚠️ Avant la mise en ligne : noter la provenance de chaque layout recopié, en recopier peu par éditeur, ou dessiner ses propres géométries à partir des formats courants.
+Décision de l'auteur : la provenance des layouts n'est pas suivie. Ce sont des géométries, sans les mots ni les définitions de leurs grilles d'origine.
 
 ## Polices
 
@@ -42,7 +42,7 @@ Aucune licence contaminante (GPL, AGPL) : le code de Terminator peut rester ferm
 
 Le dépôt n'a **aucun fichier de licence**. Par défaut, tout y est « tous droits réservés » : on peut le lire sur GitHub, pas le réutiliser. C'est protecteur, mais `decisions.csv` et les layouts (le vrai travail de curation) sont lisibles par tous.
 
-⚠️ Décision à prendre avant la mise en ligne, déjà notée dans l'[ADR 0013](adr/0013-cible-hebergement-production.md) : passer le dépôt en privé, ou choisir une licence pour le code et sortir les données de l'auteur du dépôt public.
+Décision de l'auteur : le dépôt **reste public pendant le développement, et passe en privé à la mise en ligne**. Sur GitHub Free, un dépôt privé perd la protection de branche qui impose la CI verte ; la règle continuera d'être suivie à la main.
 
 ## Crédits à afficher dans l'application
 
