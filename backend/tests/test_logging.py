@@ -3,6 +3,7 @@
 import importlib.util
 import json
 import logging
+import os
 import re
 import sys
 
@@ -94,7 +95,9 @@ def test_recreating_the_app_does_not_duplicate_log_lines():
 
 def test_gunicorn_access_lines_are_valid_json_without_query_string(monkeypatch):
     monkeypatch.setenv("LOG_FORMAT", "json")
-    spec = importlib.util.spec_from_file_location("gunicorn_conf", "gunicorn.conf.py")
+    # Depuis l'emplacement du test : la CI lance pytest depuis la racine du dépôt, pas depuis backend/
+    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "gunicorn.conf.py")
+    spec = importlib.util.spec_from_file_location("gunicorn_conf", config_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
