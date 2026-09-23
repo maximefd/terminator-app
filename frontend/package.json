@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
+    "build": "next build --turbopack && node scripts/write-headers.mjs",
     "lint": "eslint"
   },
   "dependencies": {

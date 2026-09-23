@@ -77,9 +77,9 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
   - gunicorn et la limite de générations simultanées ;
   - le lexique préparé une fois au chargement, au lieu de l'être à chaque requête : les grilles produites sont identiques, le benchmark donne les mêmes trajectoires sur ses 420 générations ;
   - le rechargement à chaud coupé en production ;
-  - les journaux de gunicorn, que les migrations jouées au démarrage éteignaient.
+  - les journaux de gunicorn, que les migrations jouées au démarrage éteignaient ;
+  - l'export statique du frontend (`pnpm build` produit `out/`, avec `out/_headers` pour Cloudflare Pages ; l'éditeur passe à `/grids/edit?id=…`).
 - **Reste à faire avant l'ouverture** :
-  - l'export statique du frontend (`/grids/[id]` à passer en paramètre de requête, en-têtes de sécurité déplacés vers Cloudflare) ;
   - la Phase 6 de la [roadmap](../ROADMAP.md) : cookies httpOnly, Sentry (le mot de passe oublié et la confirmation d'adresse sont faits : [ADR 0014](0014-emails-du-compte.md)) ; la revue des licences est faite ([LICENCES.md](../LICENCES.md)), il en reste deux décisions ;
   - une commande de déploiement, et la sauvegarde nocturne qui appelle `tools/db/backup.sh` puis copie hors du serveur (la sauvegarde et sa vérification existent déjà : `make db-backup`, `make db-restore-check`) ;
   - la checklist de [SECURITY.md](../SECURITY.md).
