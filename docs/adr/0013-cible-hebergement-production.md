@@ -80,7 +80,7 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
   - les journaux de gunicorn, que les migrations jouées au démarrage éteignaient ;
   - l'export statique du frontend (`pnpm build` produit `out/`, avec `out/_headers` pour Cloudflare Pages ; l'éditeur passe à `/grids/edit?id=…`).
 - **Reste à faire avant l'ouverture** :
-  - la Phase 6 de la [roadmap](../ROADMAP.md) : Sentry — la CSP par empreinte (#99), la session en cookies httpOnly ([ADR 0015](0015-session-en-cookies.md)), le mot de passe oublié et la confirmation d'adresse ([ADR 0014](0014-emails-du-compte.md)) sont faits ; la revue des licences est faite ([LICENCES.md](../LICENCES.md)) ; passer le dépôt en privé ;
+  - la Phase 6 de la [roadmap](../ROADMAP.md) : renseigner les DSN Sentry (le suivi des erreurs est prêt) — la CSP par empreinte (#99), la session en cookies httpOnly ([ADR 0015](0015-session-en-cookies.md)), le mot de passe oublié et la confirmation d'adresse ([ADR 0014](0014-emails-du-compte.md)) sont faits ; la revue des licences est faite ([LICENCES.md](../LICENCES.md)) ; passer le dépôt en privé ;
   - une commande de déploiement, et la sauvegarde nocturne qui appelle `tools/db/backup.sh` puis copie hors du serveur (la sauvegarde et sa vérification existent déjà : `make db-backup`, `make db-restore-check`) ;
   - la checklist de [SECURITY.md](../SECURITY.md).
 - **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.

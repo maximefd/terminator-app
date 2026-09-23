@@ -8,12 +8,12 @@
  */
 
 /**
- * @param {{ isDev: boolean, apiBaseUrl: string | undefined }} options
+ * @param {{ isDev: boolean, apiBaseUrl: string | undefined, sentryDsn?: string }} options
  * @returns {{ key: string, value: string }[]}
  */
-export function securityHeaders({ isDev, apiBaseUrl }) {
-  // Origine de l'API appelée par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
-  const apiOrigins = apiBaseUrl ? [new URL(apiBaseUrl).origin] : [];
+export function securityHeaders({ isDev, apiBaseUrl, sentryDsn }) {
+  // Origines appelées par le navigateur : l'API (getApiBaseUrl), et Sentry s'il est actif (lib/monitoring.ts)
+  const apiOrigins = [apiBaseUrl, sentryDsn].filter(Boolean).map((url) => new URL(/** @type {string} */ (url)).origin);
 
   const contentSecurityPolicy = [
     "default-src 'self'",

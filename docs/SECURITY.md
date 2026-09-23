@@ -59,6 +59,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production ; sur le site statique, une CSP par page n'autorise que ses scripts inline, par empreinte `sha256` (#99) | `frontend/security-headers.mjs`, `frontend/scripts/write-headers.mjs` |
 | CORS | Liste exacte d'origines, sans credentials ; `*` refusé en production | `backend/app.py` |
 | Configuration | Refus de démarrer en production avec des secrets par défaut, sans base de données ou avec CORS `*` | `backend/app.py` |
+| Suivi des erreurs | Sentry, inactif sans DSN. Seules les erreurs partent : ni cookies, ni en-têtes d'authentification, ni corps de requête, ni variables locales, ni adresse IP ; le jeton des liens reçus par e-mail est retiré des adresses. Vérifié par un aller-retour réel dans les tests | `backend/monitoring.py`, `frontend/src/lib/monitoring.ts` |
 | RGPD | Suppression réelle du compte, des dictionnaires, des mots et des grilles, depuis la page « Mon compte » ; le mot de passe est redemandé (un jeton volé ne suffit pas) et les tentatives suivent la limite de la connexion | `DELETE /api/users/me`, `frontend/src/app/account` |
 
 ---
@@ -89,6 +90,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
 - [ ] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
 - [ ] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `terminator.fr`), pour que le frontend lise les cookies CSRF
+- [ ] `SENTRY_DSN` (API) et `NEXT_PUBLIC_SENTRY_DSN` (build du frontend) renseignés, projet Sentry hébergé dans l'UE ; la page de confidentialité le mentionne
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
 - [ ] HTTPS uniquement (fourni par Cloudflare)

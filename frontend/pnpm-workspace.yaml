@@ -10,6 +10,14 @@ allowBuilds:
 # Versions corrigées de dépendances transitives de next 15.5.25 (#7) : next fige postcss 8.4.31
 # (qui tire nanoid 3.3.11) et accepte sharp ^0.35.4. À retirer lors du passage à une version de next
 # qui embarque ces correctifs.
+minimumReleaseAgeExclude:
+  - '@sentry/browser-utils@11.0.0'
+  - '@sentry/browser@11.0.0'
+  - '@sentry/core@11.0.0'
+  - '@sentry/feedback@11.0.0'
+  - '@sentry/replay-canvas@11.0.0'
+  - '@sentry/replay@11.0.0'
+
 overrides:
   postcss@<8.5.23: ^8.5.28
   nanoid@<3.3.18: ^3.3.19
