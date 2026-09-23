@@ -55,7 +55,7 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
     [API, GRID] as const,
   );
 
-  await page.goto(`/grids/${gridId}`);
+  await page.goto(`/grids/edit?id=${gridId}`);
   await expect(page.getByRole("heading", { name: "Grille à définir" })).toBeVisible();
   await expect(page.getByText("0 définition sur 2")).toBeVisible();
 

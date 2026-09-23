@@ -156,7 +156,8 @@ sequenceDiagram
 | `src/app/search/page.tsx` | Recherche par motif (+ panneau des dictionnaires si connecté) |
 | `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
 | `src/app/grids/` | Grilles conservées : recherche, filtres, archivage |
-| `src/app/grids/[id]/` | L'éditeur : définitions, correction des lettres, notes, export PDF |
+| `src/app/grids/edit/` | L'éditeur, `/grids/edit?id=12` : définitions, correction des lettres, notes, export PDF. L'identifiant passe en paramètre : un export statique ne génère pas une page par grille |
+| `security-headers.mjs`, `scripts/write-headers.mjs` | En-têtes de sécurité (CSP…) : envoyés par `next dev`, écrits dans `out/_headers` pour Cloudflare Pages au build |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
 | `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
@@ -165,7 +166,7 @@ sequenceDiagram
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
 | `src/lib/api-client.ts` | `apiFetch` : jeton, renouvellement automatique sur 401, messages d'erreur de l'API |
 | `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon `http://localhost:5001` en local |
-| `next.config.ts` | En-têtes de sécurité (CSP...) |
+| `next.config.ts` | Export statique au build (`out/`), en-têtes de sécurité en dev ; refuse un build sans `NEXT_PUBLIC_API_BASE_URL` |
 | `tests/` | Tests end-to-end Playwright |
 
 ### Authentification

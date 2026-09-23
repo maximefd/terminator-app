@@ -209,6 +209,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Le frontend se construit en site statique** (`pnpm build` → `out/`), prêt pour Cloudflare Pages
+  ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)) : pas de serveur Node en production. Les en-têtes de
+  sécurité (CSP, HSTS…) sont écrits dans `out/_headers`, depuis la même définition que ceux de `next dev`.
+  L'éditeur d'une grille passe de `/grids/12` à **`/grids/edit?id=12`** : un export statique ne génère pas une
+  page par grille. `next start` disparaît.
 - **Une génération ne recopie plus le lexique** : l'API désigne « tout le lexique jusqu'à N lettres »
   (`WholeLexicon`) au lieu de trier puis répartir 700 000 mots à chaque requête. La préparation passe de
   0,09 à 0,76 s à environ 1 ms. Le CPU moyen d'une génération libre baisse de 30 % (1,78 → 1,25 s), et les
