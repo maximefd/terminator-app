@@ -72,7 +72,6 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Rate limiting en mémoire | Compteurs non partagés entre processus : avec 3 workers gunicorn, une limite de 10/min vaut jusqu'à 30/min (les places de génération, elles, sont communes) | Redis (`RATELIMIT_STORAGE_URI`) si l'écart devient un problème, et avant tout passage multi-instance |
 | L'inscription révèle si un e-mail existe (409) | Énumération de comptes | Acceptable tant que l'app est personnelle ; vérification par e-mail plus tard |
 | Confirmation d'adresse non bloquante | Un compte peut être créé au nom d'une adresse qui n'est pas la sienne ; il reste marqué « non confirmé » | Choix de l'[ADR 0014](adr/0014-emails-du-compte.md) : à rendre bloquante si des comptes jetables apparaissent |
-| Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
 | Génération synchrone dans la requête | Un worker occupé jusqu'à 20 s ; au-delà des places de génération, les visiteurs reçoivent 429 plutôt que d'attendre | Atténué par les places de génération ; Phase 7 : file de jobs ou moteur côté client |
 | Écritures utilisateur nouvelles (définitions, notes, lettres d'une grille) | Contenu arbitraire en base | Validées par schéma et bornées (120 caractères par définition, 5 000 pour les notes, une lettre A-Z par case) ; chaque accès passe par `get_owned_grid()`, une grille d'autrui répond 404 |
 | Sauvegardes non automatisées | Perte de données | Les outils existent : `make db-backup` (dump compressé, chiffré par `age` si `BACKUP_AGE_RECIPIENT`, rotation à 30 jours) et `make db-restore-check` (restauration dans une base jetable). Reste, sur le serveur : les lancer chaque nuit, copier hors du serveur (Cloudflare R2), vérifier chaque mois ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
@@ -120,5 +119,5 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | V13 — Limitation de débit des API | ✅ (mémoire) |
 | V14 — En-têtes de sécurité HTTP | ✅ |
 | V14 — CORS restrictif | ✅ |
-| V14 — Dépendances surveillées | ❌ (Phase 0c) |
+| V14 — Dépendances surveillées | ✅ versions figées, `pip-audit` en CI, Dependabot (pip, npm, GitHub Actions) |
 | V14 — Secrets hors du code | ✅ |
