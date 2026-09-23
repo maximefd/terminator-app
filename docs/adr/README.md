@@ -16,6 +16,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0010](0010-migrations-de-schema.md) | Le schéma de la base évolue par migrations Alembic | Acceptée |
 | [0011](0011-dictionnaires-choisis.md) | Les dictionnaires versés à une grille se choisissent, aucun n'est implicite | Acceptée |
 | [0012](0012-grille-modifiable.md) | Une grille conservée est un document que l'auteur modifie | Acceptée |
+| [0013](0013-cible-hebergement-production.md) | Cible d'hébergement de production : un VPS derrière Cloudflare | Acceptée |
 
 ## Modèle
 

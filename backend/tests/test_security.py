@@ -196,6 +196,39 @@ def test_login_is_rate_limited():
     assert blocked.get_json() == {"error": "Trop de requêtes. Réessayez dans quelques instants."}
 
 
+def login_statuses(client, visitors):
+    """Une tentative de connexion par visiteur (valeur de CF-Connecting-IP, None : sans l'en-tête)."""
+    body = {"email": unique_email(), "password": "mauvais-mot-de-passe"}
+    return [send(client, "post", "/api/auth/login", body,
+                 {"CF-Connecting-IP": ip} if ip else None).status_code for ip in visitors]
+
+
+def test_behind_cloudflare_each_visitor_has_its_own_limit():
+    """ADR 0013 : derrière le tunnel, toutes les requêtes arrivent de cloudflared, à la même adresse."""
+    app = make_app(RATELIMIT_ENABLED=True, RATELIMIT_LOGIN="2 per minute", CLIENT_IP_HEADER="CF-Connecting-IP")
+
+    statuses = login_statuses(app.test_client(), ["203.0.113.1", "203.0.113.1", "203.0.113.1", "198.51.100.7"])
+
+    assert statuses == [401, 401, 429, 401]  # le second visiteur n'est pas bloqué par le premier
+
+
+def test_the_visitor_header_is_ignored_unless_configured():
+    """Sans tunnel devant l'API, l'en-tête s'invente : il ne doit pas permettre d'échapper à la limite."""
+    app = make_app(RATELIMIT_ENABLED=True, RATELIMIT_LOGIN="2 per minute")
+
+    statuses = login_statuses(app.test_client(), ["203.0.113.1", "203.0.113.2", "203.0.113.3"])
+
+    assert statuses == [401, 401, 429]
+
+
+def test_a_malformed_visitor_header_falls_back_to_the_connection_address():
+    app = make_app(RATELIMIT_ENABLED=True, RATELIMIT_LOGIN="2 per minute", CLIENT_IP_HEADER="CF-Connecting-IP")
+
+    statuses = login_statuses(app.test_client(), ["pas-une-adresse", None, "999.1.1.1"])
+
+    assert statuses == [401, 401, 429]  # trois fois l'adresse de la connexion
+
+
 def test_dictionary_count_is_capped(client, test_app, monkeypatch):
     monkeypatch.setitem(test_app.config, "MAX_DICTIONARIES_PER_USER", 2)
     headers = auth_headers(client)

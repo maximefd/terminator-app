@@ -13,5 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Étape 4: Copier tout le reste du code du backend dans le conteneur
 COPY . .
 
-# Étape 5: La commande à exécuter quand le conteneur démarre (MODIFIÉE)
-CMD ["python", "run.py"]
+# Étape 5: Le serveur de production, gunicorn (voir gunicorn.conf.py et l'ADR 0013).
+# docker compose (développement) lance à la place `python run.py`, qui recharge le lexique à chaud.
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "run:app"]

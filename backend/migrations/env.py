@@ -11,7 +11,9 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# disable_existing_loggers=False : sinon les migrations jouées au démarrage éteignent les loggers déjà
+# créés — ceux de gunicorn compris (démarrage des workers, timeouts, journal d'accès).
+fileConfig(config.config_file_name, disable_existing_loggers=False)
 logger = logging.getLogger('alembic.env')
 
 

@@ -1,5 +1,6 @@
 import os
 import logging
+import tempfile
 from flask import Flask
 from flask_cors import CORS
 from datetime import timedelta
@@ -27,8 +28,16 @@ DEFAULT_SETTINGS = dict(
     MAX_GRIDS_PER_USER=1000,
     # Mots proposés pour un emplacement : au-delà, la liste ne s'examine plus
     MAX_SUGGESTIONS=40,
+    # Générations calculées en même temps, tous workers confondus : une par cœur (ADR 0013).
+    # Au-delà, et pour un visiteur qui en a déjà une en cours, l'API répond 429.
+    GENERATION_MAX_CONCURRENT=2,
+    # Dossier des verrous de ces places ; il doit être commun à tous les workers d'une même machine
+    GENERATION_LOCK_DIR=os.path.join(tempfile.gettempdir(), 'terminator-generations'),
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
     TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
+    # En-tête portant l'adresse du visiteur, posé par un proxy de confiance (Cloudflare : CF-Connecting-IP).
+    # Vide : l'adresse de la connexion. Voir security.client_ip et l'ADR 0013.
+    CLIENT_IP_HEADER='',
     RATELIMIT_ENABLED=True,
     RATELIMIT_STORAGE_URI='memory://',
     RATELIMIT_HEADERS_ENABLED=True,
@@ -40,7 +49,9 @@ DEFAULT_SETTINGS = dict(
     # Appelé à chaque frappe de l'auteur, et sans génération : plafond de la recherche, pas de la génération
     RATELIMIT_DIFFICULTY='120 per minute',
     LEXICON_PATH=None,  # Lexique curé ; à défaut, le DELA complet (backend/dela_clean.csv)
-    LEXICON_RELOAD_INTERVAL_S=30,  # Vérification des changements du lexique (0 : pas de rechargement à chaud)
+    # Vérification des changements du lexique (0 : pas de rechargement à chaud). Jamais en production :
+    # le lexique y est un fichier livré avec l'application (ADR 0013).
+    LEXICON_RELOAD_INTERVAL_S=30,
     # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
     # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
     AUTO_MIGRATE=True,
@@ -87,8 +98,12 @@ def _load_config_from_env() -> dict:
         JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=7),
         JSON_AS_ASCII=False,
         GENERATION_TIME_BUDGET_S=float(os.environ.get('GENERATION_TIME_BUDGET_S', 20)),
+        GENERATION_MAX_CONCURRENT=max(1, int(
+            os.environ.get('GENERATION_MAX_CONCURRENT') or DEFAULT_SETTINGS['GENERATION_MAX_CONCURRENT'])),
+        GENERATION_LOCK_DIR=os.environ.get('GENERATION_LOCK_DIR') or DEFAULT_SETTINGS['GENERATION_LOCK_DIR'],
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
+        CLIENT_IP_HEADER=os.environ.get('CLIENT_IP_HEADER', '').strip(),
         RATELIMIT_STORAGE_URI=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
         # Desserrable pour les parcours end-to-end, qui créent un compte par exécution.
         # Jamais en production : le quota y protège de la création de comptes en masse.
@@ -102,7 +117,12 @@ def _load_config_from_env() -> dict:
         ) or DEFAULT_SETTINGS['RATELIMIT_GENERATE'],
         MAX_GRIDS_PER_USER=int(os.environ.get('MAX_GRIDS_PER_USER') or DEFAULT_SETTINGS['MAX_GRIDS_PER_USER']),
         LEXICON_PATH=os.environ.get('LEXICON_PATH') or None,
-        LEXICON_RELOAD_INTERVAL_S=float(os.environ.get('LEXICON_RELOAD_INTERVAL_S', 30)),
+        # En production, le lexique est livré avec l'application et change avec elle, au redémarrage.
+        # Sous gunicorn, le surveillant ne tournerait d'ailleurs que dans le processus maître : il
+        # chargerait un second lexique que les workers ne verraient jamais (ADR 0013).
+        LEXICON_RELOAD_INTERVAL_S=float(
+            os.environ.get('LEXICON_RELOAD_INTERVAL_S', DEFAULT_SETTINGS['LEXICON_RELOAD_INTERVAL_S'])
+        ) if app_env != 'production' else 0,
     )
 
 
