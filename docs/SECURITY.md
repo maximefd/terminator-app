@@ -56,7 +56,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Coût des requêtes | Corps ≤ 64 Ko ; recherche arrêtée à la limite pendant le parcours du Trie ; génération bornée par un budget temps ; 20 dictionnaires et 5 000 mots max | `backend/app.py` |
 | Erreurs | Réponses JSON génériques, détails uniquement dans les logs serveur ; débogueur Werkzeug désactivé hors `FLASK_DEBUG=1` | `backend/security.py`, `backend/run.py` |
 | En-têtes API | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, CSP `default-src 'none'`, `Cache-Control: no-store`, HSTS en production | `backend/security.py` |
-| En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production | `frontend/next.config.ts` |
+| En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production ; sur le site statique, une CSP par page n'autorise que ses scripts inline, par empreinte `sha256` (#99) | `frontend/security-headers.mjs`, `frontend/scripts/write-headers.mjs` |
 | CORS | Liste exacte d'origines, sans credentials ; `*` refusé en production | `backend/app.py` |
 | Configuration | Refus de démarrer en production avec des secrets par défaut, sans base de données ou avec CORS `*` | `backend/app.py` |
 | RGPD | Suppression réelle du compte, des dictionnaires, des mots et des grilles, depuis la page « Mon compte » ; le mot de passe est redemandé (un jeton volé ne suffit pas) et les tentatives suivent la limite de la connexion | `DELETE /api/users/me`, `frontend/src/app/account` |
@@ -68,7 +68,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Limite | Risque | Plan |
 |--------|--------|------|
 | Pas de rotation du refresh token | Un refresh token volé sert jusqu'à la déconnexion ou au changement de mot de passe | Choix de l'[ADR 0015](adr/0015-session-en-cookies.md) : la rotation déconnecterait les onglets entre eux |
-| CSP frontend avec `'unsafe-inline'` pour les scripts | Protection XSS partielle | Site statique : pas de nonce possible ; empreintes calculées au build (#99) |
+| CSP de développement avec `'unsafe-inline'` et `'unsafe-eval'` | Aucun en production : le site statique n'autorise que les scripts de chaque page, par empreinte (#99) | Limité à `next dev` ; `style-src` garde `'unsafe-inline'` (styles en ligne des composants), risque bien moindre |
 | Rate limiting en mémoire | Compteurs non partagés entre processus : avec 3 workers gunicorn, une limite de 10/min vaut jusqu'à 30/min (les places de génération, elles, sont communes) | Redis (`RATELIMIT_STORAGE_URI`) si l'écart devient un problème, et avant tout passage multi-instance |
 | L'inscription révèle si un e-mail existe (409) | Énumération de comptes | Acceptable tant que l'app est personnelle ; vérification par e-mail plus tard |
 | Confirmation d'adresse non bloquante | Un compte peut être créé au nom d'une adresse qui n'est pas la sienne ; il reste marqué « non confirmé » | Choix de l'[ADR 0014](adr/0014-emails-du-compte.md) : à rendre bloquante si des comptes jetables apparaissent |

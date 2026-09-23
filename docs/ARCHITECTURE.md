@@ -158,7 +158,7 @@ sequenceDiagram
 | `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
 | `src/app/grids/` | Grilles conservées : recherche, filtres, archivage |
 | `src/app/grids/edit/` | L'éditeur, `/grids/edit?id=12` : définitions, correction des lettres, notes, export PDF. L'identifiant passe en paramètre : un export statique ne génère pas une page par grille |
-| `security-headers.mjs`, `scripts/write-headers.mjs` | En-têtes de sécurité (CSP…) : envoyés par `next dev`, écrits dans `out/_headers` pour Cloudflare Pages au build |
+| `security-headers.mjs`, `scripts/write-headers.mjs` | En-têtes de sécurité (CSP…) : envoyés par `next dev`, écrits dans `out/_headers` pour Cloudflare Pages au build ; chaque page reçoit en plus une CSP en `<meta>` qui n'autorise que ses scripts inline, par empreinte (#99) |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
 | `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
