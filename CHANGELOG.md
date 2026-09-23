@@ -277,6 +277,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
+  autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
+  Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`
+  et pour les styles. Vérifié dans un navigateur sur les 13 pages et la 404 (`tests/csp.spec.ts`).
 - **La session passe en cookies `httpOnly`** ([ADR 0015](docs/adr/0015-session-en-cookies.md), #28, remplace
   l'ADR 0003) : les jetons ne sont plus dans le `localStorage`, donc plus à portée d'une faille XSS, et
   l'API ne les met plus jamais dans ses réponses. Protection CSRF par double soumission (`X-CSRF-TOKEN`).
