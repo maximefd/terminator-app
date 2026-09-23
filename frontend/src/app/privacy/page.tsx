@@ -29,8 +29,8 @@ export default function PrivacyPage() {
       <div className="mt-8 space-y-8 text-muted-foreground">
         <p className="rounded-lg border bg-secondary/20 p-4 text-foreground">
           Terminator conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles.
-          Rien d&apos;autre : pas de cookie, pas de mesure d&apos;audience, pas de publicité, et aucune donnée
-          transmise à qui que ce soit.
+          Rien d&apos;autre : pas de mesure d&apos;audience, pas de publicité, aucun cookie en dehors de ceux de
+          votre session, et aucune donnée transmise à qui que ce soit.
         </p>
 
         <Section title="Où tourne Terminator">
@@ -64,8 +64,10 @@ export default function PrivacyPage() {
         <Section title="Ce qui passe sans être conservé">
           <ul className="list-disc space-y-1 pl-5">
             <li>
-              <strong className="text-foreground">Votre session</strong> : deux jetons rangés dans le stockage local
-              de votre navigateur (pas de cookie). La déconnexion les efface.
+              <strong className="text-foreground">Votre session</strong> : des cookies strictement nécessaires à la
+              connexion, illisibles par les scripts de la page, valables 7 jours au plus. La déconnexion les efface
+              et les rend inutilisables. Ils ne servent à rien d&apos;autre : aucun consentement n&apos;est donc
+              demandé.
             </li>
             <li>
               <strong className="text-foreground">Votre adresse IP</strong> : gardée en mémoire pour limiter le

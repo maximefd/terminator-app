@@ -2,14 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiFetch, clearTokens, hasStoredSession, SESSION_EXPIRED_EVENT, storeTokens } from "@/lib/api-client";
+import { apiFetch, forgetLegacyTokens, hasSession, SESSION_EXPIRED_EVENT } from "@/lib/api-client";
 
 type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,7 +20,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    setIsAuthenticated(hasStoredSession());
+    forgetLegacyTokens();
+    setIsAuthenticated(hasSession());
     setIsLoading(false);
   }, []);
 
@@ -35,30 +36,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const login = async (email: string, password: string) => {
-    const data = await apiFetch(`/api/auth/login`, {
+    await apiFetch(`/api/auth/login`, {
       method: "POST",
       body: { email, password },
     });
 
-    storeTokens(data);
+    // L'API a posé les cookies de session (ADR 0015) : rien à ranger ici
     setIsAuthenticated(true);
     // On invalide les requêtes pour forcer un rafraîchissement des données protégées
     await queryClient.invalidateQueries();
   };
 
   const register = async (email: string, password: string) => {
-    const data = await apiFetch(`/api/auth/register`, {
+    await apiFetch(`/api/auth/register`, {
       method: "POST",
       body: { email, password },
     });
-    // La route /register renvoie les tokens, on les stocke directement
-    storeTokens(data);
+    // Comme la connexion : la session arrive en cookies
     setIsAuthenticated(true);
     await queryClient.invalidateQueries();
   };
 
-  const logout = () => {
-    clearTokens();
+  const logout = async () => {
+    // L'API révoque les jetons et efface les cookies ; même si elle ne répond pas, on se déconnecte ici
+    await apiFetch("/api/auth/logout", { method: "POST", csrf: "refresh" }).catch(() => {});
     setIsAuthenticated(false);
     queryClient.clear();
   };

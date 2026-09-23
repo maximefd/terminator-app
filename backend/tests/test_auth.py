@@ -1,8 +1,15 @@
 import json
 
+
+def assert_session_in_cookies_only(response):
+    cookies = " ".join(response.headers.getlist("Set-Cookie"))
+    assert "access_token_cookie=" in cookies and "refresh_token_cookie=" in cookies
+    data = response.get_json()
+    assert "access_token" not in data and "refresh_token" not in data
+
 def test_register(client):
     """
-    Teste la création d'un nouvel utilisateur et vérifie qu'il reçoit bien des tokens.
+    Teste la création d'un nouvel utilisateur : la session part en cookies, jamais dans le corps (ADR 0015).
     """
     response = client.post(
         '/api/auth/register',
@@ -12,10 +19,7 @@ def test_register(client):
     
     assert response.status_code == 201
     
-    # LA CORRECTION EST ICI : On vérifie que la réponse contient bien les tokens
-    data = response.get_json()
-    assert 'access_token' in data
-    assert 'refresh_token' in data
+    assert_session_in_cookies_only(response)
 
 def test_login(client):
     """
@@ -36,10 +40,7 @@ def test_login(client):
     )
     
     assert response.status_code == 200
-    
-    data = response.get_json()
-    assert 'access_token' in data
-    assert 'refresh_token' in data
+    assert_session_in_cookies_only(response)
 
 def test_login_invalid_password(client):
     """

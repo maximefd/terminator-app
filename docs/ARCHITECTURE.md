@@ -54,9 +54,10 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | Méthode | Route | Auth | Rôle |
 |---------|-------|------|------|
 | GET | `/api/status` | — | Santé de l'API, dictionnaire chargé |
-| POST | `/api/auth/register` | — | Inscription (renvoie les jetons) |
-| POST | `/api/auth/login` | — | Connexion |
-| POST | `/api/auth/refresh` | refresh token | Nouveau jeton d'accès |
+| POST | `/api/auth/register` | — | Inscription ; ouvre la session (cookies) |
+| POST | `/api/auth/login` | — | Connexion ; ouvre la session (cookies) |
+| POST | `/api/auth/logout` | cookie de refresh | Révoque les jetons de la session et efface les cookies |
+| POST | `/api/auth/refresh` | cookie de refresh | Nouveau jeton d'accès (cookie) |
 | POST | `/api/auth/password/forgot` | — | Envoie un lien pour changer de mot de passe ; même réponse que le compte existe ou non ([ADR 0014](adr/0014-emails-du-compte.md)) |
 | POST | `/api/auth/password/reset` | lien | Nouveau mot de passe (`{token, password}`) ; le lien ne sert qu'une fois, une heure |
 | POST | `/api/auth/email/verify` | lien | Confirme l'adresse (`{token}`) |
@@ -164,18 +165,20 @@ sequenceDiagram
 | `src/app/legal`, `privacy` | Mentions légales (crédits compris), confidentialité : ce qui est conservé, et rien d'autre |
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
-| `src/lib/api-client.ts` | `apiFetch` : jeton, renouvellement automatique sur 401, messages d'erreur de l'API |
+| `src/lib/api-client.ts` | `apiFetch` : cookies de session et jeton CSRF, renouvellement automatique sur 401, messages d'erreur de l'API |
 | `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon `http://localhost:5001` en local |
 | `next.config.ts` | Export statique au build (`out/`), en-têtes de sécurité en dev ; refuse un build sans `NEXT_PUBLIC_API_BASE_URL` |
 | `tests/` | Tests end-to-end Playwright |
 
 ### Authentification
 
-1. `register` / `login` renvoient un **access token** (15 min) et un **refresh token** (7 jours), stockés dans `localStorage`.
-2. `apiFetch` envoie `Authorization: Bearer <access>`.
-3. Sur un 401, il appelle une fois `/api/auth/refresh`, rejoue la requête, et sinon efface la session et prévient le contexte d'authentification.
+1. `register` / `login` posent un **access token** (15 min) et un **refresh token** (7 jours) en cookies `httpOnly` : le JavaScript de la page ne les voit jamais. Deux cookies lisibles les accompagnent, `csrf_access_token` et `csrf_refresh_token`.
+2. `apiFetch` envoie les cookies (`credentials: "include"`) et recopie le jeton CSRF dans `X-CSRF-TOKEN` pour chaque écriture.
+3. Sur un 401, il appelle une fois `/api/auth/refresh`, rejoue la requête, et sinon ferme la session (`/api/auth/logout`) et prévient le contexte d'authentification.
+4. La déconnexion révoque les jetons ; un changement de mot de passe ferme toutes les sessions.
+5. En développement, sans `NEXT_PUBLIC_API_BASE_URL`, `next dev` relaie `/api/*` vers l'API locale (`API_PROXY_TARGET`, défaut `http://localhost:5001`) : même origine partout, y compris par le tunnel de `make preview-remote`.
 
-Choix et limites : [ADR 0003](adr/0003-jwt-en-en-tete.md), [SECURITY.md](SECURITY.md).
+Choix et limites : [ADR 0015](adr/0015-session-en-cookies.md) (qui remplace l'[ADR 0003](adr/0003-jwt-en-en-tete.md)), [SECURITY.md](SECURITY.md).
 
 ---
 

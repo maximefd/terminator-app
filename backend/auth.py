@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import (
-    create_access_token, create_refresh_token, get_current_user, get_jwt_identity, jwt_required,
+    create_access_token, create_refresh_token, decode_token, get_current_user, get_jwt, get_jwt_identity,
+    jwt_required, set_access_cookies, set_refresh_cookies, unset_jwt_cookies, verify_jwt_in_request,
 )
 from sqlalchemy import func
 
@@ -11,7 +12,7 @@ from account_links import (
 )
 from extensions import db, bcrypt
 from mailer import send_email
-from models import User
+from models import RevokedToken, User
 from schemas import (
     EmailLinkRequest, ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, parse_body,
 )
@@ -42,11 +43,27 @@ def _find_user_by_email(email: str):
     return User.query.filter(func.lower(User.email) == email).first()
 
 
-def _tokens_for(user: User) -> dict:
-    return {
-        "access_token": create_access_token(identity=str(user.id)),
-        "refresh_token": create_refresh_token(identity=str(user.id)),
-    }
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _session_response(user: User, message: str, status: int):
+    """Ouvre une session : les jetons partent en cookies httpOnly, jamais dans le corps ([ADR 0015](../docs/adr/0015-session-en-cookies.md)).
+
+    Un jeton dans le corps serait lisible par le JavaScript de la page, donc par une faille XSS : c'est
+    précisément ce que les cookies httpOnly évitent.
+    """
+    response = jsonify({"message": message})
+    set_access_cookies(response, create_access_token(identity=str(user.id)))
+    set_refresh_cookies(response, create_refresh_token(identity=str(user.id)))
+    return response, status
+
+
+def _revoke(jwt_data: dict) -> None:
+    """Refuse désormais ce jeton, jusqu'à son expiration."""
+    if db.session.get(RevokedToken, jwt_data["jti"]) is None:
+        expires_at = datetime.fromtimestamp(jwt_data["exp"], timezone.utc).replace(tzinfo=None)
+        db.session.add(RevokedToken(jti=jwt_data["jti"], expires_at=expires_at))
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -64,7 +81,7 @@ def register():
     # Un envoi raté n'empêche pas l'inscription : le lien se redemande depuis « Mon compte »
     send_verification_email(new_user)
 
-    return jsonify(_tokens_for(new_user)), 201
+    return _session_response(new_user, "Compte créé.", 201)
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -76,7 +93,7 @@ def login():
     # ne révèle pas si l'adresse e-mail est inscrite.
     password_hash = user.password if user else _get_dummy_password_hash()
     if password_matches(password_hash, payload.password) and user:
-        return jsonify(_tokens_for(user)), 200
+        return _session_response(user, "Connecté.", 200)
 
     return jsonify({"error": "Identifiants invalides."}), 401
 
@@ -84,8 +101,42 @@ def login():
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    """Échange un refresh token valide contre un nouvel access token."""
-    return jsonify(access_token=create_access_token(identity=get_jwt_identity())), 200
+    """Échange un refresh token valide contre un nouvel access token (cookie).
+
+    Pas de rotation du refresh token : deux onglets qui renouvellent en même temps se déconnecteraient
+    l'un l'autre. La révocation à la déconnexion et au changement de mot de passe couvre le vol (ADR 0015).
+    """
+    response = jsonify({"message": "Session renouvelée."})
+    set_access_cookies(response, create_access_token(identity=get_jwt_identity()))
+    return response, 200
+
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    """Ferme la session : révoque ses jetons, et efface les cookies.
+
+    Réussit toujours, même avec des jetons expirés ou déjà révoqués : on doit pouvoir se déconnecter.
+    """
+    try:
+        verify_jwt_in_request(refresh=True, optional=True)
+        refresh_data = get_jwt()
+    except Exception:  # jeton expiré, révoqué, CSRF manquant : rien à révoquer, on efface quand même
+        refresh_data = {}
+    if refresh_data:
+        _revoke(refresh_data)
+    access_cookie = request.cookies.get(current_app.config["JWT_ACCESS_COOKIE_NAME"])
+    if access_cookie:
+        try:
+            _revoke(decode_token(access_cookie))
+        except Exception:
+            pass  # déjà expiré ou illisible : il ne sert plus à rien
+    # Ménage : un jeton expiré est refusé de toute façon, inutile de le garder
+    RevokedToken.query.filter(RevokedToken.expires_at < _utcnow()).delete()
+    db.session.commit()
+
+    response = jsonify({"message": "Déconnecté."})
+    unset_jwt_cookies(response)
+    return response, 200
 
 
 # --- E-mails du compte ([ADR 0014](../docs/adr/0014-emails-du-compte.md)) ---
@@ -120,7 +171,7 @@ def send_verification_email(user: User) -> bool:
 
 def _mark_verified(user: User) -> None:
     if user.email_verified_at is None:
-        user.email_verified_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        user.email_verified_at = _utcnow()
 
 
 @auth_bp.route('/password/forgot', methods=['POST'])
@@ -146,6 +197,8 @@ def reset_password():
         return jsonify({"error": INVALID_LINK}), 400
 
     user.password = bcrypt.generate_password_hash(payload.password).decode('utf-8')
+    # Qui a changé le mot de passe veut aussi fermer les sessions ouvertes avec l'ancien (ADR 0015)
+    user.sessions_revoked_at = _utcnow()
     # Le lien est arrivé par e-mail : s'en servir prouve aussi que l'adresse est la bonne
     _mark_verified(user)
     db.session.commit()

@@ -3,63 +3,69 @@ import { getApiBaseUrl } from "@/lib/utils";
 // On utilise 'unknown' qui est plus sûr que 'any'
 type ApiFetchOptions = Omit<RequestInit, 'body'> & {
   body?: Record<string, unknown>;
+  /** Jeton CSRF à joindre : celui de l'accès (défaut) ou celui du refresh (déconnexion). */
+  csrf?: "access" | "refresh";
 };
 
-type Tokens = {
-  access_token: string;
-  refresh_token?: string;
-};
-
-const ACCESS_TOKEN_KEY = "access_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
+/**
+ * La session vit dans des cookies httpOnly posés par l'API (ADR 0015) : ce code ne voit jamais les jetons,
+ * donc une faille XSS ne peut pas les voler. Il lit seulement les cookies CSRF, faits pour être lus, et en
+ * recopie la valeur dans l'en-tête X-CSRF-TOKEN : un autre site peut faire envoyer les cookies, pas lire
+ * celui-ci pour le recopier.
+ */
+const CSRF_COOKIES = { access: "csrf_access_token", refresh: "csrf_refresh_token" } as const;
+const CSRF_HEADER = "X-CSRF-TOKEN";
+// Anciennes sessions, d'avant les cookies : effacées au premier chargement
+const LEGACY_TOKEN_KEYS = ["access_token", "refresh_token"];
 
 /** Émis quand la session ne peut pas être renouvelée : le contexte d'authentification se déconnecte. */
 export const SESSION_EXPIRED_EVENT = "terminator:session-expired";
 
-function readToken(key: string): string | null {
-  return typeof window !== "undefined" ? localStorage.getItem(key) : null;
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const entry = document.cookie.split("; ").find((cookie) => cookie.startsWith(`${name}=`));
+  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : null;
 }
 
-export function storeTokens(tokens: Tokens) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
-  if (tokens.refresh_token) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
-  }
+/**
+ * Une session est-elle ouverte ? Le cookie CSRF du refresh vit aussi longtemps que la session (7 jours) :
+ * sa présence suffit à le dire sans appeler l'API. Une session révoquée entre-temps se découvre au premier
+ * 401, et SESSION_EXPIRED_EVENT déconnecte.
+ */
+export function hasSession(): boolean {
+  return readCookie(CSRF_COOKIES.refresh) !== null;
 }
 
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
-
-export function hasStoredSession(): boolean {
-  return readToken(ACCESS_TOKEN_KEY) !== null;
+export function forgetLegacyTokens() {
+  LEGACY_TOKEN_KEYS.forEach((key) => localStorage.removeItem(key));
 }
 
 // Plusieurs requêtes peuvent expirer en même temps : un seul renouvellement partagé
 let pendingRefresh: Promise<boolean> | null = null;
 
 function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = readToken(REFRESH_TOKEN_KEY);
-  if (!refreshToken) return Promise.resolve(false);
+  const csrf = readCookie(CSRF_COOKIES.refresh);
+  if (!csrf) return Promise.resolve(false);
 
   if (!pendingRefresh) {
     pendingRefresh = fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${refreshToken}` },
+      credentials: "include",
+      headers: { [CSRF_HEADER]: csrf },
     })
-      .then(async (response) => {
-        if (!response.ok) return false;
-        const data = await response.json();
-        storeTokens({ access_token: data.access_token });
-        return true;
-      })
+      .then((response) => response.ok)
       .catch(() => false)
       .finally(() => {
         pendingRefresh = null;
       });
   }
   return pendingRefresh;
+}
+
+/** Session perdue : l'API efface les cookies (sinon hasSession() mentirait), puis on prévient l'interface. */
+async function endSession() {
+  await fetch(`${getApiBaseUrl()}/api/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
 }
 
 /**
@@ -96,27 +102,31 @@ async function readError(response: Response): Promise<ApiError> {
 }
 
 export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, allowRefresh = true) {
-  const token = readToken(ACCESS_TOKEN_KEY);
+  const { csrf = "access", body: payload, ...init } = options;
   const url = `${getApiBaseUrl()}${endpoint}`;
+  const method = (init.method || "GET").toUpperCase();
 
-  const headers = new Headers(options.headers || {});
+  const headers = new Headers(init.headers || {});
 
-  if (options.body && !headers.has('Content-Type')) {
+  if (payload && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  // Les lectures n'en ont pas besoin : l'API ne vérifie le jeton CSRF que pour les écritures
+  const csrfToken = readCookie(CSRF_COOKIES[csrf]);
+  if (csrfToken && method !== "GET" && method !== "HEAD") {
+    headers.set(CSRF_HEADER, csrfToken);
   }
 
-  const body = options.body ? JSON.stringify(options.body) : undefined;
+  const body = payload ? JSON.stringify(payload) : undefined;
 
   let response: Response;
   try {
     response = await fetch(url, {
-      ...options,
+      ...init,
       headers,
       body,
+      credentials: "include",
     });
   } catch {
     // Erreur réseau (« Failed to fetch ») : API arrêtée, en cours de redémarrage ou injoignable
@@ -125,12 +135,11 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, 
 
   // Jeton expiré ou refusé : une seule tentative de renouvellement, puis déconnexion.
   // Les routes d'authentification sont exclues (un 401 y signifie « identifiants invalides »).
-  if (response.status === 401 && token && allowRefresh && !endpoint.startsWith("/api/auth/")) {
+  if (response.status === 401 && hasSession() && allowRefresh && !endpoint.startsWith("/api/auth/")) {
     if (await refreshAccessToken()) {
       return apiFetch(endpoint, options, false);
     }
-    clearTokens();
-    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    await endSession();
   }
 
   if (!response.ok) {

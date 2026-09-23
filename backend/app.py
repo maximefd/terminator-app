@@ -56,6 +56,19 @@ DEFAULT_SETTINGS = dict(
     # Vérification des changements du lexique (0 : pas de rechargement à chaud). Jamais en production :
     # le lexique y est un fichier livré avec l'application (ADR 0013).
     LEXICON_RELOAD_INTERVAL_S=30,
+    # Session en cookies httpOnly ([ADR 0015](../docs/adr/0015-session-en-cookies.md)). L'en-tête Authorization
+    # reste accepté, en premier : les tests et un client autre que le navigateur s'en servent. Le navigateur,
+    # lui, n'a jamais de jeton en main : il n'en reçoit que des cookies illisibles par JavaScript.
+    JWT_TOKEN_LOCATION=['headers', 'cookies'],
+    JWT_COOKIE_SECURE=False,  # True en production (HTTPS) ; le développement tourne en HTTP
+    JWT_COOKIE_SAMESITE='Lax',
+    JWT_COOKIE_DOMAIN=None,  # En production, le domaine commun au frontend et à l'API (COOKIE_DOMAIN)
+    JWT_SESSION_COOKIE=False,  # Des cookies qui durent autant que leur jeton, pas le temps d'un onglet
+    JWT_ACCESS_COOKIE_PATH='/api/',
+    JWT_REFRESH_COOKIE_PATH='/api/auth/',  # Le refresh token ne part que vers /refresh et /logout
+    # Double soumission : un cookie lisible par le frontend, à recopier dans l'en-tête X-CSRF-TOKEN
+    JWT_COOKIE_CSRF_PROTECT=True,
+    JWT_CSRF_IN_COOKIES=True,
     # Signe aussi les liens envoyés par e-mail (account_links.py). En production, _load_config_from_env
     # impose une vraie clé.
     SECRET_KEY=DEV_SECRET,
@@ -117,6 +130,8 @@ def _load_config_from_env() -> dict:
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         JWT_ACCESS_TOKEN_EXPIRES=timedelta(minutes=15),
         JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=7),
+        JWT_COOKIE_SECURE=app_env == 'production',
+        JWT_COOKIE_DOMAIN=os.environ.get('COOKIE_DOMAIN') or None,
         JSON_AS_ASCII=False,
         GENERATION_TIME_BUDGET_S=float(os.environ.get('GENERATION_TIME_BUDGET_S', 20)),
         GENERATION_MAX_CONCURRENT=max(1, int(
@@ -208,12 +223,13 @@ def create_app(test_config=None):
         hops = app.config['TRUST_PROXY_HOPS']
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops)
 
-    # L'authentification passe par l'en-tête Authorization (pas de cookie) : pas de credentials CORS
+    # La session voyage en cookies (ADR 0015) : credentials CORS, réservés aux origines exactes de CORS_ORIGINS
     CORS(
         app,
         resources={r"/api/*": {"origins": parse_cors_origins(app.config['CORS_ORIGINS'])}},
         methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"],
+        supports_credentials=True,
         max_age=600,
     )
 

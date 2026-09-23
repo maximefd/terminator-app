@@ -123,8 +123,9 @@ def test_refresh_token_issues_a_working_access_token(client):
     response = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {tokens['refresh_token']}"})
 
     assert response.status_code == 200
-    new_access = response.get_json()["access_token"]
-    assert client.get("/api/dictionaries", headers={"Authorization": f"Bearer {new_access}"}).status_code == 200
+    assert "access_token" not in response.get_json()  # en cookie seulement (ADR 0015)
+    # Le client de test garde le cookie reçu : une lecture passe sans autre jeton
+    assert client.get("/api/dictionaries").status_code == 200
 
 
 def test_access_token_cannot_be_used_to_refresh(client):

@@ -30,10 +30,15 @@ export default function config(phase: string): NextConfig {
     return { ...nextConfig, output: 'export' };
   }
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  // Sans adresse d'API, le frontend appelle sa propre origine (getApiBaseUrl) : next dev relaie vers l'API
+  const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://localhost:5001';
   return {
     ...nextConfig,
     async headers() {
       return [{ source: '/:path*', headers: securityHeaders({ isDev, apiBaseUrl }) }];
+    },
+    async rewrites() {
+      return apiBaseUrl ? [] : [{ source: '/api/:path*', destination: `${apiProxyTarget}/api/:path*` }];
     },
   };
 }

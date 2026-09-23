@@ -83,43 +83,28 @@ curator-logs: ## Journal de la mini-app de curation en arrière-plan
 
 PREVIEW_TMP := /tmp/terminator-preview-remote
 
-preview-remote: ## Tunnel temporaire (cloudflared) pour faire tester l'app à quelqu'un à distance, sans déploiement
+preview-remote: ## Tunnel temporaire (cloudflared) vers le frontend, qui relaie l'API : faire tester l'app à distance, sans déploiement
 	@command -v cloudflared >/dev/null || (echo "cloudflared manquant : brew install cloudflared" && exit 1)
-	@test -f .env || (echo ".env manquant : lancez d'abord 'make setup'" && exit 1)
+	@curl -sf -o /dev/null http://localhost:5001/api/status || (echo "API injoignable sur :5001 : lancez d'abord make dev-api" && exit 1)
+	@curl -sf -o /dev/null http://localhost:3000 || (echo "Frontend injoignable sur :3000 : lancez d'abord make dev-front" && exit 1)
 	@mkdir -p $(PREVIEW_TMP)
-	@rm -f $(PREVIEW_TMP)/api.log $(PREVIEW_TMP)/front.log
-	@echo "Ouverture des tunnels (cloudflared)..." ; \
-	cloudflared tunnel --url http://localhost:5001 >$(PREVIEW_TMP)/api.log 2>&1 & API_PID=$$!; \
-	cloudflared tunnel --url http://localhost:3000 >$(PREVIEW_TMP)/front.log 2>&1 & FRONT_PID=$$!; \
-	API_URL=""; FRONT_URL=""; \
+	@rm -f $(PREVIEW_TMP)/front.log
+	@# Un seul tunnel : next dev relaie /api vers l'API locale (next.config.ts). Même origine, les cookies de
+	@# session suivent (ADR 0015), et il n'y a plus d'origine à ajouter à CORS_ORIGINS.
+	@echo "Ouverture du tunnel (cloudflared)..." ; \
+	cloudflared tunnel --url http://localhost:3000 >$(PREVIEW_TMP)/front.log 2>&1 & PID=$$!; \
+	trap "kill $$PID 2>/dev/null; echo; echo 'Tunnel fermé.'" EXIT INT TERM; \
+	URL=""; \
 	for i in $$(seq 1 30); do \
-		[ -z "$$API_URL" ] && API_URL=$$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' $(PREVIEW_TMP)/api.log | head -n1); \
-		[ -z "$$FRONT_URL" ] && FRONT_URL=$$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' $(PREVIEW_TMP)/front.log | head -n1); \
-		[ -n "$$API_URL" ] && [ -n "$$FRONT_URL" ] && break; \
+		URL=$$(grep -oE 'https://[a-zA-Z0-9.-]+\.trycloudflare\.com' $(PREVIEW_TMP)/front.log | head -n1); \
+		[ -n "$$URL" ] && break; \
 		sleep 1; \
 	done; \
-	if [ -z "$$API_URL" ] || [ -z "$$FRONT_URL" ]; then \
-		echo "Échec : les tunnels n'ont pas démarré à temps (voir $(PREVIEW_TMP)/*.log)"; \
-		kill $$API_PID $$FRONT_PID 2>/dev/null; \
-		exit 1; \
-	fi; \
+	if [ -z "$$URL" ]; then echo "Échec : le tunnel n'a pas démarré à temps (voir $(PREVIEW_TMP)/front.log)"; exit 1; fi; \
 	echo ""; \
-	echo "URL à donner à la personne qui teste : $$FRONT_URL"; \
-	echo "(API tunnel, usage interne du frontend : $$API_URL)"; \
-	echo ""; \
-	cp .env $(PREVIEW_TMP)/env.bak; \
-	if grep -q '^CORS_ORIGINS=' .env; then \
-		CURRENT=$$(grep '^CORS_ORIGINS=' .env | head -n1 | cut -d= -f2-); \
-		case ",$$CURRENT," in \
-			*",$$FRONT_URL,"*) ;; \
-			*) sed -i '' "s#^CORS_ORIGINS=.*#CORS_ORIGINS=$$CURRENT,$$FRONT_URL#" .env ;; \
-		esac; \
-	else \
-		echo "CORS_ORIGINS=http://localhost:3000,$$FRONT_URL" >> .env; \
-	fi; \
-	docker compose up -d api; \
-	trap "kill $$API_PID $$FRONT_PID 2>/dev/null; mv -f $(PREVIEW_TMP)/env.bak .env; docker compose up -d api >/dev/null 2>&1; echo; echo 'Tunnels fermés, CORS_ORIGINS restauré.'" EXIT INT TERM; \
-	cd frontend && NEXT_PUBLIC_API_BASE_URL=$$API_URL pnpm dev
+	echo "URL à donner à la personne qui teste : $$URL"; \
+	echo "Ctrl+C pour fermer le tunnel."; \
+	wait $$PID
 
 test-e2e: ## Parcours end-to-end et accessibilité (API et frontend doivent tourner)
 	cd frontend && pnpm exec playwright test

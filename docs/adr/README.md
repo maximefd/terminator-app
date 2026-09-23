@@ -6,7 +6,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 |---|----------|--------|
 | [0001](0001-consigner-les-decisions.md) | Consigner les décisions d'architecture dans des ADR | Acceptée |
 | [0002](0002-moteur-pur-et-deterministe.md) | Moteur de génération pur, déterministe et borné dans le temps | Acceptée |
-| [0003](0003-jwt-en-en-tete.md) | Authentification par JWT dans l'en-tête `Authorization` | Acceptée (à revoir en Phase 6) |
+| [0003](0003-jwt-en-en-tete.md) | Authentification par JWT dans l'en-tête `Authorization` | Remplacée par 0015 |
 | [0004](0004-pas-de-deploiement-en-ligne.md) | Pas de déploiement en ligne avant un serveur de production | Acceptée |
 | [0005](0005-pipeline-du-lexique-et-decisions.md) | Pipeline du lexique et fichier de décisions versionné | Acceptée |
 | [0006](0006-format-des-layouts.md) | Format (`x` / `-`) et emplacement des fichiers de layout | Acceptée |
@@ -18,6 +18,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0012](0012-grille-modifiable.md) | Une grille conservée est un document que l'auteur modifie | Acceptée |
 | [0013](0013-cible-hebergement-production.md) | Cible d'hébergement de production : un VPS derrière Cloudflare | Acceptée |
 | [0014](0014-emails-du-compte.md) | E-mails du compte : liens signés, SMTP, confirmation non bloquante | Acceptée |
+| [0015](0015-session-en-cookies.md) | Session en cookies httpOnly, protection CSRF et révocation | Acceptée |
 
 ## Modèle
 
