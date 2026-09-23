@@ -1,12 +1,10 @@
 import type { NextConfig } from 'next';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Origines de l'API appelées par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
-const apiOrigins = [
-  process.env.NEXT_PUBLIC_API_BASE_URL,
-  'https://motsfleches-terminator-backend.onrender.com',
-]
+// Origine de l'API appelée par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
+const apiOrigins = [process.env.NEXT_PUBLIC_API_BASE_URL]
   .filter((url): url is string => Boolean(url))
   .map((url) => new URL(url).origin);
 
@@ -51,4 +49,11 @@ if (isDev) {
   ];
 }
 
-export default nextConfig;
+export default function config(phase: string): NextConfig {
+  // Un build de production sans adresse d'API n'a nulle part où envoyer ses requêtes : il échoue ici
+  // plutôt que de se rabattre sur une adresse codée en dur (voir getApiBaseUrl).
+  if (phase === PHASE_PRODUCTION_BUILD && !process.env.NEXT_PUBLIC_API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL est obligatoire pour un build de production : c'est l'adresse de l'API.");
+  }
+  return nextConfig;
+}

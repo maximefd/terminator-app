@@ -7,25 +7,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// ON SIMPLIFIE ET SÉCURISE CETTE FONCTION
+/**
+ * Adresse de l'API : `NEXT_PUBLIC_API_BASE_URL`, obligatoire pour un build de production (next.config.ts).
+ * Sans elle, en développement, l'API locale. Aucun repli vers un serveur distant : l'ancien, sur Render, a
+ * été supprimé, et son sous-domaine peut être réservé par n'importe qui — un build qui s'y rabattrait lui
+ * enverrait e-mails et mots de passe.
+ */
 export function getApiBaseUrl() {
-  // 1. Priorité à la variable d'environnement (si configurée explicitememt)
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
-
-  // 2. Détection intelligente selon l'environnement (Client side)
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    const isLocal = hostname === 'localhost' || hostname.startsWith('192.168.') || hostname === '127.0.0.1';
-    
-    if (!isLocal) {
-      // On est en production (Vercel ou autre)
-      return 'https://motsfleches-terminator-backend.onrender.com';
-    }
-  }
-
-  // 3. Fallback par défaut (Développement local)
-  return 'http://localhost:5001';
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001';
 }
-

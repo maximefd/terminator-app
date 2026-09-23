@@ -12,7 +12,7 @@ Terminator : outil personnel de création de mots fléchés (recherche par motif
 
 ## Règles
 
-- **Pas de déploiement en ligne** (Render/Vercel en pause, [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) : ne pas proposer de configuration de déploiement.
+- **Pas de déploiement en ligne** pour l'instant ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) ; la cible est choisie ([ADR 0013](docs/adr/0013-cible-hebergement-production.md) : VPS derrière Cloudflare). Render et Vercel sont supprimés : ne plus les proposer.
 - **Moteur** (`backend/engine/`) : pur (pas de Flask ni de BDD), aléatoire seedé par génération, budget temps. Toute modification ⇒ benchmark sur 20 seeds.
 - **API** : `parse_body(Schema)` pour tout corps JSON, `get_owned_dictionary()` pour tout accès à un dictionnaire, erreurs `{"error": "..."}` en français, test d'autorisation pour toute nouvelle ressource.
 - **Frontend** : appels via `apiFetch`, textes en français, raccourcis compatibles AZERTY (flèches, Espace, Entrée, Retour arrière).
