@@ -5,6 +5,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- `make bench-load` (`backend/benchmarks/load_profile.py`) : profil de charge de l'API — RAM après
+  chargement, CPU et durées par génération, générations simultanées en threads et en processus — dans un
+  conteneur de 2 CPU et 2 Go. Ce sont les mesures de l'[ADR 0013](docs/adr/0013-cible-hebergement-production.md),
+  à refaire sur le VPS la première semaine.
 - [ADR 0013](docs/adr/0013-cible-hebergement-production.md) — **cible d'hébergement de production** : un VPS
   OVH derrière Cloudflare (tunnel, frontend statique sur Pages), environ 65 € par an, choisi sur mesures
   (RAM, CPU par génération, concurrence, PyPy). L'hébergement mutualisé est écarté : il aurait partagé ses

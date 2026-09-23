@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench layouts-check \
+.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls \
 	preview-remote
@@ -129,3 +129,11 @@ lint-frontend: ## ESLint + vérification TypeScript
 
 bench: ## Benchmark du générateur (20 seeds, budget 20 s) -> backend/benchmarks/latest.json
 	$(BACKEND_RUN) "pip install -q -r requirements.txt && python test_harness.py --seeds 20 --time-budget 20 --output benchmarks/latest.json"
+
+# Lexique curé s'il a été exporté, comme l'API ; sinon le DELA complet
+LOAD_LEXICON := $(if $(wildcard data/lexicon/build/lexique_cure.csv),-e LEXICON_PATH=/lexicon/lexique_cure.csv,)
+
+bench-load: ## Profil de charge : RAM, CPU par génération, concurrence (2 CPU, 2 Go, comme un petit VPS) -> backend/benchmarks/load.json
+	docker run --rm --cpus=2 --memory=2g -v "$(CURDIR)/backend":/app -v "$(CURDIR)/data/lexicon/build":/lexicon:ro \
+		$(LOAD_LEXICON) -w /app -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c \
+		"pip install -q -r requirements.txt && python benchmarks/load_profile.py --output benchmarks/load.json"

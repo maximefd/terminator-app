@@ -6,7 +6,7 @@ Terminator : outil personnel de création de mots fléchés (recherche par motif
 
 - Tests backend : `make test-backend` (Python 3.11 dans Docker : la machine hôte n'a que Python 3.9)
 - Lint + types frontend : `make lint-frontend`
-- Benchmark moteur : `make bench` (à comparer à `backend/benchmarks/baseline.json`)
+- Benchmark moteur : `make bench` (à comparer à `backend/benchmarks/baseline.json`) ; profil de charge (RAM, CPU, concurrence) : `make bench-load`
 - Outils / lexique : `make test-tools`, `make lexicon-build`, `make lexicon-stats`, `make lexicon-export` ([docs/LEXICON.md](docs/LEXICON.md)) ; ne jamais réécrire `data/lexicon/decisions.csv` (ajout seul)
 - Dev : `make dev-api` (API :5001 + Postgres) et `make dev-front` (:3000)
 

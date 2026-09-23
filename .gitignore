@@ -36,3 +36,4 @@ frontend/package-lock.json
 
 # Sortie de `make bench` : regénérée à chaque mesure, propre à la machine
 backend/benchmarks/latest.json
+backend/benchmarks/load.json
