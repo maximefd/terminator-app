@@ -1,44 +1,11 @@
 import type { NextConfig } from 'next';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
+
+import { securityHeaders } from './security-headers.mjs';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// Origines de l'API appelées par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
-const apiOrigins = [
-  process.env.NEXT_PUBLIC_API_BASE_URL,
-  'https://motsfleches-terminator-backend.onrender.com',
-]
-  .filter((url): url is string => Boolean(url))
-  .map((url) => new URL(url).origin);
-
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  // Next.js injecte des scripts inline ; 'unsafe-eval' uniquement en dev (rechargement à chaud)
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  // En dev : API locale (localhost ou réseau local) et websocket du rechargement à chaud
-  `connect-src 'self' ${apiOrigins.join(' ')}${isDev ? ' http: ws:' : ''}`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ');
-
-const securityHeaders = [
-  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  ...(isDev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]),
-];
-
-const nextConfig: NextConfig = {
-  async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
-  },
-};
+const nextConfig: NextConfig = {};
 
 // allowedDevOrigins doit être au niveau racine (pas sous experimental) depuis Next 15.5,
 // et ses entrées sont juste des hostnames (sans schéma, port seulement si non standard) :
@@ -51,4 +18,27 @@ if (isDev) {
   ];
 }
 
-export default nextConfig;
+export default function config(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_BUILD) {
+    // Un build de production sans adresse d'API n'a nulle part où envoyer ses requêtes : il échoue ici
+    // plutôt que de se rabattre sur une adresse codée en dur (voir getApiBaseUrl).
+    if (!process.env.NEXT_PUBLIC_API_BASE_URL) {
+      throw new Error("NEXT_PUBLIC_API_BASE_URL est obligatoire pour un build de production : c'est l'adresse de l'API.");
+    }
+    // Site statique (out/), servi par Cloudflare Pages (ADR 0013) : pas de serveur Node en production.
+    // Ses en-têtes de sécurité partent dans out/_headers (scripts/write-headers.mjs).
+    return { ...nextConfig, output: 'export' };
+  }
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  // Sans adresse d'API, le frontend appelle sa propre origine (getApiBaseUrl) : next dev relaie vers l'API
+  const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://localhost:5001';
+  return {
+    ...nextConfig,
+    async headers() {
+      return [{ source: '/:path*', headers: securityHeaders({ isDev, apiBaseUrl }) }];
+    },
+    async rewrites() {
+      return apiBaseUrl ? [] : [{ source: '/api/:path*', destination: `${apiProxyTarget}/api/:path*` }];
+    },
+  };
+}

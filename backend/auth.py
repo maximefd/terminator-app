@@ -1,10 +1,21 @@
-from flask import Blueprint, jsonify
-from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt_identity, jwt_required
+from datetime import datetime, timezone
+
+from flask import Blueprint, current_app, jsonify, request
+from flask_jwt_extended import (
+    create_access_token, create_refresh_token, decode_token, get_current_user, get_jwt, get_jwt_identity,
+    jwt_required, set_access_cookies, set_refresh_cookies, unset_jwt_cookies, verify_jwt_in_request,
+)
 from sqlalchemy import func
 
+from account_links import (
+    frontend_link, reset_token, user_from_reset, user_from_verification, verification_token,
+)
 from extensions import db, bcrypt
-from models import User
-from schemas import LoginRequest, RegisterRequest, parse_body
+from mailer import send_email
+from models import RevokedToken, User
+from schemas import (
+    EmailLinkRequest, ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, parse_body,
+)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -19,7 +30,7 @@ def _get_dummy_password_hash() -> str:
     return _dummy_password_hash
 
 
-def _password_matches(password_hash: str, password: str) -> bool:
+def password_matches(password_hash: str, password: str) -> bool:
     try:
         return bcrypt.check_password_hash(password_hash, password)
     except ValueError:
@@ -32,11 +43,27 @@ def _find_user_by_email(email: str):
     return User.query.filter(func.lower(User.email) == email).first()
 
 
-def _tokens_for(user: User) -> dict:
-    return {
-        "access_token": create_access_token(identity=str(user.id)),
-        "refresh_token": create_refresh_token(identity=str(user.id)),
-    }
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _session_response(user: User, message: str, status: int):
+    """Ouvre une session : les jetons partent en cookies httpOnly, jamais dans le corps ([ADR 0015](../docs/adr/0015-session-en-cookies.md)).
+
+    Un jeton dans le corps serait lisible par le JavaScript de la page, donc par une faille XSS : c'est
+    précisément ce que les cookies httpOnly évitent.
+    """
+    response = jsonify({"message": message})
+    set_access_cookies(response, create_access_token(identity=str(user.id)))
+    set_refresh_cookies(response, create_refresh_token(identity=str(user.id)))
+    return response, status
+
+
+def _revoke(jwt_data: dict) -> None:
+    """Refuse désormais ce jeton, jusqu'à son expiration."""
+    if db.session.get(RevokedToken, jwt_data["jti"]) is None:
+        expires_at = datetime.fromtimestamp(jwt_data["exp"], timezone.utc).replace(tzinfo=None)
+        db.session.add(RevokedToken(jti=jwt_data["jti"], expires_at=expires_at))
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -51,8 +78,10 @@ def register():
     new_user = User(email=payload.email, password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
+    # Un envoi raté n'empêche pas l'inscription : le lien se redemande depuis « Mon compte »
+    send_verification_email(new_user)
 
-    return jsonify(_tokens_for(new_user)), 201
+    return _session_response(new_user, "Compte créé.", 201)
 
 
 @auth_bp.route('/login', methods=['POST'])
@@ -63,8 +92,8 @@ def login():
     # On vérifie un hash même quand le compte n'existe pas : le temps de réponse
     # ne révèle pas si l'adresse e-mail est inscrite.
     password_hash = user.password if user else _get_dummy_password_hash()
-    if _password_matches(password_hash, payload.password) and user:
-        return jsonify(_tokens_for(user)), 200
+    if password_matches(password_hash, payload.password) and user:
+        return _session_response(user, "Connecté.", 200)
 
     return jsonify({"error": "Identifiants invalides."}), 401
 
@@ -72,5 +101,128 @@ def login():
 @auth_bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 def refresh():
-    """Échange un refresh token valide contre un nouvel access token."""
-    return jsonify(access_token=create_access_token(identity=get_jwt_identity())), 200
+    """Échange un refresh token valide contre un nouvel access token (cookie).
+
+    Pas de rotation du refresh token : deux onglets qui renouvellent en même temps se déconnecteraient
+    l'un l'autre. La révocation à la déconnexion et au changement de mot de passe couvre le vol (ADR 0015).
+    """
+    response = jsonify({"message": "Session renouvelée."})
+    set_access_cookies(response, create_access_token(identity=get_jwt_identity()))
+    return response, 200
+
+
+@auth_bp.route('/logout', methods=['POST'])
+def logout():
+    """Ferme la session : révoque ses jetons, et efface les cookies.
+
+    Réussit toujours, même avec des jetons expirés ou déjà révoqués : on doit pouvoir se déconnecter.
+    """
+    try:
+        verify_jwt_in_request(refresh=True, optional=True)
+        refresh_data = get_jwt()
+    except Exception:  # jeton expiré, révoqué, CSRF manquant : rien à révoquer, on efface quand même
+        refresh_data = {}
+    if refresh_data:
+        _revoke(refresh_data)
+    access_cookie = request.cookies.get(current_app.config["JWT_ACCESS_COOKIE_NAME"])
+    if access_cookie:
+        try:
+            _revoke(decode_token(access_cookie))
+        except Exception:
+            pass  # déjà expiré ou illisible : il ne sert plus à rien
+    # Ménage : un jeton expiré est refusé de toute façon, inutile de le garder
+    RevokedToken.query.filter(RevokedToken.expires_at < _utcnow()).delete()
+    db.session.commit()
+
+    response = jsonify({"message": "Déconnecté."})
+    unset_jwt_cookies(response)
+    return response, 200
+
+
+# --- E-mails du compte ([ADR 0014](../docs/adr/0014-emails-du-compte.md)) ---
+
+INVALID_LINK = "Ce lien n'est plus valable. Demandez-en un nouveau."
+FORGOT_MESSAGE = ("Si un compte existe pour cette adresse, un e-mail vient de lui être envoyé, "
+                  "avec un lien valable une heure.")
+
+VERIFICATION_EMAIL = """Bonjour,
+
+Pour confirmer l'adresse de votre compte Terminator, ouvrez ce lien (valable 7 jours) :
+
+{link}
+
+Si vous n'avez pas créé de compte, ignorez ce message.
+"""
+
+RESET_EMAIL = """Bonjour,
+
+Pour choisir un nouveau mot de passe pour votre compte Terminator, ouvrez ce lien (valable une heure, une seule fois) :
+
+{link}
+
+Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.
+"""
+
+
+def send_verification_email(user: User) -> bool:
+    link = frontend_link("/verify-email", verification_token(user))
+    return send_email(user.email, "Confirmez votre adresse — Terminator", VERIFICATION_EMAIL.format(link=link))
+
+
+def _mark_verified(user: User) -> None:
+    if user.email_verified_at is None:
+        user.email_verified_at = _utcnow()
+
+
+@auth_bp.route('/password/forgot', methods=['POST'])
+def forgot_password():
+    """Envoie un lien pour choisir un nouveau mot de passe.
+
+    La réponse est la même que le compte existe ou non, et que l'envoi réussisse ou non : cette route ne
+    doit pas servir à savoir si une adresse est inscrite.
+    """
+    payload = parse_body(ForgotPasswordRequest)
+    user = _find_user_by_email(payload.email)
+    if user:
+        link = frontend_link("/reset-password", reset_token(user))
+        send_email(user.email, "Nouveau mot de passe — Terminator", RESET_EMAIL.format(link=link))
+    return jsonify({"message": FORGOT_MESSAGE}), 200
+
+
+@auth_bp.route('/password/reset', methods=['POST'])
+def reset_password():
+    payload = parse_body(ResetPasswordRequest)
+    user = user_from_reset(payload.token)
+    if not user:
+        return jsonify({"error": INVALID_LINK}), 400
+
+    user.password = bcrypt.generate_password_hash(payload.password).decode('utf-8')
+    # Qui a changé le mot de passe veut aussi fermer les sessions ouvertes avec l'ancien (ADR 0015)
+    user.sessions_revoked_at = _utcnow()
+    # Le lien est arrivé par e-mail : s'en servir prouve aussi que l'adresse est la bonne
+    _mark_verified(user)
+    db.session.commit()
+    return jsonify({"message": "Mot de passe changé. Vous pouvez vous connecter."}), 200
+
+
+@auth_bp.route('/email/verify', methods=['POST'])
+def verify_email():
+    payload = parse_body(EmailLinkRequest)
+    user = user_from_verification(payload.token)
+    if not user:
+        return jsonify({"error": INVALID_LINK}), 400
+
+    _mark_verified(user)
+    db.session.commit()
+    return jsonify({"message": "Adresse confirmée."}), 200
+
+
+@auth_bp.route('/email/resend', methods=['POST'])
+@jwt_required()
+def resend_verification():
+    user = get_current_user()
+    if user.email_verified_at is not None:
+        return jsonify({"message": "Votre adresse est déjà confirmée."}), 200
+    if not send_verification_email(user):
+        return jsonify({"error": "L'e-mail n'a pas pu partir. Réessayez dans quelques minutes."}), 503
+    return jsonify({"message": f"E-mail envoyé à {user.email}."}), 200

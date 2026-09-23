@@ -9,15 +9,17 @@ Mesures de sécurité transverses de l'API :
 Voir docs/SECURITY.md pour le modèle de menace et les limites connues.
 """
 
+import ipaddress
 import logging
+from datetime import timezone
 
-from flask import Flask, json, jsonify, request
+from flask import Flask, current_app, json, jsonify, request
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import HTTPException
 
-from models import User, db
+from models import RevokedToken, User, db
 from schemas import RequestValidationError
 
 HTTP_ERROR_MESSAGES = {
@@ -44,6 +46,13 @@ API_SECURITY_HEADERS = {
 # Endpoint Flask -> clé de configuration contenant sa limite (ex: "10 per minute")
 RATE_LIMITED_ENDPOINTS = {
     "auth.login": "RATELIMIT_LOGIN",
+    # Vérifie un mot de passe, comme la connexion : même plafond contre la force brute
+    "main.delete_self": "RATELIMIT_LOGIN",
+    # Chaque appel envoie un e-mail : un plafond bas, sinon l'API sert à arroser une boîte
+    "auth.forgot_password": "RATELIMIT_EMAIL_SEND",
+    "auth.resend_verification": "RATELIMIT_EMAIL_SEND",
+    "auth.reset_password": "RATELIMIT_LOGIN",
+    "auth.verify_email": "RATELIMIT_LOGIN",
     "auth.register": "RATELIMIT_REGISTER",
     "auth.refresh": "RATELIMIT_REFRESH",
     "main.search_words": "RATELIMIT_SEARCH",
@@ -108,6 +117,41 @@ def register_jwt_callbacks(jwt: JWTManager) -> None:
     def expired_token(_jwt_header, _jwt_data):
         return jsonify({"error": "Session expirée. Veuillez vous reconnecter.", "code": "token_expired"}), 401
 
+    @jwt.token_in_blocklist_loader
+    def is_revoked(_jwt_header, jwt_data) -> bool:
+        """Jeton révoqué à la déconnexion, ou émis avant un changement de mot de passe (ADR 0015)."""
+        if db.session.get(RevokedToken, jwt_data["jti"]) is not None:
+            return True
+        try:
+            user = db.session.get(User, int(jwt_data["sub"]))
+        except (KeyError, TypeError, ValueError):
+            return False  # le chargement de l'utilisateur le refusera
+        revoked_at = user.sessions_revoked_at if user else None
+        # Seconde entière : un jeton émis dans la seconde même du changement reste valable
+        return revoked_at is not None and jwt_data["iat"] < int(revoked_at.replace(tzinfo=timezone.utc).timestamp())
+
+    @jwt.revoked_token_loader
+    def revoked_token(_jwt_header, _jwt_data):
+        return jsonify({"error": "Session fermée. Veuillez vous reconnecter."}), 401
+
+
+def client_ip() -> str:
+    """Adresse du visiteur : clé du rate limiting et de la limite de générations simultanées.
+
+    Derrière Cloudflare Tunnel, toutes les requêtes arrivent de cloudflared, donc de la même adresse :
+    le limiteur bloquerait tous les visiteurs ensemble ([ADR 0013](../docs/adr/0013-cible-hebergement-production.md)).
+    Cloudflare transmet la vraie adresse dans `CF-Connecting-IP`. L'en-tête n'est lu que si
+    `CLIENT_IP_HEADER` le désigne : sans tunnel devant l'API, n'importe quel client pourrait
+    l'inventer et changer d'adresse à chaque requête pour échapper aux limites.
+    """
+    header = current_app.config.get("CLIENT_IP_HEADER")
+    if header:
+        try:
+            return str(ipaddress.ip_address(request.headers.get(header, "").strip()))
+        except ValueError:
+            pass  # En-tête absent ou malformé : l'adresse de la connexion, faute de mieux
+    return get_remote_address()
+
 
 def init_rate_limiting(app: Flask) -> Limiter:
     """Applique les limites de débit aux endpoints sensibles.
@@ -115,7 +159,7 @@ def init_rate_limiting(app: Flask) -> Limiter:
     À appeler après l'enregistrement des blueprints. Un limiteur par application
     (configuration et stockage isolés, utile pour les tests).
     """
-    limiter = Limiter(get_remote_address, app=app)
+    limiter = Limiter(client_ip, app=app)
     for endpoint, config_key in RATE_LIMITED_ENDPOINTS.items():
         view = app.view_functions[endpoint]
         app.view_functions[endpoint] = limiter.limit(app.config[config_key])(view)

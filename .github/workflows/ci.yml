@@ -105,6 +105,12 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # Boîte de réception de test : les parcours y lisent les e-mails du compte (ADR 0014)
+      mail:
+        image: axllent/mailpit:v1.31.2
+        ports:
+          - 1025:1025
+          - 8025:8025
 
     steps:
       - name: Checkout repository
@@ -129,6 +135,10 @@ jobs:
           # les ferait échouer dès le deuxième test.
           RATELIMIT_REGISTER: 1000 per hour
           LEXICON_RELOAD_INTERVAL_S: 0
+          MAIL_BACKEND: smtp
+          SMTP_HOST: localhost
+          SMTP_PORT: 1025
+          FRONTEND_URL: http://localhost:3000
         run: |
           nohup python run.py > /tmp/api.log 2>&1 &
           for i in $(seq 1 60); do

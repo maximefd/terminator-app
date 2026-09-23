@@ -1,5 +1,6 @@
 import os
 import logging
+import tempfile
 from flask import Flask
 from flask_cors import CORS
 from datetime import timedelta
@@ -11,8 +12,10 @@ from routes import main_bp
 from extensions import jwt, migrate
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
 from lexicon_loader import LexiconManager
+from mailer import MAIL_BACKENDS
 
 DEV_SECRET = 'default-secret-for-dev'
+DEFAULT_MAIL_FROM = 'Terminator <terminator@localhost>'
 # Première migration : le schéma tel qu'il existait avant l'arrivée d'Alembic
 BASELINE_REVISION = '0001_schema_initial'
 DEFAULT_CORS_ORIGINS = 'http://localhost:3000'
@@ -27,12 +30,22 @@ DEFAULT_SETTINGS = dict(
     MAX_GRIDS_PER_USER=1000,
     # Mots proposés pour un emplacement : au-delà, la liste ne s'examine plus
     MAX_SUGGESTIONS=40,
+    # Générations calculées en même temps, tous workers confondus : une par cœur (ADR 0013).
+    # Au-delà, et pour un visiteur qui en a déjà une en cours, l'API répond 429.
+    GENERATION_MAX_CONCURRENT=2,
+    # Dossier des verrous de ces places ; il doit être commun à tous les workers d'une même machine
+    GENERATION_LOCK_DIR=os.path.join(tempfile.gettempdir(), 'terminator-generations'),
     CORS_ORIGINS=DEFAULT_CORS_ORIGINS,
-    TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API (Render : 1)
+    TRUST_PROXY_HOPS=0,  # Nombre de proxys de confiance devant l'API qui ajoutent X-Forwarded-For
+    # En-tête portant l'adresse du visiteur, posé par un proxy de confiance (Cloudflare : CF-Connecting-IP).
+    # Vide : l'adresse de la connexion. Voir security.client_ip et l'ADR 0013.
+    CLIENT_IP_HEADER='',
     RATELIMIT_ENABLED=True,
     RATELIMIT_STORAGE_URI='memory://',
     RATELIMIT_HEADERS_ENABLED=True,
     RATELIMIT_LOGIN='10 per minute',
+    # Mot de passe oublié et confirmation d'adresse redemandée : chaque appel envoie un e-mail
+    RATELIMIT_EMAIL_SEND='5 per hour',
     RATELIMIT_REGISTER='5 per hour',
     RATELIMIT_REFRESH='30 per minute',
     RATELIMIT_SEARCH='120 per minute',
@@ -40,7 +53,35 @@ DEFAULT_SETTINGS = dict(
     # Appelé à chaque frappe de l'auteur, et sans génération : plafond de la recherche, pas de la génération
     RATELIMIT_DIFFICULTY='120 per minute',
     LEXICON_PATH=None,  # Lexique curé ; à défaut, le DELA complet (backend/dela_clean.csv)
-    LEXICON_RELOAD_INTERVAL_S=30,  # Vérification des changements du lexique (0 : pas de rechargement à chaud)
+    # Vérification des changements du lexique (0 : pas de rechargement à chaud). Jamais en production :
+    # le lexique y est un fichier livré avec l'application (ADR 0013).
+    LEXICON_RELOAD_INTERVAL_S=30,
+    # Session en cookies httpOnly ([ADR 0015](../docs/adr/0015-session-en-cookies.md)). L'en-tête Authorization
+    # reste accepté, en premier : les tests et un client autre que le navigateur s'en servent. Le navigateur,
+    # lui, n'a jamais de jeton en main : il n'en reçoit que des cookies illisibles par JavaScript.
+    JWT_TOKEN_LOCATION=['headers', 'cookies'],
+    JWT_COOKIE_SECURE=False,  # True en production (HTTPS) ; le développement tourne en HTTP
+    JWT_COOKIE_SAMESITE='Lax',
+    JWT_COOKIE_DOMAIN=None,  # En production, le domaine commun au frontend et à l'API (COOKIE_DOMAIN)
+    JWT_SESSION_COOKIE=False,  # Des cookies qui durent autant que leur jeton, pas le temps d'un onglet
+    JWT_ACCESS_COOKIE_PATH='/api/',
+    JWT_REFRESH_COOKIE_PATH='/api/auth/',  # Le refresh token ne part que vers /refresh et /logout
+    # Double soumission : un cookie lisible par le frontend, à recopier dans l'en-tête X-CSRF-TOKEN
+    JWT_COOKIE_CSRF_PROTECT=True,
+    JWT_CSRF_IN_COOKIES=True,
+    # Signe aussi les liens envoyés par e-mail (account_links.py). En production, _load_config_from_env
+    # impose une vraie clé.
+    SECRET_KEY=DEV_SECRET,
+    # E-mails du compte (mailer.py, ADR 0014) : « console » écrit le message dans le journal au lieu de l'envoyer
+    MAIL_BACKEND='console',
+    MAIL_FROM=DEFAULT_MAIL_FROM,
+    SMTP_HOST='localhost',
+    SMTP_PORT=25,
+    SMTP_USER='',
+    SMTP_PASSWORD='',
+    SMTP_STARTTLS=False,
+    # Adresse du frontend, pour les liens des e-mails ; à défaut, la première origine de CORS_ORIGINS
+    FRONTEND_URL=DEFAULT_CORS_ORIGINS,
     # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
     # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
     AUTO_MIGRATE=True,
@@ -64,6 +105,10 @@ def _load_config_from_env() -> dict:
     database_url = os.environ.get('DATABASE_URL')
     cors_origins = os.environ.get('CORS_ORIGINS', DEFAULT_CORS_ORIGINS)
 
+    mail_backend = os.environ.get('MAIL_BACKEND', 'console').strip()
+    if mail_backend not in MAIL_BACKENDS:
+        raise RuntimeError(f"MAIL_BACKEND inconnu : {mail_backend} (attendu : {', '.join(MAIL_BACKENDS)})")
+
     if app_env == 'production':
         problems = []
         if secret_key == DEV_SECRET:
@@ -85,10 +130,24 @@ def _load_config_from_env() -> dict:
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         JWT_ACCESS_TOKEN_EXPIRES=timedelta(minutes=15),
         JWT_REFRESH_TOKEN_EXPIRES=timedelta(days=7),
+        JWT_COOKIE_SECURE=app_env == 'production',
+        JWT_COOKIE_DOMAIN=os.environ.get('COOKIE_DOMAIN') or None,
         JSON_AS_ASCII=False,
         GENERATION_TIME_BUDGET_S=float(os.environ.get('GENERATION_TIME_BUDGET_S', 20)),
+        GENERATION_MAX_CONCURRENT=max(1, int(
+            os.environ.get('GENERATION_MAX_CONCURRENT') or DEFAULT_SETTINGS['GENERATION_MAX_CONCURRENT'])),
+        GENERATION_LOCK_DIR=os.environ.get('GENERATION_LOCK_DIR') or DEFAULT_SETTINGS['GENERATION_LOCK_DIR'],
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
+        CLIENT_IP_HEADER=os.environ.get('CLIENT_IP_HEADER', '').strip(),
+        MAIL_BACKEND=mail_backend,
+        MAIL_FROM=os.environ.get('MAIL_FROM') or DEFAULT_MAIL_FROM,
+        SMTP_HOST=os.environ.get('SMTP_HOST', 'localhost'),
+        SMTP_PORT=int(os.environ.get('SMTP_PORT') or 25),
+        SMTP_USER=os.environ.get('SMTP_USER', ''),
+        SMTP_PASSWORD=os.environ.get('SMTP_PASSWORD', ''),
+        SMTP_STARTTLS=os.environ.get('SMTP_STARTTLS', '').lower() in ('1', 'true', 'oui'),
+        FRONTEND_URL=os.environ.get('FRONTEND_URL') or (parse_cors_origins(cors_origins) or [DEFAULT_CORS_ORIGINS])[0],
         RATELIMIT_STORAGE_URI=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
         # Desserrable pour les parcours end-to-end, qui créent un compte par exécution.
         # Jamais en production : le quota y protège de la création de comptes en masse.
@@ -102,7 +161,12 @@ def _load_config_from_env() -> dict:
         ) or DEFAULT_SETTINGS['RATELIMIT_GENERATE'],
         MAX_GRIDS_PER_USER=int(os.environ.get('MAX_GRIDS_PER_USER') or DEFAULT_SETTINGS['MAX_GRIDS_PER_USER']),
         LEXICON_PATH=os.environ.get('LEXICON_PATH') or None,
-        LEXICON_RELOAD_INTERVAL_S=float(os.environ.get('LEXICON_RELOAD_INTERVAL_S', 30)),
+        # En production, le lexique est livré avec l'application et change avec elle, au redémarrage.
+        # Sous gunicorn, le surveillant ne tournerait d'ailleurs que dans le processus maître : il
+        # chargerait un second lexique que les workers ne verraient jamais (ADR 0013).
+        LEXICON_RELOAD_INTERVAL_S=float(
+            os.environ.get('LEXICON_RELOAD_INTERVAL_S', DEFAULT_SETTINGS['LEXICON_RELOAD_INTERVAL_S'])
+        ) if app_env != 'production' else 0,
     )
 
 
@@ -148,18 +212,24 @@ def create_app(test_config=None):
     else:
         app.config.from_mapping(test_config)
 
-    # Derrière un reverse proxy (Render), l'IP réelle du client est dans X-Forwarded-For :
+    # Un lien de mot de passe écrit dans un journal permet à qui le lit de prendre le compte
+    if app.config.get('APP_ENV') == 'production' and app.config['MAIL_BACKEND'] == 'console':
+        logging.warning("MAIL_BACKEND=console en production : les e-mails du compte ne partent pas, "
+                        "et leurs liens sont écrits dans le journal. Configurer SMTP (ADR 0014).")
+
+    # Derrière un reverse proxy classique, l'IP réelle du client est dans X-Forwarded-For :
     # indispensable pour que le rate limiting ne compte pas tout le monde comme une seule IP.
     if app.config['TRUST_PROXY_HOPS']:
         hops = app.config['TRUST_PROXY_HOPS']
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=hops, x_proto=hops)
 
-    # L'authentification passe par l'en-tête Authorization (pas de cookie) : pas de credentials CORS
+    # La session voyage en cookies (ADR 0015) : credentials CORS, réservés aux origines exactes de CORS_ORIGINS
     CORS(
         app,
         resources={r"/api/*": {"origins": parse_cors_origins(app.config['CORS_ORIGINS'])}},
         methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-TOKEN"],
+        supports_credentials=True,
         max_age=600,
     )
 

@@ -89,3 +89,32 @@ def test_generation_quota_stays_strict_in_production(monkeypatch):
     monkeypatch.setenv('DATABASE_URL', 'postgresql://user:pass@localhost:5432/terminator')
 
     assert _load_config_from_env()['RATELIMIT_GENERATE'] == '10 per minute'
+
+
+def test_lexicon_hot_reload_is_adjustable_outside_production(monkeypatch):
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('LEXICON_RELOAD_INTERVAL_S', '5')
+    monkeypatch.setenv('APP_ENV', 'development')
+    assert _load_config_from_env()['LEXICON_RELOAD_INTERVAL_S'] == 5
+
+
+def test_lexicon_is_never_hot_reloaded_in_production(monkeypatch):
+    """ADR 0013 : le lexique de production est livré avec l'application ; sous gunicorn, le recharger
+    à chaud ne profiterait qu'au processus maître."""
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('LEXICON_RELOAD_INTERVAL_S', '30')
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('SECRET_KEY', 'une-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('JWT_SECRET_KEY', 'une-autre-cle-de-production-suffisamment-longue')
+    monkeypatch.setenv('DATABASE_URL', 'postgresql://user:pass@localhost:5432/terminator')
+
+    assert _load_config_from_env()['LEXICON_RELOAD_INTERVAL_S'] == 0
+
+
+def test_the_visitor_header_is_read_from_the_environment(monkeypatch):
+    from app import _load_config_from_env
+
+    monkeypatch.setenv('CLIENT_IP_HEADER', ' CF-Connecting-IP ')
+    assert _load_config_from_env()['CLIENT_IP_HEADER'] == 'CF-Connecting-IP'

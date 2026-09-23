@@ -9,7 +9,7 @@ from engine.arrows import clues_for_words
 from engine.grid_template import GridTemplate
 from engine.must_words import check_must_words
 from engine.slot_finder import SlotFinder
-from engine.word_repository import WordRepository
+from engine.word_repository import WholeLexicon, WordRepository
 from engine.grid_solver import GridSolver
 from layout_catalog import DEFAULT_LAYOUTS_DIR, layout_id
 from trie_engine import DictionnaireTrie # NÉCESSAIRE
@@ -75,7 +75,7 @@ class GridGenerator:
         self,
         width: int,
         height: int,
-        valid_words: list[str],
+        valid_words: list[str] | WholeLexicon,
         prebuilt_trie: DictionnaireTrie,
         seed: int | float | None = None,
         layouts_dir: str | None = None,
@@ -97,7 +97,8 @@ class GridGenerator:
         Args:
             width (int): Largeur de la grille.
             height (int): Hauteur de la grille.
-            valid_words (list[str]): Mots du lexique commun, DÉJÀ FILTRÉS pour la taille de la grille.
+            valid_words (list[str] | WholeLexicon): Mots du lexique commun, DÉJÀ FILTRÉS pour la taille de
+                la grille — ou `WholeLexicon`, tout le lexique jusqu'à une longueur, sans recopie (API).
             prebuilt_trie (DictionnaireTrie): Un Trie DÉJÀ CONSTRUIT avec les valid_words.
             seed (int, optional): Seed pour la reproductibilité.
             layouts_dir (str, optional): Dossier des layouts (défaut : backend/layouts).
@@ -237,13 +238,13 @@ class GridGenerator:
         finder.find_all_slots()
         return first_problems, [(candidates[0], template, finder)]
 
-    def _create_repository(self, valid_words: list[str], wish_words, must_words) -> WordRepository:
+    def _create_repository(self, valid_words: list[str] | WholeLexicon, wish_words, must_words) -> WordRepository:
         """
         Crée un repository en RÉUTILISANT le Trie pré-construit (et ses index)
         et les trois pools de mots DÉJÀ FILTRÉS.
         """
         repo = WordRepository.from_pools(self.prebuilt_trie, valid_words, wish_words, must_words)
-        logging.info(f"{len(repo.pools)} mots pertinents indexés pour cette grille "
+        logging.info(f"{repo.available_count()} mots disponibles pour cette grille "
                      f"({len(wish_words)} souhaités, {len(must_words)} obligatoires).")
         return repo
 

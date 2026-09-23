@@ -60,6 +60,8 @@ def test_search_only_returns_the_callers_personal_words(client, test_app, small_
     ("post", "/api/dictionaries"),
     ("get", "/api/dictionaries/1/words"),
     ("delete", "/api/users/me"),
+    ("get", "/api/users/me"),
+    ("post", "/api/auth/email/resend"),
 ])
 def test_protected_routes_require_authentication(client, method, path):
     response = send(client, method, path)

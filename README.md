@@ -48,7 +48,7 @@ make setup
 
 `make setup` crée `.env` depuis `.env.example` et installe le frontend. Remplacez ensuite les secrets dans `.env`.
 
-Lancer l'API (http://localhost:5001) et la base PostgreSQL :
+Lancer l'API (http://localhost:5001), la base PostgreSQL et Mailpit, qui reçoit les e-mails du compte sans les envoyer (http://localhost:8025) :
 
 ```bash
 make dev-api

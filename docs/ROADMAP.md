@@ -9,17 +9,18 @@
 |-------|------|
 | 0a — Stabilisation | ✅ PR #2 (génération réparée, tests, benchmark) |
 | 0b — Sécurité | ✅ PR #3 |
-| 0c — Documentation et GitHub | ✅ PR #31 (restent #5 à #8 : ruff et couverture en CI, dépendances figées, vulnérabilités transitives de Next.js, captures d'écran) |
+| 0c — Documentation et GitHub | ✅ PR #31, puis ruff et couverture en CI (#53), dépendances figées et pip-audit (#52), vulnérabilités transitives de Next.js (#54), captures d'écran dans le README |
 | 1a — Pipeline du lexique | ✅ PR #42 |
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
-| 1c — Lexique curé chargé par l'API | 🚧 en cours (#11) : export et rechargement automatiques tous les 500 mots triés |
+| 1c — Lexique curé chargé par l'API | ✅ PR #46 : export et rechargement automatiques tous les 500 mots triés |
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve levée, et elle révèle un problème** : la baseline comporte désormais des cas avec mots obligatoires (`--must-words`). Un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %**, tous layouts sous le critère ([mesures](../backend/benchmarks/README.md)). Le changement de layout (#73) améliore le cas où un format compte plusieurs layouts — 6×7 de 6/20 à 11/20 — sans rien résoudre sur le fond. **Traité non par le taux mais par l'aveu** : l'écran annonce la difficulté avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)), et la mesure a désigné le vrai facteur — la **longueur** des mots imposés, pas leur nombre (#73 reste ouverte). Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
-| 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed. page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair |
+| 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed (#89). page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair (#90) |
 | 5 — Rendu professionnel | ✅ flèches et cases définitions (#26), saisie des définitions et export PDF (#27), retouche manuelle d'une grille ([ADR 0012](adr/0012-grille-modifiable.md)) |
-| 6 et 7 | ⏳ voir les [milestones](https://github.com/maximefd/terminator-app/milestones) |
+| 6 — Durcissement production | 🚧 démarrée : cible d'hébergement choisie sur mesures ([ADR 0013](adr/0013-cible-hebergement-production.md)) et prérequis faits (gunicorn, places de génération, rate limiting derrière Cloudflare, lexique préparé au chargement). Faits aussi : export statique du frontend, sauvegardes, revue des licences, e-mails du compte ([ADR 0014](adr/0014-emails-du-compte.md)), session en cookies httpOnly ([ADR 0015](adr/0015-session-en-cookies.md)). Restent la CSP stricte (#99), Sentry et le serveur lui-même (#29) |
+| 7 — Passage à l'échelle | ⏳ pas avant que les mesures sur le VPS le demandent (#30) |
 
-Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)).
+Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)). Le serveur visé est choisi depuis le 22/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)).
 
 ## Contexte
 
@@ -173,14 +174,15 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 
 ## Phase 5 — Rendu professionnel
 - **Flèches et cases définitions** ✅ (#26) : déduites de la géométrie (`engine/arrows.py`), rendu SVG, bascule solution / grille vierge. Vérifié sur tout le catalogue : aucun mot sans case de définition, deux définitions par case au plus, jamais deux du même côté.
-- **Saisie des définitions** ✅ (#27) : écran `/grids/<id>`, une définition par mot, enregistrée au fil de la frappe.
+- **Saisie des définitions** ✅ (#27) : écran `/grids/edit?id=<id>`, une définition par mot, enregistrée au fil de la frappe.
 - **Export** ✅ (#27) : PDF vectoriel dessiné depuis le SVG de l'écran, solution en seconde page, et fichier de travail JSON.
 - **Retouche d'une grille conservée** ✅ ([ADR 0012](adr/0012-grille-modifiable.md)) : corriger une lettre à la main, mots recalculés, propositions qui respectent les croisements, mots hors lexique signalés et rangeables d'un clic dans un dictionnaire.
 - **Grilles conservées à l'échelle** ✅ : recherche, filtres (format, état, archivées), tri, bloc-notes par grille.
 - **Reste** : l'impression directe (mise en page A4 multi-grilles) et la relecture d'un fichier de travail, si le besoin s'en fait sentir.
 
 ## Phase 6 — Durcissement production
-- Cookies httpOnly + CSRF au lieu de localStorage ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes, Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences (Lexique / Wiktionnaire, CC BY-SA).
+- **Cible d'hébergement** ✅ ([ADR 0013](adr/0013-cible-hebergement-production.md)) : un VPS OVH derrière Cloudflare (~65 € par an), choisi sur mesures. Prérequis faits : clé du rate limiting derrière le tunnel, gunicorn, places de génération, lexique préparé au chargement, rechargement à chaud coupé en production. **Reste** : export statique du frontend, commande de déploiement, et les points ci-dessous.
+- Cookies httpOnly + CSRF au lieu de localStorage ✅ ([ADR 0015](adr/0015-session-en-cookies.md)) ; Postgres uniquement en production avec migrations au déploiement ; sauvegardes ✅ (`make db-backup`), Sentry, logs structurés ; environnement de staging ; test d'intrusion selon la checklist ASVS ; revue des licences ✅ ([LICENCES.md](LICENCES.md) : restent la provenance des layouts recopiés et le choix dépôt public ou privé).
 
 ## Phase 7 — Décision de passage à l'échelle : file serveur ou moteur client
 - **Déclencheur** : charge ou latence de génération problématique, ou avant ouverture à d'autres utilisateurs.

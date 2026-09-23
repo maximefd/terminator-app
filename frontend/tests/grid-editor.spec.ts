@@ -40,22 +40,17 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await page.getByRole("button", { name: "Créer un compte" }).click();
   await expect(page.getByTestId("logout-button")).toBeVisible();
 
-  const gridId = await page.evaluate(
-    async ([api, grid]) => {
-      const response = await fetch(`${api}/api/grids`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-        body: JSON.stringify({ name: "Grille à définir", grid }),
-      });
-      return (await response.json()).id as number;
-    },
-    [API, GRID] as const,
-  );
+  // La session est en cookies (ADR 0015) : la requête du test les partage avec la page, et recopie le
+  // jeton CSRF comme le fait le frontend
+  const csrf = (await page.context().cookies()).find((cookie) => cookie.name === "csrf_access_token")!.value;
+  const created = await page.request.post(`${API}/api/grids`, {
+    headers: { "X-CSRF-TOKEN": csrf },
+    data: { name: "Grille à définir", grid: GRID },
+  });
+  expect(created.status()).toBe(201);
+  const gridId = (await created.json()).id as number;
 
-  await page.goto(`/grids/${gridId}`);
+  await page.goto(`/grids/edit?id=${gridId}`);
   await expect(page.getByRole("heading", { name: "Grille à définir" })).toBeVisible();
   await expect(page.getByText("0 définition sur 2")).toBeVisible();
 

@@ -66,6 +66,24 @@ class LoginRequest(ApiModel):
     password: Annotated[str, Field(min_length=1, max_length=128)]
 
 
+class ForgotPasswordRequest(ApiModel):
+    email: Annotated[str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=254)]
+
+
+class EmailLinkRequest(ApiModel):
+    """Le jeton d'un lien reçu par e-mail, renvoyé par la page du frontend qui l'a reçu."""
+    token: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class ResetPasswordRequest(EmailLinkRequest):
+    password: Annotated[str, Field(min_length=8, max_length=128)]
+
+
+class AccountDeletionRequest(ApiModel):
+    # Le mot de passe, redemandé : un jeton volé ne doit pas suffire à effacer un compte
+    password: Annotated[str, Field(min_length=1, max_length=128)]
+
+
 # --- Dictionnaires personnels ---
 
 class DictionaryCreateRequest(ApiModel):
@@ -216,6 +234,7 @@ FIELD_LABELS = {
     "char": "lettre",
     "email": "e-mail",
     "password": "mot de passe",
+    "token": "lien",
     "name": "nom",
     "is_active": "actif",
     "mot": "mot",

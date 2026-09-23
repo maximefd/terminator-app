@@ -21,6 +21,9 @@ services:
   api:
     container_name: terminator_api
     build: ./backend
+    # Serveur de développement : un seul processus, qui recharge le lexique exporté par le curateur.
+    # L'image lance gunicorn par défaut (production, ADR 0013).
+    command: ["python", "run.py"]
     ports:
       - "5001:5000"
     volumes:
@@ -44,9 +47,23 @@ services:
       # Lexique curé s'il a été exporté, sinon repli automatique sur le DELA complet
       - LEXICON_PATH=${LEXICON_PATH:-/lexicon/lexique_cure.csv}
       - LEXICON_RELOAD_INTERVAL_S=${LEXICON_RELOAD_INTERVAL_S:-30}
+      # E-mails du compte (ADR 0014) : ils arrivent dans Mailpit, http://localhost:8025, et ne partent jamais
+      - MAIL_BACKEND=smtp
+      - SMTP_HOST=mail
+      - SMTP_PORT=1025
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
     depends_on:
       db:
         condition: service_healthy
+      mail:
+        condition: service_started
+
+  # Boîte de réception locale : capture tous les e-mails de l'API (interface sur http://localhost:8025)
+  mail:
+    image: axllent/mailpit:v1.31.2
+    container_name: terminator_mail
+    ports:
+      - "8025:8025"
 
 volumes:
   pgdata:

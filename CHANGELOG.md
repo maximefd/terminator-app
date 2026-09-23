@@ -14,6 +14,39 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
   parce qu'il l'est vraiment : générer, conserver, retoucher, définir puis imprimer. La recherche par
   motif et les dictionnaires, qui ne sont pas dans cette séquence, gardent leur propre bloc.
+- **Mot de passe oublié et confirmation de l'adresse** ([ADR 0014](docs/adr/0014-emails-du-compte.md)) : un
+  lien par e-mail pour choisir un nouveau mot de passe (une heure, une seule fois, sans révéler si le compte
+  existe), et un lien de confirmation envoyé à l'inscription, redemandable depuis « Mon compte ». Liens signés,
+  sans table ; migration `0005` (`email_verified_at`). En développement, les e-mails arrivent dans **Mailpit**
+  (http://localhost:8025) et ne partent jamais ; en production, par le relais SMTP du prestataire.
+- **Revue des licences** ([docs/LICENCES.md](docs/LICENCES.md)) : sources linguistiques, polices, dépendances
+  et dépôt public, avec ce que chaque licence demande. Le DELA versionné est sous LGPLLR, qui impose de
+  joindre sa licence : c'est fait (`backend/DELA-NOTICE.md`, `backend/LGPLLR.txt`), comme la licence OFL de
+  la police des grilles (`frontend/public/fonts/OFL.txt`). Aucune dépendance sous GPL ou AGPL. Restent à
+  trancher : la provenance des layouts recopiés de livres, et le dépôt public ou privé.
+- **Page « Mon compte »** (#79) : l'adresse e-mail, ce que le compte contient, et sa suppression — mot
+  de passe redemandé, confirmation qui dit ce qui disparaît, déconnexion et retour à l'accueil. Nouvel
+  endpoint `GET /api/users/me`.
+- `make bench-load` (`backend/benchmarks/load_profile.py`) : profil de charge de l'API — RAM après
+  chargement, CPU et durées par génération, générations simultanées en threads et en processus — dans un
+  conteneur de 2 CPU et 2 Go. Ce sont les mesures de l'[ADR 0013](docs/adr/0013-cible-hebergement-production.md),
+  à refaire sur le VPS la première semaine.
+- **Sauvegardes de la base** : `make db-backup` (dump PostgreSQL compressé dans `backups/`, chiffré par
+  `age` si `BACKUP_AGE_RECIPIENT` est défini, rotation à 30 jours) et `make db-restore-check FILE=…`,
+  qui restaure la sauvegarde dans une base jetable, compte les lignes des tables puis la supprime — la
+  base en service n'est jamais touchée. Le serveur n'aura que la clé publique : il chiffrera ses
+  sauvegardes sans pouvoir les relire ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)).
+- [ADR 0013](docs/adr/0013-cible-hebergement-production.md) — **cible d'hébergement de production** : un VPS
+  OVH derrière Cloudflare (tunnel, frontend statique sur Pages), environ 65 € par an, choisi sur mesures
+  (RAM, CPU par génération, concurrence, PyPy). L'hébergement mutualisé est écarté : il aurait partagé ses
+  ressources et son utilisateur système avec un site en activité.
+- **gunicorn** pour la production (`backend/gunicorn.conf.py`, commande par défaut de l'image) : 3 workers
+  synchrones, application chargée une fois avant de les créer. Le développement reste sur `python run.py`,
+  qui recharge le lexique du curateur.
+- **Places de génération** : au plus 2 générations à la fois (une par cœur) et une seule par visiteur,
+  429 au-delà (« Le générateur est occupé »). Les verrous sont des fichiers, communs à tous les workers et
+  rendus si l'un d'eux meurt. Le rate limiting comptait les requêtes par minute, pas leur recouvrement :
+  quatre générations sur deux cœurs doublaient la durée médiane.
 - `make preview-remote` : tunnel Cloudflare **temporaire** pour faire tester l'app à quelqu'un à
   distance sans qu'il clone le repo, sans rien déployer (cohérent avec
   [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) — l'URL n'existe que tant que la commande
@@ -191,6 +224,20 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Un dictionnaire coché pour une grille s'allume en **vert** : le gris du réglage par défaut ne se
   distinguait pas d'un bouton inactif.
 - Page d'accueil allégée : le texte disait trois fois ce que la grille montre déjà.
+- **Le frontend se construit en site statique** (`pnpm build` → `out/`), prêt pour Cloudflare Pages
+  ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)) : pas de serveur Node en production. Les en-têtes de
+  sécurité (CSP, HSTS…) sont écrits dans `out/_headers`, depuis la même définition que ceux de `next dev`.
+  L'éditeur d'une grille passe de `/grids/12` à **`/grids/edit?id=12`** : un export statique ne génère pas une
+  page par grille. `next start` disparaît.
+- **Une génération ne recopie plus le lexique** : l'API désigne « tout le lexique jusqu'à N lettres »
+  (`WholeLexicon`) au lieu de trier puis répartir 700 000 mots à chaque requête. La préparation passe de
+  0,09 à 0,76 s à environ 1 ms. Le CPU moyen d'une génération libre baisse de 30 % (1,78 → 1,25 s), et les
+  workers partagent désormais le lexique au lieu d'en porter chacun une copie (4 processus : 2 037 → 782 Mo).
+  Les grilles produites sont identiques : le benchmark donne les mêmes trajectoires sur ses 420 générations,
+  et 36 grilles du vrai lexique ont été comparées une à une.
+- Les index du lexique sont construits **au chargement** au lieu de la première génération de chaque longueur.
+- En production, le lexique **n'est plus rechargé à chaud** : il est livré avec l'application, et sous
+  gunicorn le rechargement ne profiterait qu'au processus maître.
 - La clé d'une définition est désormais la **position** de son emplacement (`1-2-across`) et non le texte
   du mot (`PORTE-1-2-across`) : corriger une lettre renomme le mot, et une clé fondée sur le texte aurait
   laissé la définition orpheline. Migration `0004` : les clés existantes sont réécrites.
@@ -230,6 +277,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
   est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
   et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.
+- **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
+  collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
+  qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
+- Les migrations jouées au démarrage éteignaient tous les loggers déjà créés (`fileConfig` d'Alembic) :
+  sous gunicorn, plus aucun journal d'accès ni de démarrage des workers.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
   chaque lettre posée : elles ne sont plus relues qu'à l'ouverture de la grille. Elles s'enregistrent
   aussi en quittant le champ, sans attendre la pause de 600 ms.
@@ -246,6 +298,23 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **La session passe en cookies `httpOnly`** ([ADR 0015](docs/adr/0015-session-en-cookies.md), #28, remplace
+  l'ADR 0003) : les jetons ne sont plus dans le `localStorage`, donc plus à portée d'une faille XSS, et
+  l'API ne les met plus jamais dans ses réponses. Protection CSRF par double soumission (`X-CSRF-TOKEN`).
+  La déconnexion **révoque** les jetons (`POST /api/auth/logout`, table `revoked_token`), et un changement de
+  mot de passe ferme toutes les sessions ouvertes (migration `0006`). En développement, `next dev` relaie
+  `/api` vers l'API : même origine, et `make preview-remote` n'ouvre plus qu'un tunnel. Il faut se
+  reconnecter une fois.
+- Supprimer son compte demande désormais le **mot de passe** (`DELETE /api/users/me`, 403 s'il est faux,
+  même limite de débit que la connexion) : le jeton vit dans le navigateur, et volé, il suffisait à tout effacer.
+- Plus de repli vers l'ancienne API Render : sans `NEXT_PUBLIC_API_BASE_URL`, un build de production visait
+  `motsfleches-terminator-backend.onrender.com`, autorisé aussi par la CSP. Le service est supprimé, et son
+  sous-domaine peut être réservé par n'importe qui, qui recevrait alors e-mails et mots de passe. Le build de
+  production **échoue** désormais sans adresse d'API ; Render et Vercel sont retirés du code et de la
+  documentation, ainsi que les images de démarrage de Next.js inutilisées.
+- Rate limiting derrière Cloudflare Tunnel : toutes les requêtes arrivent de cloudflared, et le limiteur
+  aurait bloqué tous les visiteurs ensemble. L'adresse vient désormais de `CF-Connecting-IP`, lue seulement
+  si `CLIENT_IP_HEADER` le demande : sans tunnel, un client pourrait l'inventer pour échapper aux limites.
 - Frontend : versions corrigées de postcss, nanoid et sharp imposées par des overrides pnpm (9 vulnérabilités transitives de next 15.5.25, #7).
 
 ## [0.1.0] — 2026-09-14

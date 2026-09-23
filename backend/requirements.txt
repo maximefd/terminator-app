@@ -8,6 +8,7 @@ Flask-Login==0.6.3
 Flask-Bcrypt==1.0.1
 Flask-JWT-Extended==4.7.4
 Flask-Limiter==4.1.1
+gunicorn==26.2.0
 pydantic==2.13.5
 email-validator==2.3.0
 pytest==9.1.1

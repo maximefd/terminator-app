@@ -233,7 +233,7 @@ export function SavedGridsClientLayout() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <Link
-                            href={`/grids/${grid.id}`}
+                            href={`/grids/edit?id=${grid.id}`}
                             className="font-semibold hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             {grid.name}
@@ -273,7 +273,7 @@ export function SavedGridsClientLayout() {
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                       <Button asChild size="sm">
-                        <Link href={`/grids/${grid.id}`}>Ouvrir</Link>
+                        <Link href={`/grids/edit?id=${grid.id}`}>Ouvrir</Link>
                       </Button>
                       <Button
                         variant="outline"

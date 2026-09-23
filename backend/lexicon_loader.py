@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from engine.word_repository import prepare_lexicon
+from layout_catalog import available_formats
 from trie_engine import DictionnaireTrie
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -33,9 +35,17 @@ class LexiconInfo:
         return asdict(self)
 
 
+def longest_grid_side() -> int:
+    """Plus long mot qu'une grille du catalogue peut accueillir : son plus grand côté."""
+    return max((max(f["width"], f["height"]) for f in available_formats()), default=0)
+
+
 def load_trie(path: Path) -> DictionnaireTrie:
     trie = DictionnaireTrie()
     trie.load_dela_csv(str(path))
+    # Index construits ici, une fois, plutôt qu'à la première génération de chaque longueur : lors
+    # d'un rechargement, c'est l'ancien lexique qui sert pendant ce temps (ADR 0013).
+    prepare_lexicon(trie, longest_grid_side())
     return trie
 
 

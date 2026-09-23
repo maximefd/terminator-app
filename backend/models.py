@@ -10,6 +10,10 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
+    # Date à laquelle l'adresse a été confirmée par un lien reçu par e-mail ; None tant qu'elle ne l'est pas
+    email_verified_at = db.Column(db.DateTime, nullable=True)
+    # Les jetons émis avant cette date (UTC) sont refusés : changer de mot de passe ferme toutes les sessions
+    sessions_revoked_at = db.Column(db.DateTime, nullable=True)
     
     dictionaries = db.relationship('Dictionary', backref='user', lazy='selectin', cascade="all, delete-orphan")
     grids = db.relationship('SavedGrid', backref='user', lazy='selectin', cascade="all, delete-orphan")
@@ -138,3 +142,13 @@ class SavedGrid(db.Model):
         grid['clues'] = clues_from_grid_data(grid.get('cells', []), grid.get('words', []))
         return {**self.summary(), 'grid': grid, 'definitions': self.definitions or {},
                 'notes': self.notes or ""}
+
+
+class RevokedToken(db.Model):
+    """Jeton révoqué avant son expiration, à la déconnexion ([ADR 0015](../docs/adr/0015-session-en-cookies.md)).
+
+    Gardé jusqu'à `expires_at` seulement : au-delà, le jeton est refusé de toute façon.
+    """
+    __tablename__ = 'revoked_token'
+    jti = db.Column(db.String(64), primary_key=True)
+    expires_at = db.Column(db.DateTime, nullable=False, index=True)

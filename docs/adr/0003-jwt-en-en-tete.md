@@ -1,6 +1,6 @@
 # 0003 — Authentification par JWT dans l'en-tête `Authorization`
 
-- Statut : acceptée (à revoir en Phase 6)
+- Statut : remplacée par l'[ADR 0015](0015-session-en-cookies.md)
 - Date : 2026-09-14
 
 ## Contexte

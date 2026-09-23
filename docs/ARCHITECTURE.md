@@ -32,11 +32,14 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | Module | Rôle |
 |--------|------|
 | `app.py` | Fabrique `create_app()` : configuration (variables d'environnement), CORS, extensions, sécurité, blueprints, chargement du dictionnaire |
-| `run.py` | Point d'entrée (`python run.py`) |
-| `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton |
+| `run.py` | Point d'entrée : `python run.py` en développement, `run:app` sous gunicorn en production |
+| `gunicorn.conf.py` | Serveur de production : 3 workers synchrones, application chargée une fois avant de les créer ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
+| `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton, mot de passe oublié, confirmation de l'adresse |
+| `account_links.py`, `mailer.py` | Liens signés envoyés par e-mail, et leur envoi (journal, SMTP ou mémoire) ([ADR 0014](adr/0014-emails-du-compte.md)) |
 | `routes.py` | Blueprint `/api` : dictionnaires, mots, recherche, formats, génération, suppression de compte |
 | `schemas.py` | Schémas pydantic de chaque corps de requête + messages d'erreur en français |
-| `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting |
+| `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting, adresse du visiteur (`client_ip`) |
+| `generation_slots.py` | Places de génération : au plus 2 générations à la fois, une par visiteur (verrous de fichiers partagés entre workers) |
 | `models.py` / `extensions.py` | Modèles SQLAlchemy et instances des extensions |
 | `trie_engine.py` | `DictionnaireTrie` : normalisation des mots et recherche par motif (`P??LE`) |
 | `grid_generator.py` | Chef d'orchestre de la génération (choix du layout, dépôt de mots, solveur) |
@@ -51,9 +54,14 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | Méthode | Route | Auth | Rôle |
 |---------|-------|------|------|
 | GET | `/api/status` | — | Santé de l'API, dictionnaire chargé |
-| POST | `/api/auth/register` | — | Inscription (renvoie les jetons) |
-| POST | `/api/auth/login` | — | Connexion |
-| POST | `/api/auth/refresh` | refresh token | Nouveau jeton d'accès |
+| POST | `/api/auth/register` | — | Inscription ; ouvre la session (cookies) |
+| POST | `/api/auth/login` | — | Connexion ; ouvre la session (cookies) |
+| POST | `/api/auth/logout` | cookie de refresh | Révoque les jetons de la session et efface les cookies |
+| POST | `/api/auth/refresh` | cookie de refresh | Nouveau jeton d'accès (cookie) |
+| POST | `/api/auth/password/forgot` | — | Envoie un lien pour changer de mot de passe ; même réponse que le compte existe ou non ([ADR 0014](adr/0014-emails-du-compte.md)) |
+| POST | `/api/auth/password/reset` | lien | Nouveau mot de passe (`{token, password}`) ; le lien ne sert qu'une fois, une heure |
+| POST | `/api/auth/email/verify` | lien | Confirme l'adresse (`{token}`) |
+| POST | `/api/auth/email/resend` | ✅ | Renvoie le lien de confirmation |
 | GET / POST | `/api/dictionaries` | ✅ | Lister (crée un dictionnaire par défaut) / créer |
 | PATCH / DELETE | `/api/dictionaries/<id>` | ✅ | Renommer, activer / supprimer |
 | GET / POST | `/api/dictionaries/<id>/words` | ✅ | Lister / ajouter un mot |
@@ -67,7 +75,8 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (cases, flèches, définitions) / la supprimer |
 | PATCH | `/api/grids/<id>` | ✅ | Définitions, notes, archivage, renommage — et **lettres corrigées à la main** (`cells`), qui font recalculer les mots ([ADR 0012](adr/0012-grille-modifiable.md)) |
 | POST | `/api/grids/<id>/suggestions` | ✅ | Les mots qui entrent à un emplacement **sans casser ses croisements** |
-| DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
+| GET | `/api/users/me` | ✅ | L'adresse e-mail du compte et ce qu'il contient (dictionnaires, mots, grilles) |
+| DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données ; `{password}` redemandé (403 s'il est faux) |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
 
@@ -126,7 +135,7 @@ sequenceDiagram
     participant G as GridGenerator
     participant S as GridSolver
     F->>A: POST {size, seed, must_words, wish_words}
-    A->>A: validation (schemas.py) + rate limit
+    A->>A: validation (schemas.py) + rate limit + place de génération (429 si occupé)
     A->>G: pools : lexique commun, mots souhaités (+ dictionnaire perso actif), mots obligatoires
     G->>G: choix du layout (backend/layouts/LxH)
     A->>A: un mot obligatoire n'entre pas ? 422 avant toute résolution
@@ -148,24 +157,28 @@ sequenceDiagram
 | `src/app/search/page.tsx` | Recherche par motif (+ panneau des dictionnaires si connecté) |
 | `src/app/dictionaries/page.tsx` | Dictionnaires personnels en pleine page |
 | `src/app/grids/` | Grilles conservées : recherche, filtres, archivage |
-| `src/app/grids/[id]/` | L'éditeur : définitions, correction des lettres, notes, export PDF |
+| `src/app/grids/edit/` | L'éditeur, `/grids/edit?id=12` : définitions, correction des lettres, notes, export PDF. L'identifiant passe en paramètre : un export statique ne génère pas une page par grille |
+| `security-headers.mjs`, `scripts/write-headers.mjs` | En-têtes de sécurité (CSP…) : envoyés par `next dev`, écrits dans `out/_headers` pour Cloudflare Pages au build |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
-| `src/app/legal`, `privacy` | Mentions légales, confidentialité |
+| `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
+| `src/app/legal`, `privacy` | Mentions légales (crédits compris), confidentialité : ce qui est conservé, et rien d'autre |
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
-| `src/lib/api-client.ts` | `apiFetch` : jeton, renouvellement automatique sur 401, messages d'erreur de l'API |
+| `src/lib/api-client.ts` | `apiFetch` : cookies de session et jeton CSRF, renouvellement automatique sur 401, messages d'erreur de l'API |
 | `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon `http://localhost:5001` en local |
-| `next.config.ts` | En-têtes de sécurité (CSP...) |
+| `next.config.ts` | Export statique au build (`out/`), en-têtes de sécurité en dev ; refuse un build sans `NEXT_PUBLIC_API_BASE_URL` |
 | `tests/` | Tests end-to-end Playwright |
 
 ### Authentification
 
-1. `register` / `login` renvoient un **access token** (15 min) et un **refresh token** (7 jours), stockés dans `localStorage`.
-2. `apiFetch` envoie `Authorization: Bearer <access>`.
-3. Sur un 401, il appelle une fois `/api/auth/refresh`, rejoue la requête, et sinon efface la session et prévient le contexte d'authentification.
+1. `register` / `login` posent un **access token** (15 min) et un **refresh token** (7 jours) en cookies `httpOnly` : le JavaScript de la page ne les voit jamais. Deux cookies lisibles les accompagnent, `csrf_access_token` et `csrf_refresh_token`.
+2. `apiFetch` envoie les cookies (`credentials: "include"`) et recopie le jeton CSRF dans `X-CSRF-TOKEN` pour chaque écriture.
+3. Sur un 401, il appelle une fois `/api/auth/refresh`, rejoue la requête, et sinon ferme la session (`/api/auth/logout`) et prévient le contexte d'authentification.
+4. La déconnexion révoque les jetons ; un changement de mot de passe ferme toutes les sessions.
+5. En développement, sans `NEXT_PUBLIC_API_BASE_URL`, `next dev` relaie `/api/*` vers l'API locale (`API_PROXY_TARGET`, défaut `http://localhost:5001`) : même origine partout, y compris par le tunnel de `make preview-remote`.
 
-Choix et limites : [ADR 0003](adr/0003-jwt-en-en-tete.md), [SECURITY.md](SECURITY.md).
+Choix et limites : [ADR 0015](adr/0015-session-en-cookies.md) (qui remplace l'[ADR 0003](adr/0003-jwt-en-en-tete.md)), [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -175,7 +188,7 @@ Choix et limites : [ADR 0003](adr/0003-jwt-en-en-tete.md), [SECURITY.md](SECURIT
 |---------------|---------|-----------------|
 | Développement | `docker compose up` (API + PostgreSQL) et `pnpm dev` (frontend) | PostgreSQL (conteneur `db`) |
 | Tests | `pytest` | SQLite en mémoire, dictionnaire de test réduit |
-| Production | Pas encore (Phase 6) | — |
+| Production | Pas encore. Cible : un VPS derrière Cloudflare, API sous gunicorn ([ADR 0013](adr/0013-cible-hebergement-production.md)) | PostgreSQL sur le VPS |
 
 Toute la configuration passe par des variables d'environnement, documentées dans [`.env.example`](../.env.example).
 

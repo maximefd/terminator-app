@@ -10,7 +10,7 @@ Merci de votre intérêt ! Ce guide décrit comment travailler sur le projet : i
 git clone https://github.com/maximefd/terminator-app.git
 cd terminator-app
 make setup        # crée .env depuis .env.example et installe le frontend
-make dev-api      # API (http://localhost:5001) + PostgreSQL
+make dev-api      # API (http://localhost:5001) + PostgreSQL + Mailpit (e-mails du compte : http://localhost:8025)
 make dev-front    # dans un autre terminal : frontend (http://localhost:3000)
 ```
 
@@ -24,16 +24,12 @@ Pour faire tester l'état actuel à quelqu'un sans qu'il clone et lance le repo 
 
 ```bash
 brew install cloudflared   # une fois
-make preview-remote        # API et frontend doivent déjà tourner (dev-api / dev-front)
+make preview-remote        # API et frontend doivent déjà tourner (make dev-api, make dev-front)
 ```
 
-Affiche une URL `https://...trycloudflare.com` à transmettre à la personne. C'est un tunnel **éphémère** (rien n'est déployé, cohérent avec [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) : il ne fonctionne que tant que la commande tourne, et votre Mac doit rester allumé. `Ctrl+C` referme les tunnels et restaure `CORS_ORIGINS`.
+Affiche une URL `https://...trycloudflare.com` à transmettre à la personne. C'est un tunnel **éphémère** (rien n'est déployé, cohérent avec [ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) : il ne fonctionne que tant que la commande tourne, et votre Mac doit rester allumé. `Ctrl+C` le referme.
 
-Toutes les fonctionnalités sont testables à distance, y compris celles qui demandent un compte : l'authentification
-utilise un token Bearer (`Authorization`, stocké côté client), pas des cookies, donc rien ne bloque entre les deux
-origines du tunnel (front et API). La personne peut s'inscrire normalement (`/api/auth/register`, email + mot de
-passe) pour tester la sauvegarde et les autres fonctionnalités connectées ; la recherche et la génération de grille
-restent aussi accessibles sans compte (mode invité).
+Un seul tunnel suffit : il mène au frontend, et `next dev` relaie `/api` vers l'API locale. Tout est donc sur la même origine, et la session, qui voyage en cookies ([ADR 0015](docs/adr/0015-session-en-cookies.md)), fonctionne à distance comme en local. La personne peut s'inscrire normalement pour tester la sauvegarde et les autres fonctionnalités connectées ; la recherche et la génération de grille restent accessibles sans compte (mode invité). Les e-mails du compte, eux, arrivent dans votre Mailpit (http://localhost:8025), pas dans sa boîte.
 
 ## 2. Vérifier son travail
 

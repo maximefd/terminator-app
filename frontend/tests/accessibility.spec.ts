@@ -17,6 +17,12 @@ const PAGES = [
   { path: "/dictionaries", name: "dictionnaires" },
   { path: "/login", name: "connexion" },
   { path: "/register", name: "inscription" },
+  { path: "/account", name: "mon compte (invité)" },
+  { path: "/privacy", name: "confidentialité" },
+  { path: "/legal", name: "mentions légales" },
+  { path: "/forgot-password", name: "mot de passe oublié" },
+  { path: "/reset-password?token=essai", name: "nouveau mot de passe" },
+  { path: "/verify-email", name: "confirmation de l'adresse (lien incomplet)" },
 ];
 
 for (const page of PAGES) {
