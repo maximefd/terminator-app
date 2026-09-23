@@ -1,6 +1,6 @@
 import pytest
 
-from engine.word_repository import WordRepository
+from engine.word_repository import WholeLexicon, WordRepository, prepare_lexicon
 
 
 @pytest.fixture
@@ -74,3 +74,40 @@ def test_a_pool_word_is_consumed_and_restored_like_the_others(repo):
 
     grid_repo.add_word_to_available("ZORG", 4)
     assert grid_repo.get_candidates("????") == ["ZORG"]
+
+
+def test_the_whole_lexicon_offers_the_same_words_as_their_full_list(repo):
+    """ADR 0013 : désigner le lexique entier évite de le recopier, sans rien changer aux candidats."""
+    listed = WordRepository.from_pools(repo.trie, common_words=["OU", "CHAT", "PALE", "PILE", "POLE"],
+                                       wish_words=["ZORG"], must_words=["PILE"])
+    whole = WordRepository.from_pools(repo.trie, common_words=WholeLexicon(4),
+                                      wish_words=["ZORG"], must_words=["PILE"])
+
+    assert whole.available == listed.available
+    assert [whole.get_candidates(p) for p in ("P?LE", "????", "??")] == \
+           [listed.get_candidates(p) for p in ("P?LE", "????", "??")]
+    assert [whole.source_of(w) for w in ("PALE", "PILE", "ZORG")] == ["common", "must", "wish"]
+
+
+def test_the_whole_lexicon_stops_at_its_lengths(repo):
+    whole = WordRepository.from_pools(repo.trie, common_words=WholeLexicon(3))
+
+    assert whole.get_candidates("??") == ["OU"]
+    assert whole.get_candidates("P?LE") == []
+    assert whole.is_word_valid("POLE")  # hors du pool, mais toujours valide aux croisements
+
+
+def test_words_of_the_whole_lexicon_are_consumed_and_restored(repo):
+    whole = WordRepository.from_pools(repo.trie, common_words=WholeLexicon(4))
+
+    whole.remove_word_from_available("PALE", 4)
+    assert whole.get_candidates("P?LE") == ["PILE", "POLE"]
+
+    whole.add_word_to_available("PALE", 4)
+    assert whole.get_words_by_length(4) == ["CHAT", "PALE", "PILE", "POLE"]
+
+
+def test_prepare_lexicon_builds_the_indexes_in_advance(repo):
+    prepare_lexicon(repo.trie, 4)
+
+    assert set(repo.trie._pattern_indexes) >= {2, 3, 4}

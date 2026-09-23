@@ -1,6 +1,7 @@
 # DANS backend/engine/word_repository.py
 
 import logging
+from dataclasses import dataclass
 
 from trie_engine import DictionnaireTrie # On importe la classe Trie
 
@@ -34,6 +35,30 @@ def _shared_index(trie: DictionnaireTrie, length: int) -> PatternIndex:
     return index
 
 
+def prepare_lexicon(trie: DictionnaireTrie, max_length: int, min_length: int = 2) -> None:
+    """Construit d'avance les index partagés des longueurs qu'une grille peut demander.
+
+    Sans cela, la première génération de chaque longueur paie la construction de son index (plusieurs
+    secondes sur le lexique complet), et l'API la paie à nouveau après chaque rechargement du lexique.
+    """
+    for length in range(min_length, max_length + 1):
+        _shared_index(trie, length)
+
+
+@dataclass(frozen=True)
+class WholeLexicon:
+    """Pool commun fait de **tous** les mots du Trie dont la longueur va de `min_length` à `max_length`.
+
+    C'est le pool de toute génération de l'API. Passé en liste, il obligeait à recopier, trier puis
+    répartir 700 000 mots à chaque requête — jusqu'à 0,7 s avant le premier appel du solveur
+    ([ADR 0013](../../docs/adr/0013-cible-hebergement-production.md)). Désigné ainsi, il se lit
+    directement dans les index partagés : les mots disponibles sont ceux de l'index entier.
+    Les grilles produites sont identiques à celles de la liste équivalente.
+    """
+    max_length: int
+    min_length: int = 2
+
+
 class WordRepository:
     """
     Mots valides, mots encore disponibles et candidats d'un motif pour une grille.
@@ -64,31 +89,42 @@ class WordRepository:
 
     @classmethod
     def from_pools(cls, trie: DictionnaireTrie, common_words=(), wish_words=(), must_words=()) -> "WordRepository":
-        """Dépôt d'une grille à partir des trois pools. Un mot cité plusieurs fois garde le pool le plus prioritaire."""
+        """Dépôt d'une grille à partir des trois pools. Un mot cité plusieurs fois garde le pool le plus prioritaire.
+
+        `common_words` : une liste de mots, ou `WholeLexicon` pour tout le lexique d'une plage de longueurs.
+        """
         repository = object.__new__(cls)
         repository._setup(trie, common_words, wish_words, must_words)
         return repository
 
     def _setup(self, trie: DictionnaireTrie, common_words, wish_words=(), must_words=()) -> None:
         self.trie = trie
-        # Pool de chaque mot ; les pools prioritaires écrasent les autres, donc un mot obligatoire
-        # reste obligatoire même s'il figure aussi dans un dictionnaire thématique.
+        # Longueurs où tout le lexique est disponible : ses mots ne sont pas recopiés un à un
+        whole = common_words if isinstance(common_words, WholeLexicon) else None
+        whole_lengths = range(whole.min_length, whole.max_length + 1) if whole else range(0)
+        # Pool de chaque mot cité ; les pools prioritaires écrasent les autres, donc un mot obligatoire
+        # reste obligatoire même s'il figure aussi dans un dictionnaire thématique. Un mot absent vaut
+        # « common » (DEFAULT_POOL), ce qu'est tout mot du lexique entier.
         self.pools: dict[str, str] = {}
-        for pool, words in (("common", common_words), ("wish", wish_words), ("must", must_words)):
+        for pool, words in (("common", () if whole else common_words), ("wish", wish_words), ("must", must_words)):
             for word in words:
                 self.pools[word] = pool
-        # Mots disponibles par longueur (sets : O(1) pour retirer ou remettre un mot)
-        self.words_by_len: dict[int, set[str]] = {}
+        words_by_len: dict[int, set[str]] = {}
         for word in self.pools:
-            self.words_by_len.setdefault(len(word), set()).add(word)
+            words_by_len.setdefault(len(word), set()).add(word)
         # Mots absents du lexique : ils viennent des pools de l'auteur, donc ils sont valides aux croisements
         self.extra_words: set[str] = {word for word in self.pools if word not in trie.words}
-        # Même information sous forme d'ensembles de bits, pour l'index
+        # Mots disponibles par longueur, en ensembles de bits sur l'index (retirer ou remettre un mot : O(1))
         self.indexes: dict[int, PatternIndex] = {}
         self.available: dict[int, int] = {}
-        for length, words in self.words_by_len.items():
+        for length in sorted(words_by_len.keys() | set(whole_lengths)):
+            words = words_by_len.get(length, set())
+            everything = _shared_index(trie, length).full_mask if length in whole_lengths else 0
+            if not (words or everything):
+                continue
             self.indexes[length] = index = self._index_for(length, words & self.extra_words)
-            self.available[length] = index.mask_of(words)
+            # L'index étendu garde les positions de l'index partagé : son ensemble complet reste valide
+            self.available[length] = everything | index.mask_of(words)
 
     def _index_for(self, length: int, extras: set[str]) -> PatternIndex:
         """Index du lexique pour cette longueur, étendu aux mots des pools qui n'y sont pas (ordre alphabétique)."""
@@ -100,8 +136,13 @@ class WordRepository:
         return self.trie.get_all_words()
 
     def get_words_by_length(self, length: int) -> list[str]:
-        """Retourne une liste de tous les mots d'une longueur donnée."""
-        return list(self.words_by_len.get(length, set()))
+        """Mots encore disponibles d'une longueur donnée, dans l'ordre de l'index."""
+        index = self.indexes.get(length)
+        return index.words_in(self.available[length]) if index else []
+
+    def available_count(self) -> int:
+        """Nombre de mots encore disponibles, toutes longueurs confondues."""
+        return sum(mask.bit_count() for mask in self.available.values())
 
     def is_word_valid(self, word: str) -> bool:
         """Vérifie si un mot existe dans notre dictionnaire (lexique commun ou pools de l'auteur)."""
@@ -144,14 +185,11 @@ class WordRepository:
 
     def remove_word_from_available(self, word: str, length: int):
         """Retire un mot des disponibles (mot placé dans la branche en cours)."""
-        if length in self.words_by_len:
-            self.words_by_len[length].discard(word)  # discard ne lève pas d'erreur si absent
         if length in self.available:
             self.available[length] &= ~self.indexes[length].bit(word)
 
     def add_word_to_available(self, word: str, length: int):
         """Remet un mot dans les disponibles (retour arrière)."""
-        self.words_by_len.setdefault(length, set()).add(word)
         if length not in self.available:
             self.indexes[length] = self._index_for(length, {word} & self.extra_words)
             self.available[length] = 0

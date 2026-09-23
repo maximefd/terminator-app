@@ -5,6 +5,7 @@ import pytest
 from engine.grid_solver import GridSolver
 from engine.grid_template import GridTemplate
 from engine.slot_finder import SlotFinder
+from engine.word_repository import WholeLexicon
 from grid_generator import GridGenerator, LayoutNotFoundError, crossing_load, luby
 from layout_catalog import DEFAULT_LAYOUTS_DIR, available_formats, layout_id
 from tests.paths import FIXTURE_LAYOUTS_DIR
@@ -73,14 +74,14 @@ def test_restarts_find_a_grid_and_stay_deterministic(small_words, small_trie):
 
 def test_interrupted_attempt_gives_back_the_words_it_used(small_words, small_trie):
     generator = make_generator(small_words, small_trie, seed=3, restart_unit_calls=None)
-    sizes = {length: len(words) for length, words in generator.repository.words_by_len.items()}
+    sizes = {length: mask.bit_count() for length, mask in generator.repository.available.items()}
     # Un seul appel : le premier mot est placé, puis l'essai s'arrête (le 5×5 se remplit en quelques appels)
     generator.solver.max_recursive_calls = 1
 
     assert not generator.generate()
     assert generator.solver.stop_reason == "calls"
     assert not generator.budget_exceeded  # seuil d'appels, pas le budget temps
-    assert {length: len(words) for length, words in generator.repository.words_by_len.items()} == sizes
+    assert {length: mask.bit_count() for length, mask in generator.repository.available.items()} == sizes
 
 
 def test_time_budget_stops_the_restarts(small_words, small_trie):
@@ -117,6 +118,18 @@ def test_a_must_word_is_placed_and_reported_as_such(small_words, small_trie):
     assert generator.unplaced_must_words == []
     assert [word["source"] for word in data["words"] if word["text"] == imposed] == ["must"]
     assert data["wish_ratio"] > 0  # le mot imposé compte dans la part des mots de l'auteur
+
+
+@pytest.mark.parametrize("seed", [0, 3, 7])
+def test_the_whole_lexicon_gives_the_same_grid_as_its_word_list(small_words, small_trie, seed):
+    """ADR 0013 : l'API désigne le lexique entier au lieu de le recopier ; la grille doit rester la même."""
+    pools = {"wish_words": ["ZORGL"], "must_words": ["PORTE"], "time_budget_s": 20}
+    listed = make_generator(sorted(set(small_words)), small_trie, seed=seed, **pools)
+    whole = make_generator(WholeLexicon(5), small_trie, seed=seed, **pools)
+
+    assert listed.generate() == whole.generate()
+    listed_data, whole_data = listed.get_grid_data(), whole.get_grid_data()
+    assert (whole_data["cells"], whole_data["words"]) == (listed_data["cells"], listed_data["words"])
 
 
 def test_an_impossible_must_word_is_named_after_the_failure(small_trie):
