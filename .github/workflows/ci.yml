@@ -64,7 +64,9 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           # Doit savoir lire le lockfile v9 (pnpm 8 ne le peut pas)
-          version: 12
+          # Version exacte : « 12 » prend la dernière, et pnpm 12.6.0 (23/09/2026) bloque `pnpm dev` lancé
+          # par Playwright, qui attendait sans fin. Monter en connaissance de cause (Dependabot n'y touche pas).
+          version: 12.5.1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -90,6 +92,8 @@ jobs:
   e2e-ci:
     name: Parcours end-to-end et accessibilité
     runs-on: ubuntu-latest
+    # D'habitude 2 à 3 minutes : un blocage doit échouer vite, pas occuper le runner six heures
+    timeout-minutes: 20
 
     services:
       db:
@@ -152,7 +156,9 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 12
+          # Version exacte : « 12 » prend la dernière, et pnpm 12.6.0 (23/09/2026) bloque `pnpm dev` lancé
+          # par Playwright, qui attendait sans fin. Monter en connaissance de cause (Dependabot n'y touche pas).
+          version: 12.5.1
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

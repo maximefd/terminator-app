@@ -253,6 +253,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
+  laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
+  la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
 - **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
   collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
   qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
