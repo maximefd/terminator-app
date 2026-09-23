@@ -267,7 +267,7 @@ def test_account_deletion_removes_all_user_data(client, test_app):
     dict_id = default_dictionary_id(client, headers)
     send(client, "post", f"/api/dictionaries/{dict_id}/words", {"mot": "confidentiel"}, headers)
 
-    response = client.delete("/api/users/me", headers=headers)
+    response = send(client, "delete", "/api/users/me", {"password": TEST_PASSWORD}, headers)
 
     assert response.status_code == 200
     assert User.query.filter_by(email=email).count() == 0
@@ -278,3 +278,46 @@ def test_account_deletion_removes_all_user_data(client, test_app):
     refresh = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {tokens['refresh_token']}"})
     assert refresh.status_code == 401
     assert send(client, "post", "/api/auth/login", {"email": email, "password": TEST_PASSWORD}).status_code == 401
+
+
+def test_account_shows_its_email_and_what_deletion_would_erase(client):
+    """#79 : l'écran de compte dit ce qui disparaîtra avant qu'on le supprime."""
+    email, tokens = register(client)
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+    dict_id = default_dictionary_id(client, headers)
+    for mot in ("premier", "second"):
+        send(client, "post", f"/api/dictionaries/{dict_id}/words", {"mot": mot}, headers)
+
+    response = client.get("/api/users/me", headers=headers)
+
+    assert response.status_code == 200
+    assert response.get_json() == {"email": email, "dictionaries": 1, "words": 2, "grids": 0}
+
+
+def test_account_deletion_requires_the_password(client):
+    """Le jeton vit dans le navigateur : volé, il ne doit pas suffire à effacer le compte."""
+    email, tokens = register(client)
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    wrong = send(client, "delete", "/api/users/me", {"password": "pas-le-bon"}, headers)
+    missing = send(client, "delete", "/api/users/me", None, headers)
+
+    # 403 et non 401 : le frontend lit un 401 comme une session expirée et déconnecterait
+    assert wrong.status_code == 403
+    assert wrong.get_json() == {"error": "Mot de passe incorrect."}
+    assert missing.status_code == 400
+    assert User.query.filter_by(email=email).count() == 1
+
+
+def test_account_deletion_attempts_are_rate_limited():
+    """Chaque tentative vérifie un mot de passe : même plafond que la connexion contre la force brute."""
+    app = make_app(RATELIMIT_ENABLED=True, RATELIMIT_LOGIN="2 per minute", RATELIMIT_REGISTER="10 per minute")
+    client = app.test_client()
+    with app.app_context():
+        _, tokens = register(client)
+        headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+        statuses = [send(client, "delete", "/api/users/me", {"password": "pas-le-bon"}, headers).status_code
+                    for _ in range(3)]
+
+    assert statuses == [403, 403, 429]

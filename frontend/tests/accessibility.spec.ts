@@ -17,6 +17,9 @@ const PAGES = [
   { path: "/dictionaries", name: "dictionnaires" },
   { path: "/login", name: "connexion" },
   { path: "/register", name: "inscription" },
+  { path: "/account", name: "mon compte (invité)" },
+  { path: "/privacy", name: "confidentialité" },
+  { path: "/legal", name: "mentions légales" },
 ];
 
 for (const page of PAGES) {

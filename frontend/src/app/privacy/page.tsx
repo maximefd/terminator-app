@@ -1,80 +1,112 @@
 // DANS src/app/privacy/page.tsx
 
 import { type Metadata } from "next";
+import Link from "next/link";
+import { type ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Politique de Confidentialité | Terminator",
-  description: "Découvrez comment nous collectons, utilisons et protégeons vos données sur Terminator.",
+  title: "Confidentialité | Terminator",
+  description: "Ce que Terminator conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.",
 };
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+const linkClass = "underline underline-offset-2 hover:text-foreground";
 
 export default function PrivacyPage() {
   return (
-    <main className="container mx-auto max-w-3xl p-8">
-      <h1 className="text-3xl font-bold mb-8">Politique de Confidentialité</h1>
-      
-      <div className="space-y-6 text-muted-foreground">
-        <p><strong>Dernière mise à jour :</strong> 12 Octobre 2025</p>
+    <main className="container mx-auto max-w-3xl p-4 md:p-8">
+      <h1 className="text-3xl font-bold">Confidentialité</h1>
+      <p className="mt-2 text-sm text-muted-foreground">Dernière mise à jour : 23 septembre 2026</p>
 
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">1. Introduction</h2>
+      <div className="mt-8 space-y-8 text-muted-foreground">
+        <p className="rounded-lg border bg-secondary/20 p-4 text-foreground">
+          Terminator conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles.
+          Rien d&apos;autre : pas de cookie, pas de mesure d&apos;audience, pas de publicité, et aucune donnée
+          transmise à qui que ce soit.
+        </p>
+
+        <Section title="Où tourne Terminator">
           <p>
-            Bienvenue sur Terminator. Nous respectons votre vie privée et nous nous engageons à la protéger. Cette politique de confidentialité vous expliquera comment nous traitons vos données personnelles lorsque vous visitez notre site web (quel que soit l&apos;endroit d&apos;où vous le visitez) et vous informera de vos droits en matière de protection de la vie privée.
+            Terminator est un outil personnel, en développement. Il n&apos;est pas publié en ligne : l&apos;application
+            et sa base de données tournent sur l&apos;ordinateur de son auteur. Lors d&apos;un essai à distance,
+            l&apos;auteur ouvre un tunnel temporaire : les échanges transitent alors par Cloudflare, qui relaie la
+            connexion jusqu&apos;à son ordinateur.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">2. Les données que nous collectons</h2>
-          <p>Nous pouvons collecter, utiliser, stocker et transférer différents types de données personnelles vous concernant :</p>
-          <ul className="list-disc list-inside space-y-1 pl-4">
-            <li><strong>Données d&apos;identité :</strong> Pour les utilisateurs authentifiés, nous stockons votre adresse e-mail.</li>
-            <li><strong>Données de contenu :</strong> Nous stockons les mots et les dictionnaires que vous créez et sauvegardez sur votre compte.</li>
-            <li><strong>Données techniques :</strong> Adresse IP, type et version du navigateur, fuseau horaire et localisation, types et versions de plug-in de navigateur, système d&apos;exploitation et plate-forme.</li>
+        <Section title="Ce qui est conservé, si vous créez un compte">
+          <ul className="list-disc space-y-1 pl-5">
+            <li><strong className="text-foreground">Votre adresse e-mail</strong>, qui sert d&apos;identifiant.</li>
+            <li>
+              <strong className="text-foreground">Votre mot de passe, haché</strong> (bcrypt) : il n&apos;est jamais
+              enregistré tel quel, et personne ne peut le relire.
+            </li>
+            <li><strong className="text-foreground">Vos dictionnaires</strong>, leurs mots et leurs définitions.</li>
+            <li>
+              <strong className="text-foreground">Vos grilles conservées</strong> : leurs cases, leurs définitions et
+              vos notes.
+            </li>
           </ul>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">3. Comment vos données sont-elles collectées ?</h2>
           <p>
-            Nous utilisons différentes méthodes pour collecter des données, y compris par le biais de :
+            Vos recherches et les grilles que vous générez sans les conserver ne sont pas enregistrées. En invité,
+            rien ne l&apos;est.
           </p>
-          <ul className="list-disc list-inside space-y-1 pl-4">
-            <li><strong>Interactions directes :</strong> Vous pouvez nous donner votre identité et vos données de contenu en créant un compte, en ajoutant des mots à vos dictionnaires ou en nous contactant.</li>
-            <li><strong>Technologies automatisées :</strong> Lorsque vous interagissez avec notre site web, nous pouvons collecter automatiquement des données techniques. Nous collectons ces données personnelles en utilisant des cookies et d&apos;autres technologies similaires.</li>
+        </Section>
+
+        <Section title="Ce qui passe sans être conservé">
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              <strong className="text-foreground">Votre session</strong> : deux jetons rangés dans le stockage local
+              de votre navigateur (pas de cookie). La déconnexion les efface.
+            </li>
+            <li>
+              <strong className="text-foreground">Votre adresse IP</strong> : gardée en mémoire pour limiter le
+              nombre de requêtes et protéger le service des abus, puis oubliée, au plus tard après une heure. Le
+              journal technique de l&apos;application peut aussi la contenir, avec la page demandée : il reste sur
+              l&apos;ordinateur de l&apos;auteur.
+            </li>
           </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">4. Utilisation de vos données personnelles</h2>
+        <Section title="Durée et suppression">
           <p>
-            Nous n&apos;utiliserons vos données personnelles que lorsque la loi nous y autorise. Le plus souvent, nous utiliserons vos données personnelles dans les circonstances suivantes :
+            Vos données sont gardées tant que votre compte existe. Vous pouvez le supprimer à tout moment depuis{" "}
+            <Link href="/account" className={linkClass}>Mon compte</Link> : l&apos;adresse e-mail, le mot de passe,
+            les dictionnaires, les mots et les grilles sont effacés immédiatement et définitivement. Si
+            l&apos;auteur a fait une sauvegarde de la base avant votre suppression, vos données y subsistent jusqu&apos;à
+            son effacement, au plus 30 jours.
           </p>
-          <ul className="list-disc list-inside space-y-1 pl-4">
-            <li>Pour fournir et maintenir notre service, y compris pour vous permettre de créer et gérer vos dictionnaires personnels.</li>
-            <li>Pour gérer votre compte et vous fournir un support client.</li>
-            <li>Pour améliorer notre site web afin de garantir que le contenu est présenté de la manière la plus efficace pour vous.</li>
-          </ul>
-        </section>
+        </Section>
 
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">5. Sécurité des données</h2>
+        <Section title="Vos droits">
           <p>
-            Nous avons mis en place des mesures de sécurité appropriées pour empêcher que vos données personnelles ne soient accidentellement perdues, utilisées ou consultées de manière non autorisée, modifiées ou divulguées.
+            Vous pouvez consulter vos données dans l&apos;application (Mon compte, Dictionnaires, Mes grilles), les
+            corriger, les effacer, et demander à les recevoir dans un format lisible. Pour toute demande, écrivez à
+            l&apos;auteur par le{" "}
+            <a href="https://github.com/maximefd/terminator-app/issues" className={linkClass}>
+              dépôt du projet
+            </a>
+            . Vous pouvez aussi saisir la{" "}
+            <a href="https://www.cnil.fr/fr/plaintes" className={linkClass}>CNIL</a>.
           </p>
-        </section>
+        </Section>
 
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">6. Vos droits</h2>
+        <Section title="Le jour d'une mise en ligne">
           <p>
-            Conformément à la réglementation sur la protection des données, vous disposez de droits sur vos données personnelles, notamment le droit de demander l&apos;accès, la correction, l&apos;effacement, ou la portabilité de vos données.
+            Terminator sera un jour hébergé sur un serveur en France, derrière Cloudflare. Plusieurs choses changeront
+            alors : un hébergeur et Cloudflare traiteront les connexions, un prestataire enverra les e-mails de
+            réinitialisation du mot de passe, des sauvegardes chiffrées seront gardées 30 jours, et le serveur tiendra
+            un journal des requêtes. Cette page sera réécrite avant, et dira qui fait quoi.
           </p>
-        </section>
-
-        <section className="space-y-2">
-          <h2 className="text-xl font-semibold text-foreground">7. Nous contacter</h2>
-          <p>
-            Si vous avez des questions concernant cette politique de confidentialité, veuillez nous contacter à [votre adresse e-mail de contact].
-          </p>
-        </section>
+        </Section>
       </div>
     </main>
   );

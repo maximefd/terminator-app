@@ -17,7 +17,9 @@ from engine.grid_edit import (
 from generation_slots import GenerationBusy, generation_slot
 from grid_generator import GridGenerator, LayoutNotFoundError
 from layout_catalog import available_formats, catalog, format_slot_count, suggest_layouts_for
+from auth import password_matches
 from schemas import (
+    AccountDeletionRequest,
     DictionaryCreateRequest,
     DifficultyRequest,
     DictionaryUpdateRequest,
@@ -529,12 +531,37 @@ def delete_grid(grid_id):
     return jsonify({'message': 'Grille supprimée.'}), 200
 
 
+# --- COMPTE ---
+
+@main_bp.route('/users/me', methods=['GET'])
+@jwt_required()
+def get_self():
+    """Le compte connecté et ce qu'il contient : ce que sa suppression effacerait (#79)."""
+    user = get_current_user()
+    words = (db.session.query(db.func.count(PersonalWord.id))
+             .join(Dictionary).filter(Dictionary.user_id == user.id).scalar())
+    return jsonify({
+        "email": user.email,
+        "dictionaries": len(user.dictionaries),
+        "words": words,
+        "grids": len(user.grids),
+    }), 200
+
+
 # ROUTE RGPD : droit à l'effacement
 @main_bp.route('/users/me', methods=['DELETE'])
 @jwt_required()
 def delete_self():
-    """Supprime définitivement le compte de l'utilisateur et toutes ses données."""
+    """Supprime définitivement le compte de l'utilisateur et toutes ses données.
+
+    Le mot de passe est redemandé : avec le jeton seul, quiconque l'aurait volé (le jeton vit dans le
+    navigateur) pourrait effacer le compte. Un mauvais mot de passe répond 403 et non 401 : le frontend
+    lit un 401 comme une session expirée et déconnecterait l'utilisateur.
+    """
     user = get_current_user()
+    payload = parse_body(AccountDeletionRequest)
+    if not password_matches(user.password, payload.password):
+        return jsonify({"error": "Mot de passe incorrect."}), 403
     # Suppression via l'ORM : la cascade User -> Dictionary -> PersonalWord efface aussi
     # dictionnaires et mots (une suppression SQL en masse laissait les mots orphelins).
     db.session.delete(user)

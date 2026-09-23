@@ -69,7 +69,8 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | GET / DELETE | `/api/grids/<id>` | ✅ | Relire une grille conservée (cases, flèches, définitions) / la supprimer |
 | PATCH | `/api/grids/<id>` | ✅ | Définitions, notes, archivage, renommage — et **lettres corrigées à la main** (`cells`), qui font recalculer les mots ([ADR 0012](adr/0012-grille-modifiable.md)) |
 | POST | `/api/grids/<id>/suggestions` | ✅ | Les mots qui entrent à un emplacement **sans casser ses croisements** |
-| DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données |
+| GET | `/api/users/me` | ✅ | L'adresse e-mail du compte et ce qu'il contient (dictionnaires, mots, grilles) |
+| DELETE | `/api/users/me` | ✅ | Supprime le compte et toutes ses données ; `{password}` redemandé (403 s'il est faux) |
 
 Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `details` pour la validation).
 
@@ -153,7 +154,8 @@ sequenceDiagram
 | `src/app/grids/[id]/` | L'éditeur : définitions, correction des lettres, notes, export PDF |
 | `src/app/grid/page.tsx` | Génération : mots obligatoires et souhaités, difficulté annoncée, grille produite |
 | `src/app/login`, `register` | Authentification |
-| `src/app/legal`, `privacy` | Mentions légales, confidentialité |
+| `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
+| `src/app/legal`, `privacy` | Mentions légales (crédits compris), confidentialité : ce qui est conservé, et rien d'autre |
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
 | `src/lib/api-client.ts` | `apiFetch` : jeton, renouvellement automatique sur 401, messages d'erreur de l'API |

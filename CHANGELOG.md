@@ -10,6 +10,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   joindre sa licence : c'est fait (`backend/DELA-NOTICE.md`, `backend/LGPLLR.txt`), comme la licence OFL de
   la police des grilles (`frontend/public/fonts/OFL.txt`). Aucune dépendance sous GPL ou AGPL. Restent à
   trancher : la provenance des layouts recopiés de livres, et le dépôt public ou privé.
+- **Page « Mon compte »** (#79) : l'adresse e-mail, ce que le compte contient, et sa suppression — mot
+  de passe redemandé, confirmation qui dit ce qui disparaît, déconnexion et retour à l'accueil. Nouvel
+  endpoint `GET /api/users/me`.
 - `make bench-load` (`backend/benchmarks/load_profile.py`) : profil de charge de l'API — RAM après
   chargement, CPU et durées par génération, générations simultanées en threads et en processus — dans un
   conteneur de 2 CPU et 2 Go. Ce sont les mesures de l'[ADR 0013](docs/adr/0013-cible-hebergement-production.md),
@@ -240,6 +243,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
+  collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
+  qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
 - Les migrations jouées au démarrage éteignaient tous les loggers déjà créés (`fileConfig` d'Alembic) :
   sous gunicorn, plus aucun journal d'accès ni de démarrage des workers.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
@@ -258,6 +264,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- Supprimer son compte demande désormais le **mot de passe** (`DELETE /api/users/me`, 403 s'il est faux,
+  même limite de débit que la connexion) : le jeton vit dans le navigateur, et volé, il suffisait à tout effacer.
 - Plus de repli vers l'ancienne API Render : sans `NEXT_PUBLIC_API_BASE_URL`, un build de production visait
   `motsfleches-terminator-backend.onrender.com`, autorisé aussi par la CSP. Le service est supprimé, et son
   sous-domaine peut être réservé par n'importe qui, qui recevrait alors e-mails et mots de passe. Le build de

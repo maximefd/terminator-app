@@ -45,6 +45,8 @@ API_SECURITY_HEADERS = {
 # Endpoint Flask -> clé de configuration contenant sa limite (ex: "10 per minute")
 RATE_LIMITED_ENDPOINTS = {
     "auth.login": "RATELIMIT_LOGIN",
+    # Vérifie un mot de passe, comme la connexion : même plafond contre la force brute
+    "main.delete_self": "RATELIMIT_LOGIN",
     "auth.register": "RATELIMIT_REGISTER",
     "auth.refresh": "RATELIMIT_REFRESH",
     "main.search_words": "RATELIMIT_SEARCH",

@@ -66,6 +66,11 @@ class LoginRequest(ApiModel):
     password: Annotated[str, Field(min_length=1, max_length=128)]
 
 
+class AccountDeletionRequest(ApiModel):
+    # Le mot de passe, redemandé : un jeton volé ne doit pas suffire à effacer un compte
+    password: Annotated[str, Field(min_length=1, max_length=128)]
+
+
 # --- Dictionnaires personnels ---
 
 class DictionaryCreateRequest(ApiModel):
