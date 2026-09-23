@@ -10,6 +10,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus
   par e-mail est retiré des adresses. Le gestionnaire d'erreurs de l'API interceptant tout, il transmet
   lui-même l'exception à Sentry. Vérifié par un vrai rapport dans les tests (backend) et dans un navigateur.
+- **Journaux structurés** : JSON en production (`LOG_FORMAT`, texte en développement), une ligne par
+  événement avec la méthode, le chemin et l'identifiant de la requête. Cet identifiant reprend `CF-Ray`
+  (Cloudflare) et revient dans l'en-tête `X-Request-ID`. gunicorn suit le même format, journal d'accès compris
+  (adresse du visiteur, chemin **sans query string** : un jeton n'y figure jamais). Vérifié sur l'image en
+  configuration de production : toutes les lignes sont du JSON, aucune n'est en double.
 - **Mot de passe oublié et confirmation de l'adresse** ([ADR 0014](docs/adr/0014-emails-du-compte.md)) : un
   lien par e-mail pour choisir un nouveau mot de passe (une heure, une seule fois, sans révéler si le compte
   existe), et un lien de confirmation envoyé à l'inscription, redemandable depuis « Mon compte ». Liens signés,

@@ -12,6 +12,7 @@ from routes import main_bp
 from extensions import jwt, migrate
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
 from lexicon_loader import LexiconManager
+from logging_setup import LOG_FORMATS, configure_logging, register_request_id
 from mailer import MAIL_BACKENDS
 from monitoring import init_sentry
 
@@ -86,6 +87,8 @@ DEFAULT_SETTINGS = dict(
     SMTP_STARTTLS=False,
     # Adresse du frontend, pour les liens des e-mails ; à défaut, la première origine de CORS_ORIGINS
     FRONTEND_URL=DEFAULT_CORS_ORIGINS,
+    # Journaux (logging_setup.py) : texte en développement, JSON en production
+    LOG_FORMAT='text',
     # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
     # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
     AUTO_MIGRATE=True,
@@ -112,6 +115,10 @@ def _load_config_from_env() -> dict:
     mail_backend = os.environ.get('MAIL_BACKEND', 'console').strip()
     if mail_backend not in MAIL_BACKENDS:
         raise RuntimeError(f"MAIL_BACKEND inconnu : {mail_backend} (attendu : {', '.join(MAIL_BACKENDS)})")
+
+    log_format = os.environ.get('LOG_FORMAT', '').strip() or ('json' if app_env == 'production' else 'text')
+    if log_format not in LOG_FORMATS:
+        raise RuntimeError(f"LOG_FORMAT inconnu : {log_format} (attendu : {', '.join(LOG_FORMATS)})")
 
     if app_env == 'production':
         problems = []
@@ -146,6 +153,7 @@ def _load_config_from_env() -> dict:
         CLIENT_IP_HEADER=os.environ.get('CLIENT_IP_HEADER', '').strip(),
         SENTRY_DSN=os.environ.get('SENTRY_DSN', '').strip(),
         RELEASE=os.environ.get('RELEASE', '').strip(),
+        LOG_FORMAT=log_format,
         MAIL_BACKEND=mail_backend,
         MAIL_FROM=os.environ.get('MAIL_FROM') or DEFAULT_MAIL_FROM,
         SMTP_HOST=os.environ.get('SMTP_HOST', 'localhost'),
@@ -208,8 +216,6 @@ def prepare_database(app: Flask) -> None:
 
 
 def create_app(test_config=None):
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
     app = Flask(__name__)
     app.config.from_mapping(DEFAULT_SETTINGS)
 
@@ -217,6 +223,9 @@ def create_app(test_config=None):
         app.config.from_mapping(_load_config_from_env())
     else:
         app.config.from_mapping(test_config)
+
+    configure_logging(app.config['LOG_FORMAT'])
+    register_request_id(app)
 
     if init_sentry(app):
         logging.info("Suivi des erreurs actif (Sentry, environnement %s).", app.config.get('APP_ENV'))

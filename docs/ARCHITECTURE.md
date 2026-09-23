@@ -36,6 +36,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | `gunicorn.conf.py` | Serveur de production : 3 workers synchrones, application chargée une fois avant de les créer ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
 | `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton, mot de passe oublié, confirmation de l'adresse |
 | `monitoring.py` | Suivi des erreurs (Sentry), inactif sans `SENTRY_DSN` ; rien d'identifiant dans les rapports |
+| `logging_setup.py` | Journaux : texte en dev, JSON en production (une ligne par événement, avec la requête et son identifiant `X-Request-ID`, repris de `CF-Ray`) ; gunicorn suit le même format |
 | `account_links.py`, `mailer.py` | Liens signés envoyés par e-mail, et leur envoi (journal, SMTP ou mémoire) ([ADR 0014](adr/0014-emails-du-compte.md)) |
 | `routes.py` | Blueprint `/api` : dictionnaires, mots, recherche, formats, génération, suppression de compte |
 | `schemas.py` | Schémas pydantic de chaque corps de requête + messages d'erreur en français |

@@ -60,6 +60,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | CORS | Liste exacte d'origines, sans credentials ; `*` refusé en production | `backend/app.py` |
 | Configuration | Refus de démarrer en production avec des secrets par défaut, sans base de données ou avec CORS `*` | `backend/app.py` |
 | Suivi des erreurs | Sentry, inactif sans DSN. Seules les erreurs partent : ni cookies, ni en-têtes d'authentification, ni corps de requête, ni variables locales, ni adresse IP ; le jeton des liens reçus par e-mail est retiré des adresses. Vérifié par un aller-retour réel dans les tests | `backend/monitoring.py`, `frontend/src/lib/monitoring.ts` |
+| Journaux | En production, JSON ; chemins **sans query string**, jamais de mot de passe, de jeton ni de corps de requête ; l'adresse IP du visiteur figure dans le journal d'accès | `backend/logging_setup.py`, `backend/gunicorn.conf.py` |
 | RGPD | Suppression réelle du compte, des dictionnaires, des mots et des grilles, depuis la page « Mon compte » ; le mot de passe est redemandé (un jeton volé ne suffit pas) et les tentatives suivent la limite de la connexion | `DELETE /api/users/me`, `frontend/src/app/account` |
 
 ---
