@@ -19,7 +19,7 @@ def _get_dummy_password_hash() -> str:
     return _dummy_password_hash
 
 
-def _password_matches(password_hash: str, password: str) -> bool:
+def password_matches(password_hash: str, password: str) -> bool:
     try:
         return bcrypt.check_password_hash(password_hash, password)
     except ValueError:
@@ -63,7 +63,7 @@ def login():
     # On vérifie un hash même quand le compte n'existe pas : le temps de réponse
     # ne révèle pas si l'adresse e-mail est inscrite.
     password_hash = user.password if user else _get_dummy_password_hash()
-    if _password_matches(password_hash, payload.password) and user:
+    if password_matches(password_hash, payload.password) and user:
         return jsonify(_tokens_for(user)), 200
 
     return jsonify({"error": "Identifiants invalides."}), 401

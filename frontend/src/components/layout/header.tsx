@@ -54,14 +54,19 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
-            <Button
-              onClick={logout}
-              variant="outline"
-              size="sm"
-              data-testid="logout-button"
-            >
-              Déconnexion
-            </Button>
+            <>
+              <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
+                <Link href="/account">Mon compte</Link>
+              </Button>
+              <Button
+                onClick={logout}
+                variant="outline"
+                size="sm"
+                data-testid="logout-button"
+              >
+                Déconnexion
+              </Button>
+            </>
           ) : (
             <Button asChild size="sm" data-testid="login-button-link">
                <Link href="/login">Connexion</Link>
@@ -98,6 +103,18 @@ export function Header() {
                       {item.label}
                     </Link>
                   ))}
+                  {isAuthenticated && (
+                    <Link
+                      href="/account"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={cn(
+                        "text-muted-foreground hover:text-foreground",
+                        pathname === "/account" && "text-foreground font-semibold"
+                      )}
+                    >
+                      Mon compte
+                    </Link>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
