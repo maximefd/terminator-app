@@ -83,7 +83,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 ## Checklist de mise en production
 
 - [ ] `APP_ENV=production`
-- [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets), jamais commités
+- [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
 - [ ] `DATABASE_URL` vers PostgreSQL
 - [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://terminator.fr`)
 - [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
@@ -101,10 +101,12 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 
 ## Checklist OWASP ASVS (allégée)
 
+Audit complet, essais compris : [AUDIT-SECURITE.md](AUDIT-SECURITE.md).
+
 | Exigence | Statut |
 |----------|--------|
 | V2 — Mots de passe hashés avec un algorithme adapté (bcrypt) | ✅ |
-| V2 — Longueur minimale de mot de passe | ✅ (8) |
+| V2 — Longueur minimale de mot de passe | ✅ (8) ; jusqu'à 128 caractères, y compris au-delà des 72 octets de bcrypt |
 | V2 — Protection contre la force brute | ✅ rate limiting |
 | V2 — Messages d'échec de connexion génériques | ✅ |
 | V2 — Récupération de compte sûre (lien à usage unique, limité dans le temps, sans révéler l'existence du compte) | ✅ ([ADR 0014](adr/0014-emails-du-compte.md)) |

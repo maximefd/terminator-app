@@ -41,11 +41,28 @@ def test_production_refuses_default_secrets_and_missing_database(monkeypatch):
 
 def test_production_with_complete_configuration(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
-    monkeypatch.setenv("SECRET_KEY", "flask-secret")
-    monkeypatch.setenv("JWT_SECRET_KEY", "jwt-secret")
+    monkeypatch.setenv("SECRET_KEY", "cle-flask-de-production-longue-de-32-octets-au-moins")
+    monkeypatch.setenv("JWT_SECRET_KEY", "cle-jwt-de-production-longue-de-32-octets-au-moins")
     monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db/terminator")
 
     assert _load_config_from_env()["SQLALCHEMY_DATABASE_URI"] == "postgresql://u:p@db/terminator"
+
+
+@pytest.mark.parametrize("secret_key, jwt_secret_key, refused", [
+    ("court", "cle-jwt-de-production-longue-de-32-octets-au-moins", "SECRET_KEY"),
+    ("cle-flask-de-production-longue-de-32-octets-au-moins", "court", "JWT_SECRET_KEY"),
+    ("la-meme-cle-pour-les-deux-usages-32-octets", "la-meme-cle-pour-les-deux-usages-32-octets",
+     "identique à SECRET_KEY"),
+])
+def test_production_refuses_short_or_shared_keys(monkeypatch, secret_key, jwt_secret_key, refused):
+    """Audit ASVS : ces clés signent les sessions et les liens envoyés par e-mail (RFC 7518 : 32 octets au moins)."""
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("SECRET_KEY", secret_key)
+    monkeypatch.setenv("JWT_SECRET_KEY", jwt_secret_key)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db/terminator")
+
+    with pytest.raises(RuntimeError, match=refused):
+        _load_config_from_env()
 
 
 def test_register_quota_is_adjustable_outside_production(monkeypatch):

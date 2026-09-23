@@ -291,6 +291,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
   Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`
   et pour les styles. Vérifié dans un navigateur sur les 13 pages et la 404 (`tests/csp.spec.ts`).
+- **Audit ASVS** ([docs/AUDIT-SECURITE.md](docs/AUDIT-SECURITE.md)) : revue du code et essais sur l'image en
+  configuration de production (jetons forgés, CSRF, contournement du rate limiting, méthodes, corps). Deux
+  défauts corrigés : un mot de passe de plus de **72 octets** (100 caractères, ou 64 lettres accentuées)
+  provoquait une **erreur 500** à l'inscription, bcrypt 5 refusant ce qu'il tronquait autrefois ; et des
+  **clés secrètes courtes** étaient acceptées en production. Elles doivent maintenant faire 32 octets au moins,
+  et être distinctes.
 - **La session passe en cookies `httpOnly`** ([ADR 0015](docs/adr/0015-session-en-cookies.md), #28, remplace
   l'ADR 0003) : les jetons ne sont plus dans le `localStorage`, donc plus à portée d'une faille XSS, et
   l'API ne les met plus jamais dans ses réponses. Protection CSRF par double soumission (`X-CSRF-TOKEN`).
