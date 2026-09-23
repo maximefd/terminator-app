@@ -10,6 +10,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
+    # Date à laquelle l'adresse a été confirmée par un lien reçu par e-mail ; None tant qu'elle ne l'est pas
+    email_verified_at = db.Column(db.DateTime, nullable=True)
     
     dictionaries = db.relationship('Dictionary', backref='user', lazy='selectin', cascade="all, delete-orphan")
     grids = db.relationship('SavedGrid', backref='user', lazy='selectin', cascade="all, delete-orphan")

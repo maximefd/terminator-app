@@ -542,6 +542,7 @@ def get_self():
              .join(Dictionary).filter(Dictionary.user_id == user.id).scalar())
     return jsonify({
         "email": user.email,
+        "email_verified": user.email_verified_at is not None,
         "dictionaries": len(user.dictionaries),
         "words": words,
         "grids": len(user.grids),

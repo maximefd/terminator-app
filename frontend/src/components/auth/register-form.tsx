@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function RegisterForm() {
     setSubmitting(true);
     try {
       await register(email, password);
+      toast.success("Compte créé. Un lien pour confirmer votre adresse vient de vous être envoyé par e-mail.");
       router.push("/");
     } catch (err: unknown) {
       if (err instanceof Error) {

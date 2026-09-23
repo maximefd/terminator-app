@@ -17,6 +17,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0011](0011-dictionnaires-choisis.md) | Les dictionnaires versés à une grille se choisissent, aucun n'est implicite | Acceptée |
 | [0012](0012-grille-modifiable.md) | Une grille conservée est un document que l'auteur modifie | Acceptée |
 | [0013](0013-cible-hebergement-production.md) | Cible d'hébergement de production : un VPS derrière Cloudflare | Acceptée |
+| [0014](0014-emails-du-compte.md) | E-mails du compte : liens signés, SMTP, confirmation non bloquante | Acceptée |
 
 ## Modèle
 

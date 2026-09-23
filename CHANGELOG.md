@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Mot de passe oublié et confirmation de l'adresse** ([ADR 0014](docs/adr/0014-emails-du-compte.md)) : un
+  lien par e-mail pour choisir un nouveau mot de passe (une heure, une seule fois, sans révéler si le compte
+  existe), et un lien de confirmation envoyé à l'inscription, redemandable depuis « Mon compte ». Liens signés,
+  sans table ; migration `0005` (`email_verified_at`). En développement, les e-mails arrivent dans **Mailpit**
+  (http://localhost:8025) et ne partent jamais ; en production, par le relais SMTP du prestataire.
 - **Revue des licences** ([docs/LICENCES.md](docs/LICENCES.md)) : sources linguistiques, polices, dépendances
   et dépôt public, avec ce que chaque licence demande. Le DELA versionné est sous LGPLLR, qui impose de
   joindre sa licence : c'est fait (`backend/DELA-NOTICE.md`, `backend/LGPLLR.txt`), comme la licence OFL de
