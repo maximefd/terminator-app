@@ -56,9 +56,11 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Coût des requêtes | Corps ≤ 64 Ko ; recherche arrêtée à la limite pendant le parcours du Trie ; génération bornée par un budget temps ; 20 dictionnaires et 5 000 mots max | `backend/app.py` |
 | Erreurs | Réponses JSON génériques, détails uniquement dans les logs serveur ; débogueur Werkzeug désactivé hors `FLASK_DEBUG=1` | `backend/security.py`, `backend/run.py` |
 | En-têtes API | `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, CSP `default-src 'none'`, `Cache-Control: no-store`, HSTS en production | `backend/security.py` |
-| En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production | `frontend/next.config.ts` |
+| En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production ; sur le site statique, une CSP par page n'autorise que ses scripts inline, par empreinte `sha256` (#99) | `frontend/security-headers.mjs`, `frontend/scripts/write-headers.mjs` |
 | CORS | Liste exacte d'origines, sans credentials ; `*` refusé en production | `backend/app.py` |
 | Configuration | Refus de démarrer en production avec des secrets par défaut, sans base de données ou avec CORS `*` | `backend/app.py` |
+| Suivi des erreurs | Sentry, inactif sans DSN. Seules les erreurs partent : ni cookies, ni en-têtes d'authentification, ni corps de requête, ni variables locales, ni adresse IP ; le jeton des liens reçus par e-mail est retiré des adresses. Vérifié par un aller-retour réel dans les tests | `backend/monitoring.py`, `frontend/src/lib/monitoring.ts` |
+| Journaux | En production, JSON ; chemins **sans query string**, jamais de mot de passe, de jeton ni de corps de requête ; l'adresse IP du visiteur figure dans le journal d'accès | `backend/logging_setup.py`, `backend/gunicorn.conf.py` |
 | RGPD | Suppression réelle du compte, des dictionnaires, des mots et des grilles, depuis la page « Mon compte » ; le mot de passe est redemandé (un jeton volé ne suffit pas) et les tentatives suivent la limite de la connexion | `DELETE /api/users/me`, `frontend/src/app/account` |
 
 ---
@@ -68,11 +70,10 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Limite | Risque | Plan |
 |--------|--------|------|
 | Pas de rotation du refresh token | Un refresh token volé sert jusqu'à la déconnexion ou au changement de mot de passe | Choix de l'[ADR 0015](adr/0015-session-en-cookies.md) : la rotation déconnecterait les onglets entre eux |
-| CSP frontend avec `'unsafe-inline'` pour les scripts | Protection XSS partielle | Site statique : pas de nonce possible ; empreintes calculées au build (#99) |
+| CSP de développement avec `'unsafe-inline'` et `'unsafe-eval'` | Aucun en production : le site statique n'autorise que les scripts de chaque page, par empreinte (#99) | Limité à `next dev` ; `style-src` garde `'unsafe-inline'` (styles en ligne des composants), risque bien moindre |
 | Rate limiting en mémoire | Compteurs non partagés entre processus : avec 3 workers gunicorn, une limite de 10/min vaut jusqu'à 30/min (les places de génération, elles, sont communes) | Redis (`RATELIMIT_STORAGE_URI`) si l'écart devient un problème, et avant tout passage multi-instance |
 | L'inscription révèle si un e-mail existe (409) | Énumération de comptes | Acceptable tant que l'app est personnelle ; vérification par e-mail plus tard |
 | Confirmation d'adresse non bloquante | Un compte peut être créé au nom d'une adresse qui n'est pas la sienne ; il reste marqué « non confirmé » | Choix de l'[ADR 0014](adr/0014-emails-du-compte.md) : à rendre bloquante si des comptes jetables apparaissent |
-| Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
 | Génération synchrone dans la requête | Un worker occupé jusqu'à 20 s ; au-delà des places de génération, les visiteurs reçoivent 429 plutôt que d'attendre | Atténué par les places de génération ; Phase 7 : file de jobs ou moteur côté client |
 | Écritures utilisateur nouvelles (définitions, notes, lettres d'une grille) | Contenu arbitraire en base | Validées par schéma et bornées (120 caractères par définition, 5 000 pour les notes, une lettre A-Z par case) ; chaque accès passe par `get_owned_grid()`, une grille d'autrui répond 404 |
 | Sauvegardes non automatisées | Perte de données | Les outils existent : `make db-backup` (dump compressé, chiffré par `age` si `BACKUP_AGE_RECIPIENT`, rotation à 30 jours) et `make db-restore-check` (restauration dans une base jetable). Reste, sur le serveur : les lancer chaque nuit, copier hors du serveur (Cloudflare R2), vérifier chaque mois ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
@@ -82,7 +83,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 ## Checklist de mise en production
 
 - [ ] `APP_ENV=production`
-- [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets), jamais commités
+- [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
 - [ ] `DATABASE_URL` vers PostgreSQL
 - [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://terminator.fr`)
 - [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
@@ -90,6 +91,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
 - [ ] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
 - [ ] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `terminator.fr`), pour que le frontend lise les cookies CSRF
+- [ ] `SENTRY_DSN` (API) et `NEXT_PUBLIC_SENTRY_DSN` (build du frontend) renseignés, projet Sentry hébergé dans l'UE ; la page de confidentialité le mentionne
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
 - [ ] HTTPS uniquement (fourni par Cloudflare)
@@ -99,10 +101,12 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 
 ## Checklist OWASP ASVS (allégée)
 
+Audit complet, essais compris : [AUDIT-SECURITE.md](AUDIT-SECURITE.md).
+
 | Exigence | Statut |
 |----------|--------|
 | V2 — Mots de passe hashés avec un algorithme adapté (bcrypt) | ✅ |
-| V2 — Longueur minimale de mot de passe | ✅ (8) |
+| V2 — Longueur minimale de mot de passe | ✅ (8) ; jusqu'à 128 caractères, y compris au-delà des 72 octets de bcrypt |
 | V2 — Protection contre la force brute | ✅ rate limiting |
 | V2 — Messages d'échec de connexion génériques | ✅ |
 | V2 — Récupération de compte sûre (lien à usage unique, limité dans le temps, sans révéler l'existence du compte) | ✅ ([ADR 0014](adr/0014-emails-du-compte.md)) |
@@ -120,5 +124,5 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | V13 — Limitation de débit des API | ✅ (mémoire) |
 | V14 — En-têtes de sécurité HTTP | ✅ |
 | V14 — CORS restrictif | ✅ |
-| V14 — Dépendances surveillées | ❌ (Phase 0c) |
+| V14 — Dépendances surveillées | ✅ versions figées, `pip-audit` en CI, Dependabot (pip, npm, GitHub Actions) |
 | V14 — Secrets hors du code | ✅ |

@@ -30,6 +30,37 @@ preload_app = True
 accesslog = "-"
 errorlog = "-"
 
+# Journaux en JSON en production, comme ceux de l'API (logging_setup.py). Le journal d'accès garde le chemin
+# sans sa query string (%(U)s) : un jeton n'y figure jamais. L'adresse est celle du visiteur (CF-Connecting-IP),
+# pas celle de cloudflared.
+LOG_FORMAT = os.environ.get("LOG_FORMAT") or ("json" if os.environ.get("APP_ENV") == "production" else "text")
+if LOG_FORMAT == "json":
+    access_log_format = (
+        '{"time": "%(t)s", "ip": "%({cf-connecting-ip}i)s", "method": "%(m)s", "path": "%(U)s", '
+        '"status": %(s)s, "bytes": "%(B)s", "duration_ms": %(M)s, "request_id": "%({x-request-id}o)s"}'
+    )
+    logconfig_dict = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {"()": "logging_setup.JsonFormatter"},
+            # Le journal d'accès est déjà du JSON (access_log_format) : pas d'enveloppe de plus
+            "brut": {"format": "%(message)s"},
+        },
+        "handlers": {
+            "erreurs": {"class": "logging.StreamHandler", "formatter": "json", "stream": "ext://sys.stderr"},
+            "acces": {"class": "logging.StreamHandler", "formatter": "brut", "stream": "ext://sys.stdout"},
+        },
+        # gunicorn complète cette configuration avec la sienne, dont le logger racine vise un gestionnaire
+        # « console » qui n'existe plus ici : il faut le redéclarer. Sans gestionnaire : l'application pose le
+        # sien (logging_setup.configure_logging), deux en même temps doubleraient chaque ligne
+        "root": {"level": "INFO", "handlers": []},
+        "loggers": {
+            "gunicorn.error": {"level": "INFO", "handlers": ["erreurs"], "propagate": False},
+            "gunicorn.access": {"level": "INFO", "handlers": ["acces"], "propagate": False},
+        },
+    }
+
 
 def post_fork(server, worker):
     """Chaque worker ouvre ses propres connexions à la base.

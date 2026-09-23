@@ -8,12 +8,12 @@
  */
 
 /**
- * @param {{ isDev: boolean, apiBaseUrl: string | undefined }} options
+ * @param {{ isDev: boolean, apiBaseUrl: string | undefined, sentryDsn?: string }} options
  * @returns {{ key: string, value: string }[]}
  */
-export function securityHeaders({ isDev, apiBaseUrl }) {
-  // Origine de l'API appelée par le navigateur (voir getApiBaseUrl dans src/lib/utils.ts)
-  const apiOrigins = apiBaseUrl ? [new URL(apiBaseUrl).origin] : [];
+export function securityHeaders({ isDev, apiBaseUrl, sentryDsn }) {
+  // Origines appelées par le navigateur : l'API (getApiBaseUrl), et Sentry s'il est actif (lib/monitoring.ts)
+  const apiOrigins = [apiBaseUrl, sentryDsn].filter(Boolean).map((url) => new URL(/** @type {string} */ (url)).origin);
 
   const contentSecurityPolicy = [
     "default-src 'self'",
@@ -38,4 +38,19 @@ export function securityHeaders({ isDev, apiBaseUrl }) {
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
     ...(isDev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]),
   ];
+}
+
+/**
+ * CSP propre à une page du site statique, pour ses scripts : seuls ceux dont l'empreinte est listée
+ * s'exécutent (#99). Posée en <meta> dans la page par scripts/write-headers.mjs : chaque page a ses propres
+ * scripts inline (les données de rendu de Next), et leur réunion dépasserait la taille d'un en-tête.
+ *
+ * Elle s'ajoute à la CSP de l'en-tête, qui garde 'unsafe-inline' : le navigateur applique les deux, un script
+ * doit donc satisfaire les deux, et c'est celle-ci qui tranche. `frame-ancestors` et les autres directives
+ * restent dans l'en-tête, qu'une <meta> ne peut pas porter.
+ *
+ * @param {string[]} hashes empreintes au format 'sha256-…'
+ */
+export function pageScriptPolicy(hashes) {
+  return ["script-src 'self'", ...hashes.map((hash) => `'${hash}'`)].join(' ');
 }

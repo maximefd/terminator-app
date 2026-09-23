@@ -14,6 +14,16 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
   parce qu'il l'est vraiment : générer, conserver, retoucher, définir puis imprimer. La recherche par
   motif et les dictionnaires, qui ne sont pas dans cette séquence, gardent leur propre bloc.
+- **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
+  `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
+  en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus
+  par e-mail est retiré des adresses. Le gestionnaire d'erreurs de l'API interceptant tout, il transmet
+  lui-même l'exception à Sentry. Vérifié par un vrai rapport dans les tests (backend) et dans un navigateur.
+- **Journaux structurés** : JSON en production (`LOG_FORMAT`, texte en développement), une ligne par
+  événement avec la méthode, le chemin et l'identifiant de la requête. Cet identifiant reprend `CF-Ray`
+  (Cloudflare) et revient dans l'en-tête `X-Request-ID`. gunicorn suit le même format, journal d'accès compris
+  (adresse du visiteur, chemin **sans query string** : un jeton n'y figure jamais). Vérifié sur l'image en
+  configuration de production : toutes les lignes sont du JSON, aucune n'est en double.
 - **Mot de passe oublié et confirmation de l'adresse** ([ADR 0014](docs/adr/0014-emails-du-compte.md)) : un
   lien par e-mail pour choisir un nouveau mot de passe (une heure, une seule fois, sans révéler si le compte
   existe), et un lien de confirmation envoyé à l'inscription, redemandable depuis « Mon compte ». Liens signés,
@@ -277,6 +287,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
   est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
   et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.
+- **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
+  laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
+  la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
 - **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
   collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
   qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
@@ -298,6 +311,16 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
+  autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
+  Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`
+  et pour les styles. Vérifié dans un navigateur sur les 13 pages et la 404 (`tests/csp.spec.ts`).
+- **Audit ASVS** ([docs/AUDIT-SECURITE.md](docs/AUDIT-SECURITE.md)) : revue du code et essais sur l'image en
+  configuration de production (jetons forgés, CSRF, contournement du rate limiting, méthodes, corps). Deux
+  défauts corrigés : un mot de passe de plus de **72 octets** (100 caractères, ou 64 lettres accentuées)
+  provoquait une **erreur 500** à l'inscription, bcrypt 5 refusant ce qu'il tronquait autrefois ; et des
+  **clés secrètes courtes** étaient acceptées en production. Elles doivent maintenant faire 32 octets au moins,
+  et être distinctes.
 - **La session passe en cookies `httpOnly`** ([ADR 0015](docs/adr/0015-session-en-cookies.md), #28, remplace
   l'ADR 0003) : les jetons ne sont plus dans le `localStorage`, donc plus à portée d'une faille XSS, et
   l'API ne les met plus jamais dans ses réponses. Protection CSRF par double soumission (`X-CSRF-TOKEN`).

@@ -20,6 +20,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import HTTPException
 
 from models import RevokedToken, User, db
+from monitoring import report_exception
 from schemas import RequestValidationError
 
 HTTP_ERROR_MESSAGES = {
@@ -77,8 +78,9 @@ def register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception):
-        # Le détail part dans les logs serveur, jamais dans la réponse
+        # Le détail part dans les logs serveur (et à Sentry s'il est actif), jamais dans la réponse
         logging.exception("Erreur non gérée sur %s %s", request.method, request.path)
+        report_exception(error)
         return jsonify({"error": HTTP_ERROR_MESSAGES[500]}), 500
 
 
