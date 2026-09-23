@@ -63,14 +63,13 @@ grilles est l'objet de [#24](https://github.com/maximefd/terminator-app/issues/2
 
 ## Non corrigé, et pourquoi
 
-- **Mentions légales et confidentialité décrivent un produit qui n'existe pas**
-  ([#78](https://github.com/maximefd/terminator-app/issues/78)) : elles parlent de cookies, d'adresse IP
-  collectée et de transferts de données, alors que rien n'est déployé ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md))
-  et que la session tient dans le `localStorage` du navigateur. Un texte faux est pire que pas de texte, mais
-  le réécrire n'est pas un geste d'interface : il attend sa propre issue.
-- **Suppression du compte** ([#79](https://github.com/maximefd/terminator-app/issues/79)) : l'API expose
-  `DELETE /api/users/me` et efface tout en cascade ; l'interface ne l'atteint pas. Il manque un écran de
-  compte, que la page de confidentialité devra citer.
+- ~~**Mentions légales et confidentialité décrivent un produit qui n'existe pas**~~ — corrigé dans
+  [#78](https://github.com/maximefd/terminator-app/issues/78) : les deux pages disent désormais ce qui est vrai
+  (un outil personnel, un e-mail, un mot de passe haché, des dictionnaires et des grilles, pas de cookie), ce
+  qui changera le jour d'une mise en ligne, et les crédits des ressources empruntées.
+- ~~**Suppression du compte**~~ — corrigé dans [#79](https://github.com/maximefd/terminator-app/issues/79) :
+  page « Mon compte » (l'adresse, ce que le compte contient, la suppression). Le mot de passe est redemandé, et
+  une confirmation dit ce qui disparaît.
 - **Le parcours connecté est couvert par un test** (`frontend/tests/dictionaries.spec.ts`) : créer un dictionnaire, ajouter un mot avec sa définition, supprimer l'un puis l'autre. Il a servi à vérifier ces corrections, que je ne peux pas éprouver à la main — je ne saisis pas d'identifiants.
 - **Supprimer un mot ne demande pas confirmation** : c'est délibéré. C'est le geste que l'on répète le plus
   dans un dictionnaire, et une confirmation par mot le rendrait pénible. À revoir si une liste se met à

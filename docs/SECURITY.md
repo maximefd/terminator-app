@@ -34,7 +34,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | `GET/POST/PATCH/DELETE /api/dictionaries...` | Oui | IDOR, injection, contenu hostile, remplissage de la base |
 | `POST /api/search` | Optionnelle | Injection SQL (`LIKE`), masques coûteux |
 | `POST /api/grids/generate` | Optionnelle | Déni de service CPU |
-| `DELETE /api/users/me` | Oui | Effacement incomplet des données |
+| `DELETE /api/users/me` | Oui + mot de passe | Effacement incomplet des données ; suppression par un jeton volé |
 
 ---
 
@@ -56,7 +56,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | En-têtes frontend | CSP (scripts, connexions et frames restreints), `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS en production | `frontend/next.config.ts` |
 | CORS | Liste exacte d'origines, sans credentials ; `*` refusé en production | `backend/app.py` |
 | Configuration | Refus de démarrer en production avec des secrets par défaut, sans base de données ou avec CORS `*` | `backend/app.py` |
-| RGPD | Suppression réelle du compte, des dictionnaires et des mots | `DELETE /api/users/me` |
+| RGPD | Suppression réelle du compte, des dictionnaires, des mots et des grilles, depuis la page « Mon compte » ; le mot de passe est redemandé (un jeton volé ne suffit pas) et les tentatives suivent la limite de la connexion | `DELETE /api/users/me`, `frontend/src/app/account` |
 
 ---
 
