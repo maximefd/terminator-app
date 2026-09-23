@@ -73,7 +73,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
 | Génération synchrone dans la requête | Un worker occupé jusqu'à 20 s ; au-delà des places de génération, les visiteurs reçoivent 429 plutôt que d'attendre | Atténué par les places de génération ; Phase 7 : file de jobs ou moteur côté client |
 | Écritures utilisateur nouvelles (définitions, notes, lettres d'une grille) | Contenu arbitraire en base | Validées par schéma et bornées (120 caractères par définition, 5 000 pour les notes, une lettre A-Z par case) ; chaque accès passe par `get_owned_grid()`, une grille d'autrui répond 404 |
-| Pas de sauvegardes de base | Perte de données | Phase 6. Les migrations existent depuis la Phase 4 ([ADR 0010](adr/0010-migrations-de-schema.md)) |
+| Sauvegardes non automatisées | Perte de données | Les outils existent : `make db-backup` (dump compressé, chiffré par `age` si `BACKUP_AGE_RECIPIENT`, rotation à 30 jours) et `make db-restore-check` (restauration dans une base jetable). Reste, sur le serveur : les lancer chaque nuit, copier hors du serveur (Cloudflare R2), vérifier chaque mois ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
 
 ---
 
@@ -89,6 +89,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
 - [ ] HTTPS uniquement (fourni par Cloudflare)
+- [ ] `BACKUP_AGE_RECIPIENT` renseigné, clé privée **hors** du serveur ; sauvegarde nocturne copiée hors du serveur ; une restauration vérifiée (`make db-restore-check`)
 
 ---
 
