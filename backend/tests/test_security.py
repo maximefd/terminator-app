@@ -291,7 +291,8 @@ def test_account_shows_its_email_and_what_deletion_would_erase(client):
     response = client.get("/api/users/me", headers=headers)
 
     assert response.status_code == 200
-    assert response.get_json() == {"email": email, "dictionaries": 1, "words": 2, "grids": 0}
+    assert response.get_json() == {"email": email, "email_verified": False, "dictionaries": 1, "words": 2,
+                                   "grids": 0}
 
 
 def test_account_deletion_requires_the_password(client):

@@ -34,7 +34,8 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | `app.py` | Fabrique `create_app()` : configuration (variables d'environnement), CORS, extensions, sécurité, blueprints, chargement du dictionnaire |
 | `run.py` | Point d'entrée : `python run.py` en développement, `run:app` sous gunicorn en production |
 | `gunicorn.conf.py` | Serveur de production : 3 workers synchrones, application chargée une fois avant de les créer ([ADR 0013](adr/0013-cible-hebergement-production.md)) |
-| `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton |
+| `auth.py` | Blueprint `/api/auth` : inscription, connexion, renouvellement du jeton, mot de passe oublié, confirmation de l'adresse |
+| `account_links.py`, `mailer.py` | Liens signés envoyés par e-mail, et leur envoi (journal, SMTP ou mémoire) ([ADR 0014](adr/0014-emails-du-compte.md)) |
 | `routes.py` | Blueprint `/api` : dictionnaires, mots, recherche, formats, génération, suppression de compte |
 | `schemas.py` | Schémas pydantic de chaque corps de requête + messages d'erreur en français |
 | `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting, adresse du visiteur (`client_ip`) |
@@ -56,6 +57,10 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | POST | `/api/auth/register` | — | Inscription (renvoie les jetons) |
 | POST | `/api/auth/login` | — | Connexion |
 | POST | `/api/auth/refresh` | refresh token | Nouveau jeton d'accès |
+| POST | `/api/auth/password/forgot` | — | Envoie un lien pour changer de mot de passe ; même réponse que le compte existe ou non ([ADR 0014](adr/0014-emails-du-compte.md)) |
+| POST | `/api/auth/password/reset` | lien | Nouveau mot de passe (`{token, password}`) ; le lien ne sert qu'une fois, une heure |
+| POST | `/api/auth/email/verify` | lien | Confirme l'adresse (`{token}`) |
+| POST | `/api/auth/email/resend` | ✅ | Renvoie le lien de confirmation |
 | GET / POST | `/api/dictionaries` | ✅ | Lister (crée un dictionnaire par défaut) / créer |
 | PATCH / DELETE | `/api/dictionaries/<id>` | ✅ | Renommer, activer / supprimer |
 | GET / POST | `/api/dictionaries/<id>/words` | ✅ | Lister / ajouter un mot |

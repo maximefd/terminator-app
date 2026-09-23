@@ -12,8 +12,10 @@ from routes import main_bp
 from extensions import jwt, migrate
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
 from lexicon_loader import LexiconManager
+from mailer import MAIL_BACKENDS
 
 DEV_SECRET = 'default-secret-for-dev'
+DEFAULT_MAIL_FROM = 'Terminator <terminator@localhost>'
 # Première migration : le schéma tel qu'il existait avant l'arrivée d'Alembic
 BASELINE_REVISION = '0001_schema_initial'
 DEFAULT_CORS_ORIGINS = 'http://localhost:3000'
@@ -42,6 +44,8 @@ DEFAULT_SETTINGS = dict(
     RATELIMIT_STORAGE_URI='memory://',
     RATELIMIT_HEADERS_ENABLED=True,
     RATELIMIT_LOGIN='10 per minute',
+    # Mot de passe oublié et confirmation d'adresse redemandée : chaque appel envoie un e-mail
+    RATELIMIT_EMAIL_SEND='5 per hour',
     RATELIMIT_REGISTER='5 per hour',
     RATELIMIT_REFRESH='30 per minute',
     RATELIMIT_SEARCH='120 per minute',
@@ -52,6 +56,19 @@ DEFAULT_SETTINGS = dict(
     # Vérification des changements du lexique (0 : pas de rechargement à chaud). Jamais en production :
     # le lexique y est un fichier livré avec l'application (ADR 0013).
     LEXICON_RELOAD_INTERVAL_S=30,
+    # Signe aussi les liens envoyés par e-mail (account_links.py). En production, _load_config_from_env
+    # impose une vraie clé.
+    SECRET_KEY=DEV_SECRET,
+    # E-mails du compte (mailer.py, ADR 0014) : « console » écrit le message dans le journal au lieu de l'envoyer
+    MAIL_BACKEND='console',
+    MAIL_FROM=DEFAULT_MAIL_FROM,
+    SMTP_HOST='localhost',
+    SMTP_PORT=25,
+    SMTP_USER='',
+    SMTP_PASSWORD='',
+    SMTP_STARTTLS=False,
+    # Adresse du frontend, pour les liens des e-mails ; à défaut, la première origine de CORS_ORIGINS
+    FRONTEND_URL=DEFAULT_CORS_ORIGINS,
     # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
     # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
     AUTO_MIGRATE=True,
@@ -74,6 +91,10 @@ def _load_config_from_env() -> dict:
     jwt_secret_key = os.environ.get('JWT_SECRET_KEY') or secret_key
     database_url = os.environ.get('DATABASE_URL')
     cors_origins = os.environ.get('CORS_ORIGINS', DEFAULT_CORS_ORIGINS)
+
+    mail_backend = os.environ.get('MAIL_BACKEND', 'console').strip()
+    if mail_backend not in MAIL_BACKENDS:
+        raise RuntimeError(f"MAIL_BACKEND inconnu : {mail_backend} (attendu : {', '.join(MAIL_BACKENDS)})")
 
     if app_env == 'production':
         problems = []
@@ -104,6 +125,14 @@ def _load_config_from_env() -> dict:
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
         CLIENT_IP_HEADER=os.environ.get('CLIENT_IP_HEADER', '').strip(),
+        MAIL_BACKEND=mail_backend,
+        MAIL_FROM=os.environ.get('MAIL_FROM') or DEFAULT_MAIL_FROM,
+        SMTP_HOST=os.environ.get('SMTP_HOST', 'localhost'),
+        SMTP_PORT=int(os.environ.get('SMTP_PORT') or 25),
+        SMTP_USER=os.environ.get('SMTP_USER', ''),
+        SMTP_PASSWORD=os.environ.get('SMTP_PASSWORD', ''),
+        SMTP_STARTTLS=os.environ.get('SMTP_STARTTLS', '').lower() in ('1', 'true', 'oui'),
+        FRONTEND_URL=os.environ.get('FRONTEND_URL') or (parse_cors_origins(cors_origins) or [DEFAULT_CORS_ORIGINS])[0],
         RATELIMIT_STORAGE_URI=os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
         # Desserrable pour les parcours end-to-end, qui créent un compte par exécution.
         # Jamais en production : le quota y protège de la création de comptes en masse.
@@ -167,6 +196,11 @@ def create_app(test_config=None):
         app.config.from_mapping(_load_config_from_env())
     else:
         app.config.from_mapping(test_config)
+
+    # Un lien de mot de passe écrit dans un journal permet à qui le lit de prendre le compte
+    if app.config.get('APP_ENV') == 'production' and app.config['MAIL_BACKEND'] == 'console':
+        logging.warning("MAIL_BACKEND=console en production : les e-mails du compte ne partent pas, "
+                        "et leurs liens sont écrits dans le journal. Configurer SMTP (ADR 0014).")
 
     # Derrière un reverse proxy classique, l'IP réelle du client est dans X-Forwarded-For :
     # indispensable pour que le rate limiting ne compte pas tout le monde comme une seule IP.

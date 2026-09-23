@@ -10,7 +10,7 @@ Merci de votre intérêt ! Ce guide décrit comment travailler sur le projet : i
 git clone https://github.com/maximefd/terminator-app.git
 cd terminator-app
 make setup        # crée .env depuis .env.example et installe le frontend
-make dev-api      # API (http://localhost:5001) + PostgreSQL
+make dev-api      # API (http://localhost:5001) + PostgreSQL + Mailpit (e-mails du compte : http://localhost:8025)
 make dev-front    # dans un autre terminal : frontend (http://localhost:3000)
 ```
 

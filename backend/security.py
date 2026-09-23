@@ -47,6 +47,11 @@ RATE_LIMITED_ENDPOINTS = {
     "auth.login": "RATELIMIT_LOGIN",
     # Vérifie un mot de passe, comme la connexion : même plafond contre la force brute
     "main.delete_self": "RATELIMIT_LOGIN",
+    # Chaque appel envoie un e-mail : un plafond bas, sinon l'API sert à arroser une boîte
+    "auth.forgot_password": "RATELIMIT_EMAIL_SEND",
+    "auth.resend_verification": "RATELIMIT_EMAIL_SEND",
+    "auth.reset_password": "RATELIMIT_LOGIN",
+    "auth.verify_email": "RATELIMIT_LOGIN",
     "auth.register": "RATELIMIT_REGISTER",
     "auth.refresh": "RATELIMIT_REFRESH",
     "main.search_words": "RATELIMIT_SEARCH",

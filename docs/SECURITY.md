@@ -47,6 +47,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | Autorisation | Chaque dictionnaire/mot est filtré par propriétaire ; accès à la ressource d'un autre ⇒ 404 (existence non révélée) | `get_owned_dictionary` ; `tests/test_authorization.py` |
 | Mots de passe | bcrypt ; 8 à 128 caractères à l'inscription | `backend/auth.py` |
 | Énumération | Même message et même coût (hash factice) pour e-mail inconnu ou mauvais mot de passe | `backend/auth.py` |
+| Liens par e-mail | Signés (itsdangerous, `SECRET_KEY`), un sel par usage ; mot de passe : une heure, une seule fois (empreinte du hash actuel) ; confirmation : 7 jours ; « mot de passe oublié » répond pareil que le compte existe ou non ; 5 envois par heure et par IP | `backend/account_links.py`, `backend/auth.py` |
 | Jetons | Access token 15 min, refresh token 7 jours, endpoint `/api/auth/refresh` ; jeton d'un compte supprimé ⇒ 401 ; refresh token refusé sur l'API et inversement | `backend/security.py` |
 | Force brute / DoS | Rate limiting par IP : login 10/min, inscription 5/h, refresh 30/min, recherche 120/min, génération 10/min. Derrière Cloudflare, l'IP vient de `CF-Connecting-IP`, lu seulement si `CLIENT_IP_HEADER` le désigne (sinon l'en-tête s'inventerait) | `backend/security.py` (`client_ip`) |
 | Saturation CPU | Au plus 2 générations simultanées (une par cœur), une seule par visiteur (compte, sinon IP) : 429 au-delà. Verrous de fichiers partagés entre les workers gunicorn ([ADR 0013](adr/0013-cible-hebergement-production.md)) | `backend/generation_slots.py` |
@@ -69,7 +70,8 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | CSP frontend avec `'unsafe-inline'` pour les scripts | Protection XSS partielle | Phase 6 : nonces CSP |
 | Rate limiting en mémoire | Compteurs non partagés entre processus : avec 3 workers gunicorn, une limite de 10/min vaut jusqu'à 30/min (les places de génération, elles, sont communes) | Redis (`RATELIMIT_STORAGE_URI`) si l'écart devient un problème, et avant tout passage multi-instance |
 | L'inscription révèle si un e-mail existe (409) | Énumération de comptes | Acceptable tant que l'app est personnelle ; vérification par e-mail plus tard |
-| Pas de vérification d'e-mail ni de réinitialisation de mot de passe | Comptes jetables, perte d'accès | Avant ouverture à d'autres utilisateurs |
+| Confirmation d'adresse non bloquante | Un compte peut être créé au nom d'une adresse qui n'est pas la sienne ; il reste marqué « non confirmé » | Choix de l'[ADR 0014](adr/0014-emails-du-compte.md) : à rendre bloquante si des comptes jetables apparaissent |
+| Pas de révocation des sessions au changement de mot de passe | Un jeton volé reste valable jusqu'à son expiration | Avec les cookies httpOnly (#28) |
 | Dépendances Python non figées | Mise à jour non maîtrisée, vulnérabilités | Phase 0c : versions figées + `pip-audit`, Dependabot, CodeQL en CI |
 | Génération synchrone dans la requête | Un worker occupé jusqu'à 20 s ; au-delà des places de génération, les visiteurs reçoivent 429 plutôt que d'attendre | Atténué par les places de génération ; Phase 7 : file de jobs ou moteur côté client |
 | Écritures utilisateur nouvelles (définitions, notes, lettres d'une grille) | Contenu arbitraire en base | Validées par schéma et bornées (120 caractères par définition, 5 000 pour les notes, une lettre A-Z par case) ; chaque accès passe par `get_owned_grid()`, une grille d'autrui répond 404 |
@@ -86,6 +88,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
 - [ ] L'API n'est joignable que par le tunnel : aucun port web ouvert sur le serveur (sinon `CF-Connecting-IP` s'invente)
 - [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
+- [ ] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
 - [ ] HTTPS uniquement (fourni par Cloudflare)
@@ -101,6 +104,7 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 | V2 — Longueur minimale de mot de passe | ✅ (8) |
 | V2 — Protection contre la force brute | ✅ rate limiting |
 | V2 — Messages d'échec de connexion génériques | ✅ |
+| V2 — Récupération de compte sûre (lien à usage unique, limité dans le temps, sans révéler l'existence du compte) | ✅ ([ADR 0014](adr/0014-emails-du-compte.md)) |
 | V3 — Jetons à durée de vie courte + renouvellement | ✅ |
 | V3 — Révocation des sessions | ❌ (Phase 6) |
 | V3 — Jetons hors de portée de JavaScript | ❌ (Phase 6) |

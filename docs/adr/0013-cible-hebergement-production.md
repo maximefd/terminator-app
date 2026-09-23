@@ -80,7 +80,7 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
   - les journaux de gunicorn, que les migrations jouées au démarrage éteignaient.
 - **Reste à faire avant l'ouverture** :
   - l'export statique du frontend (`/grids/[id]` à passer en paramètre de requête, en-têtes de sécurité déplacés vers Cloudflare) ;
-  - la Phase 6 de la [roadmap](../ROADMAP.md) : cookies httpOnly, mot de passe oublié, Sentry ; la revue des licences est faite ([LICENCES.md](../LICENCES.md)), il en reste deux décisions ;
+  - la Phase 6 de la [roadmap](../ROADMAP.md) : cookies httpOnly, Sentry (le mot de passe oublié et la confirmation d'adresse sont faits : [ADR 0014](0014-emails-du-compte.md)) ; la revue des licences est faite ([LICENCES.md](../LICENCES.md)), il en reste deux décisions ;
   - une commande de déploiement, et la sauvegarde nocturne qui appelle `tools/db/backup.sh` puis copie hors du serveur (la sauvegarde et sa vérification existent déjà : `make db-backup`, `make db-restore-check`) ;
   - la checklist de [SECURITY.md](../SECURITY.md).
 - **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.

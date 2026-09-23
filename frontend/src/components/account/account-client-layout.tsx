@@ -20,7 +20,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { apiFetch } from "@/lib/api-client";
 
-type Account = { email: string; dictionaries: number; words: number; grids: number };
+type Account = { email: string; email_verified: boolean; dictionaries: number; words: number; grids: number };
 
 function count(value: number, singular: string, plural: string) {
   return `${value} ${value > 1 ? plural : singular}`;
@@ -46,6 +46,12 @@ export function AccountClientLayout() {
     queryKey: ["account"],
     queryFn: () => apiFetch("/api/users/me"),
     enabled: isAuthenticated,
+  });
+
+  const resend = useMutation({
+    mutationFn: () => apiFetch("/api/auth/email/resend", { method: "POST" }),
+    onSuccess: (data: { message: string }) => toast.success(data.message),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const deletion = useMutation({
@@ -94,6 +100,18 @@ export function AccountClientLayout() {
             Connecté avec <span className="font-medium text-foreground">{account.data.email}</span>.
             Votre compte contient {contents(account.data)}.
           </p>
+        ) : null}
+        {account.data && !account.data.email_verified ? (
+          <div className="mt-4 flex flex-col gap-2 rounded-md border bg-secondary/20 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Adresse <strong>pas encore confirmée</strong> : ouvrez le lien reçu par e-mail à l&apos;inscription.
+            </p>
+            <Button size="sm" variant="outline" onClick={() => resend.mutate()} disabled={resend.isPending}>
+              {resend.isPending ? "Envoi…" : "Renvoyer le lien"}
+            </Button>
+          </div>
+        ) : account.data ? (
+          <p className="mt-2 text-sm text-muted-foreground">Adresse confirmée.</p>
         ) : account.isError ? (
           <p className="mt-2 text-sm text-destructive">{account.error.message}</p>
         ) : (
