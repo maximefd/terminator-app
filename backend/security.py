@@ -11,6 +11,7 @@ Voir docs/SECURITY.md pour le modèle de menace et les limites connues.
 
 import ipaddress
 import logging
+from datetime import timezone
 
 from flask import Flask, current_app, json, jsonify, request
 from flask_jwt_extended import JWTManager
@@ -18,7 +19,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.exceptions import HTTPException
 
-from models import User, db
+from models import RevokedToken, User, db
 from schemas import RequestValidationError
 
 HTTP_ERROR_MESSAGES = {
@@ -115,6 +116,23 @@ def register_jwt_callbacks(jwt: JWTManager) -> None:
     @jwt.expired_token_loader
     def expired_token(_jwt_header, _jwt_data):
         return jsonify({"error": "Session expirée. Veuillez vous reconnecter.", "code": "token_expired"}), 401
+
+    @jwt.token_in_blocklist_loader
+    def is_revoked(_jwt_header, jwt_data) -> bool:
+        """Jeton révoqué à la déconnexion, ou émis avant un changement de mot de passe (ADR 0015)."""
+        if db.session.get(RevokedToken, jwt_data["jti"]) is not None:
+            return True
+        try:
+            user = db.session.get(User, int(jwt_data["sub"]))
+        except (KeyError, TypeError, ValueError):
+            return False  # le chargement de l'utilisateur le refusera
+        revoked_at = user.sessions_revoked_at if user else None
+        # Seconde entière : un jeton émis dans la seconde même du changement reste valable
+        return revoked_at is not None and jwt_data["iat"] < int(revoked_at.replace(tzinfo=timezone.utc).timestamp())
+
+    @jwt.revoked_token_loader
+    def revoked_token(_jwt_header, _jwt_data):
+        return jsonify({"error": "Session fermée. Veuillez vous reconnecter."}), 401
 
 
 def client_ip() -> str:

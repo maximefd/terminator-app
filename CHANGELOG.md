@@ -274,6 +274,13 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **La session passe en cookies `httpOnly`** ([ADR 0015](docs/adr/0015-session-en-cookies.md), #28, remplace
+  l'ADR 0003) : les jetons ne sont plus dans le `localStorage`, donc plus à portée d'une faille XSS, et
+  l'API ne les met plus jamais dans ses réponses. Protection CSRF par double soumission (`X-CSRF-TOKEN`).
+  La déconnexion **révoque** les jetons (`POST /api/auth/logout`, table `revoked_token`), et un changement de
+  mot de passe ferme toutes les sessions ouvertes (migration `0006`). En développement, `next dev` relaie
+  `/api` vers l'API : même origine, et `make preview-remote` n'ouvre plus qu'un tunnel. Il faut se
+  reconnecter une fois.
 - Supprimer son compte demande désormais le **mot de passe** (`DELETE /api/users/me`, 403 s'il est faux,
   même limite de débit que la connexion) : le jeton vit dans le navigateur, et volé, il suffisait à tout effacer.
 - Plus de repli vers l'ancienne API Render : sans `NEXT_PUBLIC_API_BASE_URL`, un build de production visait

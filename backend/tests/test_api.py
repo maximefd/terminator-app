@@ -1,5 +1,8 @@
 import json
 
+from tests.helpers import forget_cookies, tokens_for
+
+
 def get_auth_headers(client, email='test@example.com', password='password123'):
     """Fonction utilitaire pour s'inscrire, se connecter et retourner les en-têtes d'authentification."""
     client.post(
@@ -12,9 +15,10 @@ def get_auth_headers(client, email='test@example.com', password='password123'):
         data=json.dumps({'email': email, 'password': password}),
         content_type='application/json'
     )
-    token = response.get_json()['access_token']
+    assert response.status_code == 200
+    forget_cookies(client)
     return {
-        'Authorization': f'Bearer {token}'
+        'Authorization': f'Bearer {tokens_for(client, email)["access_token"]}'
     }
 
 def test_get_dictionaries_new_user(client):

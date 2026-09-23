@@ -6,7 +6,7 @@ import pytest
 
 import account_links
 from mailer import send_email
-from tests.helpers import TEST_PASSWORD, register, send, unique_email
+from tests.helpers import TEST_PASSWORD, register, send, tokens_for, unique_email
 
 FRONTEND = "https://terminator.example"
 
@@ -116,8 +116,9 @@ def test_the_reset_link_changes_the_password_once(client, outbox):
     assert second.status_code == 400  # le mot de passe a changé : le lien ne vaut plus
     assert login_status(client, email, "NouveauSecret42") == 200
     assert login_status(client, email, TEST_PASSWORD) == 401
-    # Le lien est arrivé par e-mail : l'adresse est prouvée
-    assert account(client, tokens)["email_verified"] is True
+    # Le lien est arrivé par e-mail : l'adresse est prouvée. Relue avec un jeton neuf : le changement de
+    # mot de passe a fermé les sessions ouvertes avant lui (ADR 0015)
+    assert account(client, tokens_for(client, email))["email_verified"] is True
 
 
 def test_an_expired_reset_link_is_refused(client, outbox, monkeypatch):

@@ -65,7 +65,7 @@ grilles est l'objet de [#24](https://github.com/maximefd/terminator-app/issues/2
 
 - ~~**Mentions légales et confidentialité décrivent un produit qui n'existe pas**~~ — corrigé dans
   [#78](https://github.com/maximefd/terminator-app/issues/78) : les deux pages disent désormais ce qui est vrai
-  (un outil personnel, un e-mail, un mot de passe haché, des dictionnaires et des grilles, pas de cookie), ce
+  (un outil personnel, un e-mail, un mot de passe haché, des dictionnaires et des grilles), ce
   qui changera le jour d'une mise en ligne, et les crédits des ressources empruntées.
 - ~~**Suppression du compte**~~ — corrigé dans [#79](https://github.com/maximefd/terminator-app/issues/79) :
   page « Mon compte » (l'adresse, ce que le compte contient, la suppression). Le mot de passe est redemandé, et

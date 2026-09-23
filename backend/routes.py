@@ -4,7 +4,7 @@ import unicodedata
 from datetime import datetime
 
 from flask import Blueprint, abort, jsonify, current_app, request
-from flask_jwt_extended import jwt_required, get_current_user
+from flask_jwt_extended import jwt_required, get_current_user, unset_jwt_cookies
 
 # On importe depuis nos modules centraux
 from models import db, Dictionary, PersonalWord, SavedGrid
@@ -567,4 +567,6 @@ def delete_self():
     # dictionnaires et mots (une suppression SQL en masse laissait les mots orphelins).
     db.session.delete(user)
     db.session.commit()
-    return jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."}), 200
+    response = jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."})
+    unset_jwt_cookies(response)  # les jetons d'un compte supprimé sont refusés : autant effacer les cookies
+    return response, 200
