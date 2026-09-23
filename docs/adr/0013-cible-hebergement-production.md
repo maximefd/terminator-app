@@ -81,7 +81,7 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
 - **Reste à faire avant l'ouverture** :
   - l'export statique du frontend (`/grids/[id]` à passer en paramètre de requête, en-têtes de sécurité déplacés vers Cloudflare) ;
   - la Phase 6 de la [roadmap](../ROADMAP.md) : cookies httpOnly, mot de passe oublié, Sentry, revue des licences ;
-  - une commande de déploiement ;
+  - une commande de déploiement, et la sauvegarde nocturne qui appelle `tools/db/backup.sh` puis copie hors du serveur (la sauvegarde et sa vérification existent déjà : `make db-backup`, `make db-restore-check`) ;
   - la checklist de [SECURITY.md](../SECURITY.md).
 - **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.
 - **Rate limiting** : ses compteurs restent en mémoire, par worker. Une limite de 10 par minute vaut donc jusqu'à 30 avec 3 workers. Les générations simultanées, elles, sont comptées entre tous les workers.

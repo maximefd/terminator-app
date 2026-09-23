@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check \
+.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check db-backup db-restore-check \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls \
 	preview-remote
@@ -137,3 +137,10 @@ bench-load: ## Profil de charge : RAM, CPU par génération, concurrence (2 CPU,
 	docker run --rm --cpus=2 --memory=2g -v "$(CURDIR)/backend":/app -v "$(CURDIR)/data/lexicon/build":/lexicon:ro \
 		$(LOAD_LEXICON) -w /app -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c \
 		"pip install -q -r requirements.txt && python benchmarks/load_profile.py --output benchmarks/load.json"
+
+db-backup: ## Sauvegarde PostgreSQL dans backups/ (chiffrée si BACKUP_AGE_RECIPIENT, rotation à 30 jours)
+	tools/db/backup.sh
+
+db-restore-check: ## Restaure FILE=backups/... dans une base jetable et compte les lignes (la base en service n'est pas touchée)
+	@test -n "$(FILE)" || (echo "Usage : make db-restore-check FILE=backups/terminator-....dump" && exit 1)
+	tools/db/restore-check.sh "$(FILE)"

@@ -9,6 +9,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   chargement, CPU et durées par génération, générations simultanées en threads et en processus — dans un
   conteneur de 2 CPU et 2 Go. Ce sont les mesures de l'[ADR 0013](docs/adr/0013-cible-hebergement-production.md),
   à refaire sur le VPS la première semaine.
+- **Sauvegardes de la base** : `make db-backup` (dump PostgreSQL compressé dans `backups/`, chiffré par
+  `age` si `BACKUP_AGE_RECIPIENT` est défini, rotation à 30 jours) et `make db-restore-check FILE=…`,
+  qui restaure la sauvegarde dans une base jetable, compte les lignes des tables puis la supprime — la
+  base en service n'est jamais touchée. Le serveur n'aura que la clé publique : il chiffrera ses
+  sauvegardes sans pouvoir les relire ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)).
 - [ADR 0013](docs/adr/0013-cible-hebergement-production.md) — **cible d'hébergement de production** : un VPS
   OVH derrière Cloudflare (tunnel, frontend statique sur Pages), environ 65 € par an, choisi sur mesures
   (RAM, CPU par génération, concurrence, PyPy). L'hébergement mutualisé est écarté : il aurait partagé ses
