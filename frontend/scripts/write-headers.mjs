@@ -21,7 +21,11 @@ if (!existsSync(OUT)) {
 }
 
 // 1. En-têtes
-const headers = securityHeaders({ isDev: false, apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL });
+const headers = securityHeaders({
+  isDev: false,
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+  sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+});
 const lines = ['/*', ...headers.map(({ key, value }) => `  ${key}: ${value}`)];
 writeFileSync(join(OUT, '_headers'), `${lines.join('\n')}\n`);
 console.log(`out/_headers : ${headers.length} en-têtes de sécurité`);

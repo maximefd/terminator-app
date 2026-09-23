@@ -105,7 +105,8 @@ export default function PrivacyPage() {
           <p>
             Terminator sera un jour hébergé sur un serveur en France, derrière Cloudflare. Plusieurs choses changeront
             alors : un hébergeur et Cloudflare traiteront les connexions, un prestataire enverra les e-mails de
-            réinitialisation du mot de passe, des sauvegardes chiffrées seront gardées 30 jours, et le serveur tiendra
+            réinitialisation du mot de passe, un service de suivi des erreurs (Sentry) recevra les rapports de panne,
+            sans rien qui vous identifie, des sauvegardes chiffrées seront gardées 30 jours, et le serveur tiendra
             un journal des requêtes. Cette page sera réécrite avant, et dira qui fait quoi.
           </p>
         </Section>

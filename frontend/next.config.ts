@@ -35,7 +35,8 @@ export default function config(phase: string): NextConfig {
   return {
     ...nextConfig,
     async headers() {
-      return [{ source: '/:path*', headers: securityHeaders({ isDev, apiBaseUrl }) }];
+      const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+      return [{ source: '/:path*', headers: securityHeaders({ isDev, apiBaseUrl, sentryDsn }) }];
     },
     async rewrites() {
       return apiBaseUrl ? [] : [{ source: '/api/:path*', destination: `${apiProxyTarget}/api/:path*` }];

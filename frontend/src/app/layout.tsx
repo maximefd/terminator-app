@@ -8,6 +8,7 @@ import { Footer } from "@/components/layout/footer"; // <--- IMPORTER
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { MonitoringInit } from "@/components/monitoring/monitoring-init";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           inter.variable
         )}
       >
+        <MonitoringInit />
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <div className="relative flex min-h-screen flex-col">

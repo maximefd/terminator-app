@@ -13,6 +13,7 @@ from extensions import jwt, migrate
 from security import init_rate_limiting, register_error_handlers, register_jwt_callbacks, register_security_headers
 from lexicon_loader import LexiconManager
 from mailer import MAIL_BACKENDS
+from monitoring import init_sentry
 
 DEV_SECRET = 'default-secret-for-dev'
 DEFAULT_MAIL_FROM = 'Terminator <terminator@localhost>'
@@ -69,6 +70,9 @@ DEFAULT_SETTINGS = dict(
     # Double soumission : un cookie lisible par le frontend, à recopier dans l'en-tête X-CSRF-TOKEN
     JWT_COOKIE_CSRF_PROTECT=True,
     JWT_CSRF_IN_COOKIES=True,
+    # Suivi des erreurs (monitoring.py) : vide, Sentry reste inactif
+    SENTRY_DSN='',
+    RELEASE='',  # Version déployée (ex. le commit), pour situer une erreur dans l'historique
     # Signe aussi les liens envoyés par e-mail (account_links.py). En production, _load_config_from_env
     # impose une vraie clé.
     SECRET_KEY=DEV_SECRET,
@@ -140,6 +144,8 @@ def _load_config_from_env() -> dict:
         CORS_ORIGINS=cors_origins,
         TRUST_PROXY_HOPS=int(os.environ.get('TRUST_PROXY_HOPS', 0)),
         CLIENT_IP_HEADER=os.environ.get('CLIENT_IP_HEADER', '').strip(),
+        SENTRY_DSN=os.environ.get('SENTRY_DSN', '').strip(),
+        RELEASE=os.environ.get('RELEASE', '').strip(),
         MAIL_BACKEND=mail_backend,
         MAIL_FROM=os.environ.get('MAIL_FROM') or DEFAULT_MAIL_FROM,
         SMTP_HOST=os.environ.get('SMTP_HOST', 'localhost'),
@@ -211,6 +217,9 @@ def create_app(test_config=None):
         app.config.from_mapping(_load_config_from_env())
     else:
         app.config.from_mapping(test_config)
+
+    if init_sentry(app):
+        logging.info("Suivi des erreurs actif (Sentry, environnement %s).", app.config.get('APP_ENV'))
 
     # Un lien de mot de passe écrit dans un journal permet à qui le lit de prendre le compte
     if app.config.get('APP_ENV') == 'production' and app.config['MAIL_BACKEND'] == 'console':

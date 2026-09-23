@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
+  `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
+  en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus
+  par e-mail est retiré des adresses. Le gestionnaire d'erreurs de l'API interceptant tout, il transmet
+  lui-même l'exception à Sentry. Vérifié par un vrai rapport dans les tests (backend) et dans un navigateur.
 - **Mot de passe oublié et confirmation de l'adresse** ([ADR 0014](docs/adr/0014-emails-du-compte.md)) : un
   lien par e-mail pour choisir un nouveau mot de passe (une heure, une seule fois, sans révéler si le compte
   existe), et un lien de confirmation envoyé à l'inscription, redemandable depuis « Mon compte ». Liens signés,
