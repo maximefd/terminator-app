@@ -5,6 +5,20 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Roadmap jusqu'au lancement public et au-delà** ([roadmap](docs/ROADMAP.md), PRD mis à jour) :
+  - La **Phase 6 devient « Durcissement et lancement public »**, de 6b à 6g :
+    - nom et domaine ;
+    - site configurable et référencement technique ;
+    - pages légales et contact ;
+    - mesure côté serveur ;
+    - serveur et déploiement ;
+    - bêta privée, puis ouverture.
+  - **Quatre nouvelles phases** : 8 (poste de pilotage), 9 (acquisition), 10 (international) et 11 (grilles à thème par IA, offre payante).
+  - Un **critère mesurable de fin de la curation française**, préalable à l'international.
+  - **Trois ADR** :
+    - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
+    - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;
+    - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : nom du site français (proposée).
 - **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
   `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
   en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus

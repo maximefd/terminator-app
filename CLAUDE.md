@@ -13,7 +13,15 @@ Terminator : outil personnel de création de mots fléchés (recherche par motif
 
 ## Règles
 
-- **Pas de déploiement en ligne** pour l'instant ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) ; la cible est choisie ([ADR 0013](docs/adr/0013-cible-hebergement-production.md) : VPS derrière Cloudflare). Render et Vercel sont supprimés : ne plus les proposer.
+- **Pas de déploiement en ligne** pour l'instant ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) ; la cible est choisie ([ADR 0013](docs/adr/0013-cible-hebergement-production.md) : VPS derrière Cloudflare) et le lancement du site français se prépare (Phase 6 de la roadmap). Render et Vercel sont supprimés : ne plus les proposer.
+- **Nom et langues** ([ADR 0017](docs/adr/0017-un-site-par-langue.md)) :
+  - Terminator est le nom du moteur ; le nom public du site vient de sa configuration, jamais en dur ;
+  - toute nouvelle donnée liée au lexique ou à l'usage porte sa langue (`lang`) ;
+  - toute nouvelle erreur de l'API porte un code `reason` stable.
+- **Mesure** ([ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)) :
+  - côté serveur, sans cookie ni script tiers ;
+  - jamais d'adresse IP en base ;
+  - tout nouveau champ mesuré est déclaré dans la page confidentialité.
 - **Moteur** (`backend/engine/`) : pur (pas de Flask ni de BDD), aléatoire seedé par génération, budget temps. Toute modification ⇒ benchmark sur 20 seeds.
 - **API** : `parse_body(Schema)` pour tout corps JSON, `get_owned_dictionary()` pour tout accès à un dictionnaire, erreurs `{"error": "..."}` en français, test d'autorisation pour toute nouvelle ressource.
 - **Frontend** : appels via `apiFetch`, textes en français, raccourcis compatibles AZERTY (flèches, Espace, Entrée, Retour arrière).
