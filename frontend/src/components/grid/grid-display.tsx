@@ -41,7 +41,11 @@ const SOURCES: Record<string, { label: string; cell: string; badge: string }> = 
   common: { label: "Lexique", cell: "", badge: "bg-muted text-muted-foreground" },
 };
 
-export function GridDisplay({ gridData }: { gridData: GridData }) {
+/**
+ * `unplaced` : les mots souhaités restés sans place. Ils se lisent **après** ce que la grille contient,
+ * discrètement, avec les mots de la grille : l'écran montre d'abord ce qui a réussi.
+ */
+export function GridDisplay({ gridData, unplaced = [] }: { gridData: GridData; unplaced?: string[] }) {
   const [variant, setVariant] = useState<GridVariant>("solution");
 
   // Une case peut appartenir à deux mots : la provenance la plus « voulue » l'emporte à l'affichage
@@ -98,7 +102,7 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
         Repliée : sans mot imposé, ce n'est qu'une longue liste, et la relecture se fait ensuite, mot
         par mot, dans l'éditeur.
       */}
-      <details className="rounded-md border p-3" open={mine.length > 0}>
+      <details className="rounded-md border p-3" open={mine.length > 0 || unplaced.length > 0}>
         <summary className="cursor-pointer text-sm font-medium">Les mots de la grille</summary>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
           {["must", "wish", "common"].map((source) => {
@@ -118,6 +122,13 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
             );
           })}
         </div>
+        {unplaced.length > 0 && (
+          <p className="mt-4 border-t pt-3 text-xs text-muted-foreground">
+            Sans place dans cette grille :{" "}
+            <span className="font-mono">{unplaced.join(", ")}</span>. Une autre génération ou un format
+            plus grand leur en laissera peut-être une.
+          </p>
+        )}
       </details>
     </div>
   );

@@ -421,14 +421,7 @@ export function GridClientLayout() {
           {gridData ? (
             <div className="space-y-6">
               <SaveGrid grid={gridData} saved={saved} onSaved={setSaved} />
-              {unplaced.length > 0 && (
-                <p className="text-center text-sm text-muted-foreground">
-                  Pas de place pour{" "}
-                  <span className="font-mono font-semibold">{unplaced.join(", ")}</span> dans cette
-                  grille : relancez, ou essayez un format plus grand.
-                </p>
-              )}
-              <GridDisplay gridData={gridData} />
+              <GridDisplay gridData={gridData} unplaced={unplaced} />
             </div>
           ) : (
             !failure && (
