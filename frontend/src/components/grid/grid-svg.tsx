@@ -131,6 +131,8 @@ type GridSvgProps = {
   cellSources?: Record<string, string>;
   /** Définitions en gras, comme dans la plupart des magazines. */
   boldDefinitions?: boolean;
+  /** Définitions en italique : une inclinaison du dessin, qui passe telle quelle dans le PDF. */
+  italicDefinitions?: boolean;
   /** Mode lettres : la case en cours de correction, et le mot qu'elle traverse. */
   selectedCell?: { x: number; y: number } | null;
   onSelectCell?: (cell: { x: number; y: number }) => void;
@@ -149,6 +151,7 @@ export function GridSvg({
   onSelect,
   cellSources,
   boldDefinitions = true,
+  italicDefinitions = false,
   selectedCell,
   onSelectCell,
   litCells,
@@ -290,6 +293,7 @@ export function GridSvg({
                           height={boxHeight}
                           arrow={clue.arrow}
                           bold={boldDefinitions}
+                          italic={italicDefinitions}
                         />
                       )}
                       {onSelect && (
@@ -472,6 +476,7 @@ function ClueText({
   height,
   arrow,
   bold,
+  italic,
 }: {
   text: string;
   x: number;
@@ -479,6 +484,7 @@ function ClueText({
   height: number;
   arrow: string | null;
   bold: boolean;
+  italic: boolean;
 }) {
   const half = height <= CELL / 2;
   const { lines: shown, fontSize, lineHeight, reserved, usable } = wrapDefinition(text, arrow, half, bold);
@@ -494,6 +500,12 @@ function ClueText({
       fontSize={fontSize}
       fontWeight={bold ? 700 : 400}
       fontFamily={GRID_FONT}
+      /*
+        Une inclinaison plutôt qu'une police italique : le PDF embarque la police du dessin, et une
+        troisième graisse à charger pour un réglage de style ne vaut pas son poids. Inclinée autour du
+        centre du texte, la définition reste dans sa case.
+      */
+      transform={italic ? `translate(${centerX} ${centerY}) skewX(-9) translate(${-centerX} ${-centerY})` : undefined}
     >
       {shown.map((line, index) => (
         <tspan key={line + index} x={centerX} y={startY + index * lineHeight}>

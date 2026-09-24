@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, BookPlus, Check, Eraser, PenLine } from "lucide-react";
@@ -71,11 +71,14 @@ export function LetterPanel({
 
   if (!word) {
     return (
-      <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-        Cliquez une case de la grille pour corriger ses lettres. Un second clic sur la même case
-        change de sens. Effacez avec <kbd className="rounded border px-1">Retour arrière</kbd> : les
-        trous sont faits pour être recomblés.
-      </p>
+      <div className="space-y-2 rounded-lg border border-dashed p-4 text-sm">
+        <p className="font-medium">Relisez les mots avant de les définir</p>
+        <p className="text-muted-foreground">
+          Un mot ne vous plaît pas ? Choisissez-le dans la liste ou cliquez une de ses cases : des
+          remplaçants vous sont proposés, qui gardent les croisements valides. Vous pouvez aussi taper
+          vos propres lettres directement dans la grille.
+        </p>
+      </div>
     );
   }
 
@@ -254,6 +257,83 @@ function UnknownWords({ words }: { words: string[] }) {
             </Button>
           </li>
         ))}
+      </ul>
+    </div>
+  );
+}
+
+const sameWord = (a: PlacedWord | null, b: PlacedWord) =>
+  Boolean(a) && a!.x === b.x && a!.y === b.y && a!.direction === b.direction;
+
+/**
+ * La relecture, mot par mot : la grille entière en liste, avec ce que le lexique dit de chacun.
+ *
+ * C'est la première étape d'une grille conservée — on ne définit pas un mot qu'on va remplacer.
+ * Les mots à regarder de près (hors lexique, inachevés) remontent en tête.
+ */
+export function WordReview({
+  words,
+  current,
+  onPick,
+}: {
+  words: PlacedWord[];
+  current: PlacedWord | null;
+  onPick: (word: PlacedWord) => void;
+}) {
+  const ordered = useMemo(() => {
+    const rank = (word: PlacedWord) =>
+      word.complete === false || word.text.includes("?") ? 0 : word.in_lexicon === false ? 1 : 2;
+    return [...words].sort(
+      (a, b) =>
+        rank(a) - rank(b) ||
+        (a.direction === b.direction ? 0 : a.direction === "across" ? -1 : 1) ||
+        a.y - b.y ||
+        a.x - b.x,
+    );
+  }, [words]);
+
+  const toCheck = ordered.filter(
+    (word) => word.complete === false || word.text.includes("?") || word.in_lexicon === false,
+  ).length;
+
+  return (
+    <div className="rounded-lg border p-2">
+      <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Les {words.length} mots de la grille
+      </p>
+      <p className="px-2 pb-2 text-xs text-muted-foreground">
+        {toCheck > 0
+          ? `${toCheck} à regarder de près, en tête de liste.`
+          : "Tous sont dans le lexique."}
+      </p>
+      <ul className="space-y-0.5">
+        {ordered.map((word) => {
+          const unfinished = word.complete === false || word.text.includes("?");
+          return (
+            <li key={`${word.x}-${word.y}-${word.direction}`}>
+              <button
+                type="button"
+                onClick={() => onPick(word)}
+                aria-current={sameWord(current, word) ? "true" : undefined}
+                className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-sm hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  sameWord(current, word) ? "bg-secondary" : ""
+                }`}
+              >
+                <span className="flex-1 font-mono font-semibold">{word.text}</span>
+                <span className="text-xs text-muted-foreground">
+                  {word.direction === "across" ? "→" : "↓"}
+                </span>
+                {unfinished ? (
+                  <PenLine className="h-3.5 w-3.5 text-muted-foreground" aria-label="inachevé" />
+                ) : word.in_lexicon === false ? (
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-500" aria-label="hors lexique" />
+                ) : (
+                  <Check className="h-3.5 w-3.5 text-emerald-600/70" aria-label="dans le lexique" />
+                )}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

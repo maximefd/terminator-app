@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Toggle } from "@/components/ui/toggle";
+import { Lock } from "lucide-react";
 
 export type WordEntry = {
   id: string;
@@ -30,10 +32,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
       setDraft("");
       return;
     }
-    // Les premiers mots de la liste sont ceux qui comptent : ils arrivent obligatoires par défaut,
-    // les suivants en souhaités. L'auteur bascule ensuite comme il veut.
-    const required = entries.filter((entry) => entry.required).length < 3;
-    onChange([...entries, { id: `${text}-${Date.now()}`, text, required }]);
+    // Un mot arrive souhaité : il ne fait jamais échouer la grille. Le rendre obligatoire est un
+    // choix explicite, parce qu'il a un prix — la génération peut alors échouer.
+    onChange([...entries, { id: `${text}-${Date.now()}`, text, required: false }]);
     setDraft("");
   };
 
@@ -56,7 +57,7 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
         <Input
           value={draft}
           disabled={disabled || entries.length >= MAX_WORDS}
-          placeholder="Ajouter un mot (ex : PORTE)"
+          placeholder="Un mot à placer (ex : PORTE)"
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             // Entrée et Tab ajoutent le mot et laissent le curseur en place : on tape sa liste
@@ -74,10 +75,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Aucun mot imposé : la grille sera remplie librement. Ajoutez les mots que vous voulez y voir
-          — <kbd className="rounded border px-1 text-xs">Entrée</kbd> ou{" "}
-          <kbd className="rounded border px-1 text-xs">Tab</kbd> pour enchaîner.
+        <p className="text-xs text-muted-foreground">
+          Le moteur essaiera de les placer. <kbd className="rounded border px-1">Entrée</kbd> pour
+          enchaîner les mots.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -92,34 +92,37 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
                 setDragged(null);
               }}
               onDragEnd={() => setDragged(null)}
-              className={`flex items-center gap-2 rounded-md border p-2 ${dragged === index ? "opacity-50" : ""}`}
+              className={`flex items-center gap-1 rounded-md border p-1.5 ${dragged === index ? "opacity-50" : ""}`}
             >
               <span className="cursor-grab select-none px-1 text-muted-foreground" aria-hidden="true">
                 ⠿
               </span>
-              <span className="flex-1 font-mono font-semibold">{entry.text}</span>
+              <span className="min-w-0 flex-1 truncate font-mono font-semibold" title={entry.text}>{entry.text}</span>
 
-              <Button
-                type="button"
-                variant={entry.required ? "default" : "secondary"}
+              <Toggle
                 size="sm"
+                variant="outline"
                 disabled={disabled}
-                onClick={() => toggle(entry.id)}
-                aria-pressed={entry.required}
+                pressed={entry.required}
+                onPressedChange={() => toggle(entry.id)}
+                aria-label={`${entry.text} obligatoire`}
+                title="Obligatoire : la grille est refusée si le mot n'y entre pas"
+                className="h-7 px-2 text-xs data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
               >
-                {entry.required ? "Obligatoire" : "Souhaité"}
-              </Button>
+                <Lock className="mr-1 h-3 w-3" />
+                Obligatoire
+              </Toggle>
 
               {/* Le glisser-déposer ne suffit pas au clavier : deux boutons font le même travail */}
-              <Button type="button" variant="ghost" size="sm" disabled={disabled || index === 0}
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={disabled || index === 0}
                       onClick={() => move(index, index - 1)} aria-label={`Monter ${entry.text}`}>
                 ↑
               </Button>
-              <Button type="button" variant="ghost" size="sm" disabled={disabled || index === entries.length - 1}
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={disabled || index === entries.length - 1}
                       onClick={() => move(index, index + 1)} aria-label={`Descendre ${entry.text}`}>
                 ↓
               </Button>
-              <Button type="button" variant="ghost" size="sm" disabled={disabled}
+              <Button type="button" variant="ghost" size="icon" className="h-7 w-7" disabled={disabled}
                       onClick={() => remove(entry.id)} aria-label={`Retirer ${entry.text}`}>
                 ✕
               </Button>
@@ -128,10 +131,13 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
         </ul>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        <strong>Obligatoire</strong> : la grille est refusée si le mot n&apos;y entre pas.{" "}
-        <strong>Souhaité</strong> : il est placé s&apos;il rentre, sans jamais faire échouer la grille.
-      </p>
+      {entries.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Chaque mot est placé s&apos;il trouve sa place, sans jamais faire échouer la grille. Cochez{" "}
+          <strong>Obligatoire</strong> pour l&apos;exiger : la génération peut alors échouer, et
+          d&apos;autant plus que le mot est long.
+        </p>
+      )}
     </div>
   );
 }

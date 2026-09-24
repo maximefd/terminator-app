@@ -169,6 +169,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Aide intégrée** ✅ : motifs d'exemple cliquables (`P??LE`), obligatoire contre souhaité expliqué sous la liste de mots, états vides qui disent quoi faire (#21, #22).
 - **Écran de génération** ✅ (#23) : liste de mots ordonnée par glisser-déposer, bascule obligatoire / souhaité, sélection des dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués cause par cause, grille avec source des mots colorée et ratio atteint. **Reportés** : choix du layout avec aperçus et rejeu d'un seed — ils demandent `layout_id`, et l'auteur a écarté le choix du layout pour l'instant.
 - **Sauvegarde des grilles** ✅ (#24) : modèle `SavedGrid`, migrations Alembic ([ADR 0010](adr/0010-migrations-de-schema.md)) et page « Mes grilles ». La grille est conservée telle que produite, pas rejouée : le lexique bouge, la seed ne suffit pas à la retrouver.
+- **Parcours d'une grille, repris sur retours d'usage** ✅ (24/09/2026) : écran de génération simplifié — une taille en vignettes, un bouton, la grille à côté ; les mots imposés deviennent une option repliée, et arrivent **souhaités** (« Obligatoire » se coche). La dernière grille survit à la connexion ou à l'inscription (`?next=`), et une fois conservée, un bouton mène franchement à la suite. L'éditeur numérote ses étapes (relire les mots, définitions, mise en page et export), affiche l'avancement des définitions, prévient avant d'exporter une grille inachevée, archive sur place, et règle gras et italique dans l'aperçu.
 - **Recherche (derniers 10 %)** ([#83](https://github.com/maximefd/terminator-app/issues/83), seul point de la phase encore ouvert) : lettres incluses/exclues, filtre de longueur, définitions.
 - Tests Playwright et contrôle d'accessibilité axe en CI ✅ (#25) : travail `e2e-ci` (PostgreSQL + API + parcours + axe sur chaque écran). **Reste à faire** : la session d'utilisabilité avec un pair, qui ne s'automatise pas.
 
@@ -189,6 +190,10 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Déclencheur** : charge ou latence de génération problématique, ou avant ouverture à d'autres utilisateurs.
 - **Spike + ADR** comparant : (a) file de jobs serveur (RQ/Celery + Redis) ; (b) **moteur côté client** (portage TypeScript ou Rust→WASM dans un Web Worker, lexique compressé DAWG/FST) ; (c) hybride.
 - **Prérequis déjà prévus** : moteur pur et déterministe, contrat JSON, benchmark pour vérifier l'équivalence, lexique curé compact.
+
+## Idées retenues, sans date
+- **Importer un dictionnaire en CSV** (connecté, page Dictionnaires) : une colonne de mots, définitions facultatives. À cadrer : format accepté, validation ligne par ligne avec rapport d'erreurs, doublons, plafonds de taille (ceux de la Phase 0), et ce qu'on fait d'un mot déjà présent.
+- **Séparations en pointillé pour les expressions** : dans une grille, un mot en plusieurs mots (`POMME DE TERRE` écrit `POMMEDETERRE`) montre ses coupures par un trait pointillé entre deux cases, à l'écran comme dans le PDF. Suppose que le lexique garde la forme d'origine, espaces et tirets compris — aujourd'hui le moteur ne voit que les lettres.
 
 ---
 

@@ -44,9 +44,8 @@ test("génération d'une grille", async ({ page }) => {
   await page.getByRole("button", { name: "Générer la grille" }).click();
 
   // La génération peut prendre plusieurs secondes (budget serveur : 20 s)
-  // « % de vos mots » n'apparaît que sous la grille produite ; « mise en page » figure aussi
-  // dans la liste des formats, qui n'attend rien
-  await expect(page.getByText(/% de vos mots/)).toBeVisible({ timeout: 45_000 });
+  // L'invitation à conserver n'apparaît qu'avec la grille produite
+  await expect(page.getByText("Cette grille vous plaît ?")).toBeVisible({ timeout: 45_000 });
 
   await page.screenshot({ path: path.join(IMAGES_DIR, "generation.png"), fullPage: true });
 });

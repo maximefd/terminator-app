@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiFetch, forgetLegacyTokens, hasSession, SESSION_EXPIRED_EVENT } from "@/lib/api-client";
+import { forgetLastGrid } from "@/lib/last-grid";
 
 type AuthContextType = {
   isAuthenticated: boolean;
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiFetch("/api/auth/logout", { method: "POST", csrf: "refresh" }).catch(() => {});
     setIsAuthenticated(false);
     queryClient.clear();
+    forgetLastGrid();
   };
 
   return (

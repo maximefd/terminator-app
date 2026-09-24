@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Générer une grille, la conserver, la retrouver, la supprimer (#24).
+ * Générer une grille sans compte, s'inscrire, la conserver, la retrouver, la supprimer (#24).
+ *
+ * Le parcours commence en invité : c'est le cas où l'on perdait sa grille — générée, appréciée,
+ * puis envolée pendant l'inscription.
  *
  * Comme `dictionaries.spec.ts`, ce parcours crée un compte jetable ; `RATELIMIT_REGISTER` vaut
  * « 5 par heure », donc enchaîner les exécutions en local finit par buter sur le quota.
@@ -9,20 +12,34 @@ import { expect, test } from "@playwright/test";
 test("une grille générée se conserve et se retrouve", async ({ page }) => {
   test.setTimeout(120_000);
 
-  await page.goto("/register");
+  await page.goto("/grid");
+  // Les mots imposés sont une option : repliée, elle ne s'impose pas
+  await expect(page.getByLabel("Mot à placer dans la grille")).toHaveCount(0);
+  await page.getByRole("radio", { name: /6\s*×\s*7/ }).check();
+  await page.getByRole("button", { name: "Générer la grille" }).click();
+  // Budget serveur : 20 s, et la première génération charge le lexique
+  await expect(page.getByText("Cette grille vous plaît ?")).toBeVisible({ timeout: 60_000 });
+  const firstWord = (await page.locator("details ul li").first().textContent())?.trim();
+
+  // L'inscription ramène à la grille, qui a attendu
+  await page.getByRole("link", { name: "Créer un compte" }).click();
+  await expect(page).toHaveURL(/\/register\?next=%2Fgrid/);
   await page.getByLabel("Email").fill(`grilles_${Date.now()}@test.com`);
   await page.getByLabel("Mot de passe").fill("TestPassword123");
   await page.getByRole("button", { name: "Créer un compte" }).click();
+  await expect(page).toHaveURL(/\/grid$/);
   await expect(page.getByTestId("logout-button")).toBeVisible();
-
-  await page.goto("/grid");
-  await page.getByRole("button", { name: "Générer la grille" }).click();
-  // Budget serveur : 20 s, et la première génération charge le lexique
-  await expect(page.getByText(/% de vos mots/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator("details ul li").first()).toHaveText(firstWord ?? "");
+  await expect(page.getByRole("radio", { name: /6\s*×\s*7/ })).toBeChecked();
 
   await page.getByLabel("Nom (facultatif)").fill("Essai du parcours");
   await page.getByRole("button", { name: "Conserver cette grille" }).click();
-  await expect(page.getByText("Grille conservée.")).toBeVisible();
+  await expect(page.getByText("Grille conservée : « Essai du parcours »")).toBeVisible();
+
+  // L'étape suivante est proposée franchement, et elle commence par la relecture des mots
+  await page.getByRole("link", { name: "Relire et écrire les définitions" }).click();
+  await expect(page.getByRole("heading", { name: "Essai du parcours" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Relire les mots/ })).toHaveAttribute("aria-current", "step");
 
   await page.goto("/grids");
   const saved = page.getByRole("listitem").filter({ hasText: "Essai du parcours" });

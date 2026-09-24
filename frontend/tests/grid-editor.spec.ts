@@ -54,6 +54,11 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await expect(page.getByRole("heading", { name: "Grille à définir" })).toBeVisible();
   await expect(page.getByText("0 définition sur 2")).toBeVisible();
 
+  // Une grille neuve s'ouvre sur la première étape : relire les mots, avant de les définir
+  await expect(page.getByRole("button", { name: /Relire les mots/ })).toHaveAttribute("aria-current", "step");
+  await expect(page.getByText("Les 2 mots de la grille")).toBeVisible();
+  await page.getByRole("button", { name: /Les mots me conviennent/ }).click();
+
   // Le premier mot est choisi d'office : on arrive et on écrit, sans clic d'amorçage
   await expect(page.getByLabel("Définition de AS")).toBeFocused();
 
@@ -72,29 +77,33 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await expect(page.getByLabel("Définition de AS")).toBeFocused();
 
   await page.reload();
+  // Une grille entamée rouvre sur les définitions, avec son avancement
   await expect(page.getByRole("button", { name: /AS\s+Champion/ })).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Définitions écrites" })).toHaveAttribute("aria-valuenow", "50");
 
   // La définition s'écrit dans la case en capitales accentuées, comme dans les magazines, alors que
   // la saisie reste telle que l'auteur l'a tapée
   await expect(page.locator("svg tspan").filter({ hasText: /^CHAMPION$/ }).first()).toBeVisible();
   await expect(page.getByLabel("Définition de AS")).toHaveValue("Champion");
 
-  // Le gras se coupe, et le réglage survit au rechargement
-  await page.getByRole("button", { name: "Définitions en gras" }).click();
-  await expect(page.locator("svg tspan").filter({ hasText: /^CHAMPION$/ }).first()).toHaveAttribute(
-    "x", /\d/,
-  );
-  await page.reload();
-  await expect(page.getByRole("button", { name: "Définitions en gras" })).toHaveAttribute(
-    "aria-pressed",
-    "false",
-  );
-  await page.getByRole("button", { name: "Définitions en gras" }).click();
-
-  // L'aperçu montre la grille telle qu'elle s'imprime : définitions et flèches, sans les lettres
-  await page.getByRole("button", { name: "Aperçu imprimé" }).click();
+  // L'aperçu montre la grille telle qu'elle s'imprime : définitions et flèches, sans les lettres.
+  // C'est là que se règle le style des définitions, sous les yeux.
+  const printStep = page.getByRole("button", { name: /Mise en page et export/ });
+  await printStep.click();
   await expect(page.locator("svg[role='img']").first().locator("tspan", { hasText: "Champion" })).toBeVisible();
-  await page.getByRole("button", { name: "Définitions", exact: true }).click();
+
+  // Le gras se coupe, l'italique s'ajoute, et les réglages survivent au rechargement
+  await page.getByRole("button", { name: "Définitions en gras" }).click();
+  await page.getByRole("button", { name: "Définitions en italique" }).click();
+  const clue = page.locator("svg[role='img']").first().locator("text", { hasText: "CHAMPION" });
+  await expect(clue).toHaveAttribute("font-weight", "400");
+  await expect(clue).toHaveAttribute("transform", /skewX/);
+  await page.reload();
+  await printStep.click();
+  await expect(page.getByRole("button", { name: "Définitions en gras" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Définitions en italique" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Définitions en gras" }).click();
+  await page.getByRole("button", { name: "Définitions en italique" }).click();
 
   // La page de solution ne porte ni flèche ni définition : elle sert à vérifier des lettres.
   // Les pointes de flèches sont les seuls polygones du dessin.
@@ -103,9 +112,16 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   expect(await grids.nth(2).locator("polygon").count()).toBe(0);
   expect(await grids.nth(2).locator("tspan").count()).toBe(0);
 
+  // Exporter une grille inachevée : on est prévenu, et l'on peut aller compléter d'un clic
+  await page.getByRole("button", { name: "PDF + solution" }).click();
+  await expect(page.getByRole("dialog", { name: "La grille n'est pas finie" })).toContainText("1 définition sur 2");
+  await page.getByRole("button", { name: "Compléter les définitions" }).click();
+  await expect(page.getByLabel("Définition de ILE")).toBeFocused();
+
   // L'export PDF : le fichier, et ce qu'il y a dedans. Un PDF vide porterait le même nom.
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "PDF + solution" }).click();
+  await page.getByRole("button", { name: "Exporter quand même" }).click();
   const pdf = await download;
   expect(pdf.suggestedFilename()).toBe("grille-a-definir.pdf");
 
@@ -140,8 +156,14 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await page.getByLabel("Nom de la grille").press("Enter");
   await expect(page.getByRole("heading", { name: "Grille renommée" })).toBeVisible();
 
-  // --- Mode lettres : corriger la grille à la main (ADR 0012) ---
-  await page.getByRole("button", { name: "Lettres" }).click();
+  // --- Archiver sans quitter la grille ---
+  await page.getByRole("button", { name: "Archiver" }).click();
+  await expect(page.getByText("Archivée", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Sortir de l'archive" }).click();
+  await expect(page.getByText("Archivée", { exact: true })).toHaveCount(0);
+
+  // --- Relire les mots : corriger la grille à la main (ADR 0012) ---
+  await page.getByRole("button", { name: /Relire les mots/ }).click();
   // La case (1,1) porte le L de ILE : on en fait un Z, mot que le lexique ne connaît pas
   await page.locator("svg rect.cursor-text").nth(3).click();
   await page.keyboard.press("z");
@@ -191,6 +213,7 @@ test("écrire les définitions d'une grille, puis l'exporter", async ({ page }) 
   await expect(page.getByLabel("Notes")).toHaveValue("Idée : thème musique");
 
   const workFile = page.waitForEvent("download");
+  await printStep.click();
   await page.getByRole("button", { name: "Fichier de travail" }).click();
   expect((await workFile).suggestedFilename()).toBe("grille-renommee.json");
 });

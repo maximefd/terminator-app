@@ -58,13 +58,18 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
   }
 
   const bySource = (source: string) => gridData.words.filter((word) => word.source === source);
+  const mine = gridData.words.filter((word) => word.source === "must" || word.source === "wish");
 
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-col items-center">
-        <p className="mb-2 text-sm text-muted-foreground">
-          {gridData.width}×{gridData.height} · mise en page {gridData.layout} · seed {gridData.seed ?? "—"} ·
-          {" "}{gridData.words.length} mots · {Math.round(gridData.wish_ratio * 100)} % de vos mots
+        {/* Mise en page et seed n'intéressent que celui qui règle le moteur : au survol, pas en titre */}
+        <p
+          className="mb-2 text-sm text-muted-foreground"
+          title={`Mise en page ${gridData.layout} · seed ${gridData.seed ?? "—"}`}
+        >
+          {gridData.width} × {gridData.height} · {gridData.words.length} mots
+          {mine.length > 0 && ` · dont ${mine.length} des vôtres`}
         </p>
 
         {/* La grille vierge est celle qu'on imprime ; la solution, celle qu'on relit */}
@@ -88,25 +93,32 @@ export function GridDisplay({ gridData }: { gridData: GridData }) {
         </div>
       </div>
 
-      {/* La provenance des mots : c'est ce que l'auteur vient vérifier après avoir imposé des mots */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {["must", "wish", "common"].map((source) => {
-          const words = bySource(source);
-          if (words.length === 0) return null;
-          return (
-            <div key={source}>
-              <p className={`mb-2 inline-block rounded-full px-2 py-1 text-xs font-semibold ${SOURCES[source].badge}`}>
-                {SOURCES[source].label} · {words.length}
-              </p>
-              <ul className="space-y-1 font-mono text-sm">
-                {words.map((word) => (
-                  <li key={`${word.text}-${word.x}-${word.y}`}>{word.text}</li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </div>
+      {/*
+        La provenance des mots : c'est ce que l'auteur vient vérifier après avoir imposé des mots.
+        Repliée : sans mot imposé, ce n'est qu'une longue liste, et la relecture se fait ensuite, mot
+        par mot, dans l'éditeur.
+      */}
+      <details className="rounded-md border p-3" open={mine.length > 0}>
+        <summary className="cursor-pointer text-sm font-medium">Les mots de la grille</summary>
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          {["must", "wish", "common"].map((source) => {
+            const words = bySource(source);
+            if (words.length === 0) return null;
+            return (
+              <div key={source}>
+                <p className={`mb-2 inline-block rounded-full px-2 py-1 text-xs font-semibold ${SOURCES[source].badge}`}>
+                  {SOURCES[source].label} · {words.length}
+                </p>
+                <ul className="space-y-1 font-mono text-sm">
+                  {words.map((word) => (
+                    <li key={`${word.text}-${word.x}-${word.y}`}>{word.text}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      </details>
     </div>
   );
 }

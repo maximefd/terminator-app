@@ -4,6 +4,23 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 
 ## [Non publié]
 
+### Modifié
+- **Écran de génération simplifié** : la taille se choisit en vignettes (petites, moyennes, grandes),
+  la grille apparaît à côté du formulaire, et les mots imposés deviennent une option repliée. Un mot
+  ajouté arrive **souhaité** — il ne fait jamais échouer la grille — et « Obligatoire » se coche. Les
+  mots souhaités restés sans place sont nommés sous la grille ; mise en page et seed passent au survol.
+- **La dernière grille générée survit à la connexion** : générée sans compte, elle attend dans le
+  navigateur pendant qu'on se connecte ou s'inscrit, et la connexion ramène à la page d'origine
+  (`/login?next=/grid`, chemins internes seulement). Oubliée à la déconnexion.
+- **Après « Conserver »**, un bouton « Relire et écrire les définitions » mène à la grille, au lieu d'un
+  simple lien vers la liste.
+- **Éditeur de grille en trois étapes numérotées** : relire les mots, définitions, mise en page et
+  export. Une grille neuve s'ouvre sur la relecture — la liste de ses mots, ceux à regarder de près en
+  tête, avec des remplaçants qui gardent les croisements —, une grille entamée sur les définitions.
+  L'avancement des définitions s'affiche en pourcentage, l'export PDF prévient quand des définitions ou
+  des lettres manquent, la grille s'archive sans quitter l'écran, et le style des définitions (gras,
+  **italique**, nouveau) se règle dans l'aperçu, là où l'on en voit l'effet.
+
 ### Ajouté
 - Miniature de chaque grille dans « Mes grilles » : l'API envoie la **forme** avec le résumé
   (`x` case définition, `-` case lettre), et la liste la dessine. Avec cent grilles, c'est la
