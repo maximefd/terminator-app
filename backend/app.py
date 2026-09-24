@@ -90,8 +90,9 @@ DEFAULT_SETTINGS = dict(
     FRONTEND_URL=DEFAULT_CORS_ORIGINS,
     # Journaux (logging_setup.py) : texte en développement, JSON en production
     LOG_FORMAT='text',
-    # Applique les migrations en attente au démarrage. Pratique en local ; à couper le jour où un
-    # déploiement les jouera lui-même, avant de lancer l'application (Phase 6).
+    # Applique les migrations en attente au démarrage, en production comme en local : sous gunicorn, l'application
+    # est créée une fois dans le maître avant les workers (preload_app), elles ne se jouent donc qu'une fois.
+    # Une étape de déploiement dédiée a été écartée (docs/ROADMAP.md, Phase 6) ; à revoir avec plusieurs serveurs.
     AUTO_MIGRATE=True,
 )
 
