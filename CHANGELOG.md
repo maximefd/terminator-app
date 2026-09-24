@@ -18,7 +18,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - **Trois ADR** :
     - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
     - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;
-    - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : nom du site français (proposée).
+    - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : le site français s'appelle **Le Fléchoir** (`leflechoir.fr`).
 - **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
   `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
   en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus

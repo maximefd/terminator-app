@@ -21,7 +21,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0015](0015-session-en-cookies.md) | Session en cookies httpOnly, protection CSRF et révocation | Acceptée |
 | [0016](0016-mesure-d-usage-sans-cookie.md) | Mesure d'usage côté serveur, sans cookie ni script tiers | Acceptée |
 | [0017](0017-un-site-par-langue.md) | Un site par langue, un seul moteur | Acceptée |
-| [0018](0018-nom-du-site-francais.md) | Nom et domaine du site français | Proposée |
+| [0018](0018-nom-du-site-francais.md) | Nom et domaine du site français : Le Fléchoir | Acceptée |
 
 ## Modèle
 

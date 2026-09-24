@@ -1,6 +1,6 @@
 # 0018 — Nom et domaine du site français
 
-- Statut : proposée (acceptée quand le domaine sera acheté)
+- Statut : acceptée (nom retenu le 24/09/2026 ; domaine à acheter, #110)
 - Date : 2026-09-24
 
 ## Contexte
@@ -18,14 +18,23 @@
   Le changer après l'ouverture coûterait une migration de référencement.
 - La plupart des recherches « mots fléchés » viennent de joueurs qui cherchent une grille ou une solution. Le site, lui, sert à **créer** ; la recherche par motif attirera les autres.
 
-## Décision (proposée)
+## Décision
+
+**Le site français s'appelle « Le Fléchoir », sur `leflechoir.fr`.**
+
+- Le nom est descriptif (les mots *fléchés*) et dit l'outil : le suffixe *-oir* est celui des instruments (hachoir, plantoir). Il est court, français et se retient.
+- Il ne contient pas « mots » : les mots-clés vont dans les titres (« Le Fléchoir — l'atelier des mots fléchés »).
+- Le domaine s'écrit sans accent : `leflechoir.fr`. Le `.com`, libre lui aussi, peut être pris pour rediriger vers le `.fr`.
+- Reste à vérifier avant l'achat : les bases de marques (INPI, EUIPO), classes 9, 16, 41 et 42. Une recherche web du 24/09 n'a montré aucun site ni aucune application de ce nom.
+
+Le choix s'est fait sur les critères et pistes ci-dessous.
 
 1. **Critères** :
    - descriptif et français, professionnel, facile à dire et à écrire ;
    - dit *créer* plutôt que *jouer* ou *résoudre* ;
    - `.fr` disponible, sans accent dans le nom de domaine ;
    - **pas de conflit avec une marque existante**, en particulier celle d'un éditeur de jeux (bases INPI, EUIPO et WIPO ; classes 9, 16, 41 et 42). Un nom purement descriptif se protège mal : le vrai risque est d'empiéter sur le nom d'un autre.
-2. **Pistes à vérifier** (disponibilité non vérifiée) :
+2. **Pistes étudiées** (avant le choix) :
 
    | Nom | Domaine envisagé | Pour | Contre |
    |-----|------------------|------|--------|
@@ -40,16 +49,13 @@
    - géré ensuite par les serveurs de noms de Cloudflare, qui ne vend pas forcément le `.fr` ;
    - les variantes avec et sans tiret aussi, si elles sont libres.
 4. **Hôtes et adresses** :
-   - `<nom>.fr` : le site (Cloudflare Pages), et hôte canonique. `www` redirige vers lui, ou l'inverse : à fixer une fois pour toutes ;
-   - `api.<nom>.fr` : l'API, par le tunnel ; `COOKIE_DOMAIN=<nom>.fr` ;
-   - `no-reply@<nom>.fr` : les envois (Brevo ; SPF, DKIM, DMARC) ;
-   - `contact@<nom>.fr` et `securite@<nom>.fr` : la réception, par Cloudflare Email Routing (gratuit), vers la boîte de l'auteur.
+   - `leflechoir.fr` : le site (Cloudflare Pages), et hôte canonique. `www` redirige vers lui, ou l'inverse : à fixer une fois pour toutes ;
+   - `api.leflechoir.fr` : l'API, par le tunnel ; `COOKIE_DOMAIN=leflechoir.fr` ;
+   - `no-reply@leflechoir.fr` : les envois (Brevo ; SPF, DKIM, DMARC) ;
+   - `contact@leflechoir.fr` et `securite@leflechoir.fr` : la réception, par Cloudflare Email Routing (gratuit), vers la boîte de l'auteur.
 
 ## Conséquences
 
-- Tant que le nom n'est pas choisi, la mise en ligne attend : c'est la première étape de la Phase 6 (6b dans la [roadmap](../ROADMAP.md)).
-- Une fois le nom choisi, trois suites :
-  - cette ADR passe en « acceptée » ;
-  - le nom entre dans la configuration du site (6c) ;
-  - les exemples `terminator.fr` de la documentation sont remplacés.
+- L'achat du domaine est la première étape de la Phase 6 (6b dans la [roadmap](../ROADMAP.md)).
+- Le nom entre dans la configuration du site (6c), et les exemples `terminator.fr` de la documentation deviennent `leflechoir.fr`.
 - Les mots-clés vont dans les titres et les textes des pages, pas seulement dans le nom.

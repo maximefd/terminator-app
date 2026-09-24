@@ -109,7 +109,7 @@ terminator-app/
 
 - Version **0.1.0** : génération réparée et testée, socle de sécurité, benchmark reproductible.
 - Pas de déploiement en ligne pour l'instant : tout tourne en local ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)).
-- **Prochaine étape : le lancement public du site français** (Phase 6). Il ouvrira sous un nom français à choisir ([ADR 0018](docs/adr/0018-nom-du-site-francais.md)) ; Terminator reste le nom du moteur.
+- **Prochaine étape : le lancement public du site français** (Phase 6). Il ouvrira sous le nom **Le Fléchoir** (`leflechoir.fr`, [ADR 0018](docs/adr/0018-nom-du-site-francais.md)) ; Terminator reste le nom du moteur.
 - **Ensuite :** le poste de pilotage, la fin de la curation, d'autres langues, puis des grilles à thème (voir la [roadmap](docs/ROADMAP.md)).
 
 ## Contribuer
