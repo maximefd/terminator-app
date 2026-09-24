@@ -15,7 +15,9 @@ test("une grille générée se conserve et se retrouve", async ({ page }) => {
   await page.goto("/grid");
   // Les mots imposés sont une option : repliée, elle ne s'impose pas
   await expect(page.getByLabel("Mot à placer dans la grille")).toHaveCount(0);
-  await page.getByRole("radio", { name: /6\s*×\s*7/ }).check();
+  // Le bouton radio est masqué sous sa vignette : c'est elle qu'on clique, comme un visiteur
+  await page.locator("label").filter({ hasText: /^6\s*×\s*7$/ }).click();
+  await expect(page.getByRole("radio", { name: /6\s*×\s*7/ })).toBeChecked();
   await page.getByRole("button", { name: "Générer la grille" }).click();
   // Budget serveur : 20 s, et la première génération charge le lexique
   await expect(page.getByText("Cette grille vous plaît ?")).toBeVisible({ timeout: 60_000 });

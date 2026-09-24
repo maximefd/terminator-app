@@ -777,10 +777,13 @@ export function GridEditor({ gridId }: { gridId: number }) {
                 unknownWords={content.unknown_words ?? []}
               />
               <WordReview words={content.words} current={currentWord} onPick={pickWord} />
-              <Button className="w-full" onClick={() => setMode("definitions")}>
-                Les mots me conviennent : écrire les définitions
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
+              {/* Collé en bas du panneau : sous une liste de quarante mots, l'étape suivante se perdrait */}
+              <div className="sticky bottom-0 bg-background pb-1 pt-2">
+                <Button className="w-full" onClick={() => setMode("definitions")}>
+                  Les mots me conviennent : écrire les définitions
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
             </>
           )}
 
@@ -865,14 +868,16 @@ export function GridEditor({ gridId }: { gridId: number }) {
                 })}
               </ul>
 
-              <Button
-                className="w-full"
-                variant={missing === 0 ? "default" : "outline"}
-                onClick={() => setMode("apercu")}
-              >
-                Voir la mise en page et exporter
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
+              <div className="sticky bottom-0 bg-background pb-1 pt-2">
+                <Button
+                  className="w-full"
+                  variant={missing === 0 ? "default" : "outline"}
+                  onClick={() => setMode("apercu")}
+                >
+                  Voir la mise en page et exporter
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
             </>
           )}
 

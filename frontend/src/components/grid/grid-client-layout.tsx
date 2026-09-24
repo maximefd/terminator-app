@@ -158,7 +158,7 @@ function FormatPicker({
               const key = formatKey(format);
               const scale = 22 / largest;
               return (
-                <label key={key} title={`${format.layouts} mise${format.layouts > 1 ? "s" : ""} en page`}>
+                <label key={key} className="relative" title={`${format.layouts} mise${format.layouts > 1 ? "s" : ""} en page`}>
                   <input
                     type="radio"
                     name="format"
@@ -275,8 +275,11 @@ export function GridClientLayout() {
     setGridData(null);
     setSaved(null);
     setUnplaced([]);
-    // Sur téléphone, le résultat tombe sous le formulaire : on l'amène à l'écran
-    resultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Sur téléphone, le résultat tombe sous le formulaire : on l'amène à l'écran. Sur grand écran il
+    // est déjà à côté, et faire défiler cacherait le titre.
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     try {
       const data = await apiFetch("/api/grids/generate", {
         method: "POST",
