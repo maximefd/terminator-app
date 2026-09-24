@@ -151,6 +151,8 @@ L'international attend que le lexique français soit fini (décision du 24/09/20
 6. sur 20 grilles relues à l'aveugle, au moins 18 ne contiennent aucun mot que l'auteur juge impubliable ;
 7. la taille du lexique et la mémoire de l'API après chargement sont notées : elles fixent le budget de la Phase 10.
 
+Issues : #125 (critère de fin), #126 (avis de l'IA), et #127, un bug de normalisation des mots imposés à corriger en chemin.
+
 **Accélérateur possible, à mesurer d'abord :** l'IA pourrait suggérer « garder » ou « supprimer » dans le curateur, à côté des autres indices.
 - Ce serait une suggestion, **jamais une décision** ([ADR 0005](adr/0005-pipeline-du-lexique-et-decisions.md)).
 - Avant tout usage, on mesure son accord avec les décisions déjà prises, comme pour les règles automatiques ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)).
@@ -237,7 +239,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - les **migrations jouées au déploiement**, séparément du démarrage. Avec un seul serveur, gunicorn charge l'application une fois avant de créer ses workers : les migrations ne se jouent qu'une fois ([ADR 0013](adr/0013-cible-hebergement-production.md)) ;
   - un **environnement de staging** : un second serveur doublerait le budget. La pile isolée des tests locaux (API, PostgreSQL et Mailpit jetables) en tient lieu.
 
-### 6b. Nom et domaine
+### 6b. Nom et domaine (#110, #111)
 - **Le nom :** un nom descriptif français ([ADR 0018](adr/0018-nom-du-site-francais.md), proposée : critères, pistes, vérification des marques). Terminator reste le nom du moteur ([ADR 0017](adr/0017-un-site-par-langue.md)).
 - **Le domaine :** un `.fr` acheté avec renouvellement automatique. La zone Cloudflare sert `<nom>.fr` (le site) et `api.<nom>.fr` (le tunnel) ; l'hôte canonique est fixé une fois pour toutes.
 - **Les e-mails :**
@@ -250,7 +252,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - géolocalisation IP active, pour `CF-IPCountry`.
 - **La sécurité des comptes :** double facteur et codes de secours sur Cloudflare, OVH, le registrar, GitHub et Brevo. Cloudflare concentre à lui seul le DNS, Pages, le tunnel, R2 et le courrier.
 
-### 6c. Site configurable et référencement technique
+### 6c. Site configurable et référencement technique (#112, #113)
 - **Configuration du site**, lue au build : nom, URL, langue, contacts, URL de l'API.
   - `SITE_NAME` pour les e-mails.
   - Plus aucun « Terminator » visible.
@@ -262,7 +264,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - page 404 en français ;
   - un test Playwright des balises.
 
-### 6d. Pages légales, contact et vie privée
+### 6d. Pages légales, contact et vie privée (#114, #115)
 - **Pages réécrites :** mentions légales, confidentialité, CGU et crédits. Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, la mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)), les durées de conservation et le droit d'opposition. Plus aucun lien vers GitHub : le dépôt devient privé.
 - **Contact et sécurité :**
   - une page contact avec l'adresse `contact@` ;
@@ -272,7 +274,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   Le formulaire vient en Phase 8.
 - **Données personnelles :** un registre des traitements, des durées de conservation, et la rotation des journaux Docker.
 
-### 6e. Mesure côté serveur dès le premier jour
+### 6e. Mesure côté serveur dès le premier jour (#116)
 - **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
   - générations : format, mots imposés, issue, durée, temps CPU ;
   - recherches, comptes, erreurs, refus « occupé ».
@@ -281,7 +283,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Comptes :** `created_at` et `last_login_at`.
 - **Lecture :** par `flask stats` sur le serveur. La page web vient en Phase 8.
 
-### 6f. Serveur, déploiement et exploitation (#29)
+### 6f. Serveur, déploiement et exploitation (#29 : #117 à #120 ; #121, #122)
 - **Image et compose de production :**
   - gunicorn non-root, avec healthcheck ;
   - PostgreSQL sans port publié ;
@@ -303,7 +305,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - comment le compenser ;
   - une alternative : code public et données privées.
 
-### 6g. Bêta privée, ouverture, première semaine
+### 6g. Bêta privée, ouverture, première semaine (#123, #124)
 - **Bêta privée :** le premier déploiement de production passe derrière Cloudflare Access, pour quelques testeurs et la session d'utilisabilité (#90). Ce jour-là, l'ADR 0004 est marquée « remplacée par 0013 ».
 - **Avant d'ouvrir :**
   - checklist de [SECURITY.md](SECURITY.md) à 14/14 ;
@@ -335,7 +337,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 
 ## Phase 8 — Poste de pilotage
 
-**Objectif** : répondre d'un coup d'œil aux questions de l'auteur ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) : qui vient, ce qu'on génère, ce qui casse, ce que consomme le serveur.
+**Objectif** : répondre d'un coup d'œil aux questions de l'auteur ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) : qui vient, ce qu'on génère, ce qui casse, ce que consomme le serveur. Issues : #128 à #132.
 
 - **Espace d'administration :**
   - `is_admin` posé en ligne de commande, sur une adresse confirmée ;
@@ -366,7 +368,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 
 ## Phase 9 — Acquisition
 
-En continu dès l'ouverture, en parallèle de la curation.
+En continu dès l'ouverture, en parallèle de la curation. Issues : #133, #134.
 
 - **Pages de contenu**, chacune avec une vraie grille produite par le moteur :
   - créer une grille de mots fléchés ;
@@ -387,7 +389,7 @@ En continu dès l'ouverture, en parallèle de la curation.
 
 Elle commence après la fin de la curation française ([1d](#1d-fin-de-la-curation-française--préalable-à-la-phase-10)), avec un site par langue ([ADR 0017](adr/0017-un-site-par-langue.md)).
 
-- **10a Socle :**
+- **10a Socle** (#135, #136) :
   - configuration par site ;
   - catalogues de textes, messages de l'API par code ;
   - `lang` dans l'API, les grilles et les dictionnaires ;
@@ -398,9 +400,9 @@ Elle commence après la fin de la curation française ([1d](#1d-fin-de-la-curati
   - pipeline du lexique par langue : sources, licences, fréquences.
 
   Trois décisions l'attendent : la forme de l'API multi-site (un conteneur par site par défaut), le budget mémoire (représentation compacte ou VPS-2), et des comptes communs ou séparés.
-- **10b Anglais** (*arrowords* britanniques), en **pilote**, avec un go/no-go avant la suite. L'Allemagne est sans doute le plus grand marché : les pays et les langues mesurés depuis l'ouverture diront si l'anglais doit vraiment passer en premier.
-- **10c Allemand** (*Schwedenrätsel*) : Ä, Ö et Ü s'écrivent AE, OE et UE, ß s'écrit SS ; grands formats ; Impressum.
-- **10d Espagnol** (*autodefinidos*) : Ñ comme 27e lettre.
+- **10b Anglais** (*arrowords* britanniques, #137), en **pilote**, avec un go/no-go avant la suite. L'Allemagne est sans doute le plus grand marché : les pays et les langues mesurés depuis l'ouverture diront si l'anglais doit vraiment passer en premier.
+- **10c Allemand** (*Schwedenrätsel*, #138) : Ä, Ö et Ü s'écrivent AE, OE et UE, ß s'écrit SS ; grands formats ; Impressum.
+- **10d Espagnol** (*autodefinidos*, #139) : Ñ comme 27e lettre.
 
 Chaque langue demande :
 - un nom et un domaine ;
@@ -422,7 +424,7 @@ Chaque langue demande :
 4. L'IA propose les définitions.
 5. L'utilisateur retouche, puis imprime.
 
-- **11a Spike et évaluation :** deux tâches, les mots du thème et des définitions au style mots fléchés qui tiennent dans une case.
+- **11a Spike et évaluation** (#140) : deux tâches, les mots du thème et des définitions au style mots fléchés qui tiennent dans une case.
   - Modèle : Claude Opus 5 par défaut, à 5 $ par million de jetons en entrée et 25 $ en sortie. Le raisonnement se facture en sortie.
   - Coût estimé : de 0,15 à 0,45 $ par grille de 60 mots. À mesurer, en essayant d'abord un effort plus bas.
   - Un test d'intérêt peut commencer plus tôt : une liste d'attente, mesurée dans le poste de pilotage.
@@ -431,14 +433,14 @@ Chaque langue demande :
   - `target_wish_ratio` ;
   - des noms propres acceptés comme mots imposés ;
   - des appels à l'IA en tâche de fond, sans occuper les workers synchrones (Phase 7). Un appel prend 10 à 60 s, et Cloudflare coupe une requête au bout de 100 s.
-- **11c Offre :**
+- **11c Offre** (#141) :
   - statut de micro-entreprise et identité complète de l'éditeur ;
   - CGV ;
   - TVA dans plusieurs pays : prestataire « marchand officiel », ou guichet OSS ;
   - médiateur de la consommation ;
   - renonciation expresse au droit de rétractation pour un contenu numérique ;
   - prix à la grille, ou abonnement.
-- **11d Parcours** : thème → mots proposés et validés → génération → définitions proposées, retouchées dans l'éditeur → PDF prêt à imprimer.
+- **11d Parcours** (#142) : thème → mots proposés et validés → génération → définitions proposées, retouchées dans l'éditeur → PDF prêt à imprimer.
   - Modération des thèmes.
   - Seul le texte du thème part chez le fournisseur d'IA, déclaré comme sous-traitant.
   - Les contenus générés sont signalés comme tels (transparence exigée par l'AI Act).
