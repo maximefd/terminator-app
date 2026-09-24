@@ -13,11 +13,34 @@ test("une grille générée se conserve et se retrouve", async ({ page }) => {
   test.setTimeout(120_000);
 
   await page.goto("/grid");
-  // Les mots imposés sont une option : repliée, elle ne s'impose pas
-  await expect(page.getByLabel("Mot à placer dans la grille")).toHaveCount(0);
+  // Les mots imposés sont une option, et l'écran le dit
+  await expect(page.getByRole("heading", { name: /Imposer des mots\s*\(facultatif\)/ })).toBeVisible();
   // Le bouton radio est masqué sous sa vignette : c'est elle qu'on clique, comme un visiteur
   await page.locator("label").filter({ hasText: /^6\s*×\s*7$/ }).click();
   await expect(page.getByRole("radio", { name: /6\s*×\s*7/ })).toBeChecked();
+
+  // Un mot facile arrive obligatoire ; un mot qui ferait tomber les chances sous 70 %, souhaité
+  const mot = page.getByLabel("Mot à placer dans la grille");
+  await mot.fill("PORTE");
+  await mot.press("Enter");
+  await expect(page.getByRole("button", { name: "PORTE obligatoire" })).toHaveAttribute("aria-pressed", "true");
+  // On attend la décision elle-même : avant elle, le mot est déjà affiché non coché
+  const decision = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/grids/difficulty") &&
+      (response.request().postData() ?? "").includes("ANTICONSTITUTIONNEL"),
+  );
+  await mot.fill("ANTICONSTITUTIONNEL");
+  await mot.press("Enter");
+  await decision;
+  await expect(page.getByRole("button", { name: "ANTICONSTITUTIONNEL obligatoire" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  // La grille du parcours se génère sans mot imposé : on les retire
+  await page.getByRole("button", { name: "Retirer PORTE" }).click();
+  await page.getByRole("button", { name: "Retirer ANTICONSTITUTIONNEL" }).click();
+
   await page.getByRole("button", { name: "Générer la grille" }).click();
   // Budget serveur : 20 s, et la première génération charge le lexique
   await expect(page.getByText("Cette grille vous plaît ?")).toBeVisible({ timeout: 60_000 });

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { nextPath, withNext } from "@/lib/next-path";
+import { useSharedEmail } from "@/hooks/use-shared-email";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
+  const { email, setEmail, forgetEmail } = useSharedEmail();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -30,6 +31,7 @@ export function LoginForm() {
     setSubmitting(true);
     try {
       await login(email, password);
+      forgetEmail();
       // Venu d'une page qui attend la connexion (une grille à conserver) : on y retourne
       router.push(nextPath());
     } catch (err: unknown) {

@@ -8,6 +8,26 @@ test.describe("Authentication Flow", () => {
     await expect(page.getByTestId("login-button-link")).toBeVisible();
   });
 
+  test("l'adresse saisie suit d'un formulaire à l'autre, pas le mot de passe", async ({ page }) => {
+    // On tape son adresse pour s'inscrire, puis on se rend compte qu'on a déjà un compte
+    await page.goto("/register");
+    await page.getByLabel("Email").fill("deja.inscrit@test.com");
+    await page.getByLabel("Mot de passe").fill("UnMotDePasse123");
+    await page.getByRole("link", { name: "Se connecter" }).last().click();
+    await expect(page.getByTestId("login-title")).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveValue("deja.inscrit@test.com");
+    await expect(page.getByLabel("Mot de passe")).toHaveValue("");
+
+    // Et l'inverse, en corrigeant au passage
+    await page.getByLabel("Email").fill("nouveau@test.com");
+    await page.getByRole("link", { name: "S'inscrire" }).click();
+    await expect(page.getByTestId("register-title")).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveValue("nouveau@test.com");
+
+    // L'adresse ne passe jamais par l'adresse de la page
+    expect(page.url()).not.toContain("nouveau");
+  });
+
   test("user can register, log out, and log back in", async ({ page }) => {
     const email = `user_${Date.now()}@test.com`;
     const password = "TestPassword123";

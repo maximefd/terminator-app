@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Grid3x3, Loader2, RefreshCw } from "lucide-react";
+import { Grid3x3, Loader2, RefreshCw } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { GridDisplay, type GridData } from "@/components/grid/grid-display";
@@ -116,6 +116,10 @@ function FailureNotice({
   );
 }
 
+/** Au-delà de trois mots, ou sous 70 % de chances, un mot ajouté arrive souhaité. */
+const MAX_REQUIRED_BY_DEFAULT = 3;
+const REQUIRED_THRESHOLD = 0.7;
+
 /** Trois familles de tailles : on choisit d'abord « petite ou grande », le détail ensuite. */
 const SIZE_GROUPS = [
   { label: "Petites", upTo: 70 },
@@ -204,7 +208,6 @@ export function GridClientLayout() {
   const [saved, setSaved] = useState<SavedRef | null>(null);
   // Les mots demandés que le moteur n'a pas pu placer : un souhaité absent doit se voir
   const [unplaced, setUnplaced] = useState<string[]>([]);
-  const [showWords, setShowWords] = useState(false);
   const [restored, setRestored] = useState(false);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -223,7 +226,6 @@ export function GridClientLayout() {
       setDictionaryIds(last.dictionaryIds);
       setGridData(last.grid);
       setSaved(last.saved);
-      setShowWords(last.entries.length > 0 || last.dictionaryIds.length > 0);
     }
     setRestored(true);
   }, []);
@@ -267,6 +269,40 @@ export function GridClientLayout() {
     return () => { cancelled = true; };
   }, [estimateKey]);
 
+  /**
+   * Obligatoire ou souhaité, décidé à l'ajout : les trois premiers mots arrivent obligatoires tant
+   * que la grille garde **plus de 70 %** de chances d'aboutir avec eux ; au-delà, souhaités. Le taux
+   * est celui de l'ensemble — PORTE seul passe à 100 %, PORTE et MUSIQUE ensemble tombent à 61 %.
+   * Un mot à la fois, dans l'ordre de saisie, puisque chacun change le taux du suivant. L'auteur qui
+   * bascule un mot avant la réponse a le dernier mot : sa décision n'est pas écrasée.
+   */
+  useEffect(() => {
+    const next = entries.find((entry) => entry.pending);
+    if (!next || !currentFormat) return;
+    let cancelled = false;
+    const already = entries.filter((entry) => entry.required).map((entry) => entry.text);
+    const settle = (isRequired: boolean) =>
+      setEntries((list) =>
+        list.map((entry) =>
+          entry.id === next.id && entry.pending ? { ...entry, required: isRequired, pending: false } : entry,
+        ),
+      );
+    if (already.length >= MAX_REQUIRED_BY_DEFAULT) {
+      settle(false);
+      return;
+    }
+    apiFetch("/api/grids/difficulty", {
+      method: "POST",
+      body: {
+        must_words: [...already, next.text],
+        size: { width: currentFormat.width, height: currentFormat.height },
+      },
+    })
+      .then((data) => { if (!cancelled) settle(data.success_rate > REQUIRED_THRESHOLD); })
+      .catch(() => { if (!cancelled) settle(false); });
+    return () => { cancelled = true; };
+  }, [entries, currentFormat]);
+
   const generate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!currentFormat) return;
@@ -308,8 +344,6 @@ export function GridClientLayout() {
     }
   };
 
-  const imposed = entries.length + dictionaryIds.length;
-
   return (
     <main className="container mx-auto p-4 md:p-8">
       <div className="max-w-2xl">
@@ -339,42 +373,22 @@ export function GridClientLayout() {
             {formatsError && <p className="text-xs text-destructive">{formatsError.message}</p>}
           </section>
 
-          {/* L'option repliée : sans elle, la grille se remplit seule, et c'est le cas courant */}
-          <section className="border-t pt-4">
-            <button
-              type="button"
-              aria-expanded={showWords}
-              aria-controls="imposed-words"
-              onClick={() => setShowWords((open) => !open)}
-              className="flex w-full items-center justify-between gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span>
-                <span className="block text-sm font-semibold">
-                  Imposer des mots
-                  <span className="ml-1.5 font-normal text-muted-foreground">(facultatif)</span>
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  {imposed > 0
-                    ? `${entries.length} mot${entries.length > 1 ? "s" : ""}${
-                        dictionaryIds.length ? ` · ${dictionaryIds.length} dictionnaire${dictionaryIds.length > 1 ? "s" : ""}` : ""
-                      }`
-                    : "Un thème, des prénoms… Sinon, le moteur choisit tout seul."}
-                </span>
-              </span>
-              <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${showWords ? "rotate-180" : ""}`} />
-            </button>
-
-            {showWords && (
-              <div id="imposed-words" className="mt-4 space-y-5">
-                <WordList entries={entries} onChange={setEntries} disabled={isGenerating} />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Puiser dans vos dictionnaires</p>
-                  <DictionaryPicker selected={dictionaryIds} onChange={setDictionaryIds} disabled={isGenerating} />
-                </div>
-                {required.length > 0 && (
-                  <DifficultyPanel difficulty={difficulty} isLoading={isEstimating} hasRequiredWords />
-                )}
-              </div>
+          {/* Une option, dite comme telle : sans mot imposé, la grille se remplit seule */}
+          <section className="space-y-4 border-t pt-4">
+            <div>
+              <h2 className="text-sm font-semibold">
+                Imposer des mots
+                <span className="ml-1.5 font-normal text-muted-foreground">(facultatif)</span>
+              </h2>
+              <p className="text-xs text-muted-foreground">Un thème, des prénoms… Sinon, le moteur choisit tout seul.</p>
+            </div>
+            <WordList entries={entries} onChange={setEntries} disabled={isGenerating} />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Puiser dans vos dictionnaires</p>
+              <DictionaryPicker selected={dictionaryIds} onChange={setDictionaryIds} disabled={isGenerating} />
+            </div>
+            {required.length > 0 && (
+              <DifficultyPanel difficulty={difficulty} isLoading={isEstimating} hasRequiredWords />
             )}
           </section>
 

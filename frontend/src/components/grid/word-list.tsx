@@ -11,6 +11,8 @@ export type WordEntry = {
   text: string;
   /** Obligatoire : la grille est refusée sans lui. Sinon souhaité : placé s'il rentre. */
   required: boolean;
+  /** Ajouté à l'instant : obligatoire ou souhaité reste à décider, selon les chances de la grille. */
+  pending?: boolean;
 };
 
 type WordListProps = {
@@ -32,9 +34,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
       setDraft("");
       return;
     }
-    // Un mot arrive souhaité : il ne fait jamais échouer la grille. Le rendre obligatoire est un
-    // choix explicite, parce qu'il a un prix — la génération peut alors échouer.
-    onChange([...entries, { id: `${text}-${Date.now()}`, text, required: false }]);
+    // Souhaité le temps d'estimer : l'écran décide ensuite s'il peut le rendre obligatoire sans trop
+    // faire baisser les chances de la grille (voir GridClientLayout)
+    onChange([...entries, { id: `${text}-${Date.now()}`, text, required: false, pending: true }]);
     setDraft("");
   };
 
@@ -47,7 +49,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
   };
 
   const toggle = (id: string) =>
-    onChange(entries.map((entry) => (entry.id === id ? { ...entry, required: !entry.required } : entry)));
+    onChange(
+      entries.map((entry) => (entry.id === id ? { ...entry, required: !entry.required, pending: false } : entry)),
+    );
 
   const remove = (id: string) => onChange(entries.filter((entry) => entry.id !== id));
 
@@ -133,9 +137,9 @@ export function WordList({ entries, onChange, disabled }: WordListProps) {
 
       {entries.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Chaque mot est placé s&apos;il trouve sa place, sans jamais faire échouer la grille. Cochez{" "}
-          <strong>Obligatoire</strong> pour l&apos;exiger : la génération peut alors échouer, et
-          d&apos;autant plus que le mot est long.
+          Les premiers mots sont <strong>obligatoires</strong> tant que la grille garde plus de 70 % de
+          chances d&apos;aboutir ; les autres sont <strong>souhaités</strong> : placés s&apos;ils trouvent
+          leur place, sans jamais faire échouer la grille. Un clic sur « Obligatoire » bascule.
         </p>
       )}
     </div>
