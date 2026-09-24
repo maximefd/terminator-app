@@ -1,6 +1,6 @@
 # 0018 — Nom et domaine du site français
 
-- Statut : acceptée (nom retenu le 24/09/2026 ; domaine à acheter, #110)
+- Statut : acceptée (domaine acheté le 24/09/2026, #110)
 - Date : 2026-09-24
 
 ## Contexte
@@ -25,7 +25,8 @@
 - Le nom est descriptif (les mots *fléchés*) et dit l'outil : le suffixe *-oir* est celui des instruments (hachoir, plantoir). Il est court, français et se retient.
 - Il ne contient pas « mots » : les mots-clés vont dans les titres (« Le Fléchoir — l'atelier des mots fléchés »).
 - Le domaine s'écrit sans accent : `leflechoir.fr`. Le `.com`, libre lui aussi, peut être pris pour rediriger vers le `.fr`.
-- Reste à vérifier avant l'achat : les bases de marques (INPI, EUIPO), classes 9, 16, 41 et 42. Une recherche web du 24/09 n'a montré aucun site ni aucune application de ce nom.
+- Vérifié avant l'achat : aucune marque « Fléchoir » ni « Le Fléchoir » dans la base de l'INPI, aucun site ni aucune application de ce nom (recherche web du 24/09).
+- `leflechoir.fr` est acheté chez OVH pour trois ans ; la zone est chez Cloudflare.
 
 Le choix s'est fait sur les critères et pistes ci-dessous.
 
@@ -56,6 +57,6 @@ Le choix s'est fait sur les critères et pistes ci-dessous.
 
 ## Conséquences
 
-- L'achat du domaine est la première étape de la Phase 6 (6b dans la [roadmap](../ROADMAP.md)).
+- L'achat du domaine ouvre la Phase 6 (6b dans la [roadmap](../ROADMAP.md)) ; reste le réglage de la zone (#111).
 - Le nom entre dans la configuration du site (6c), et les exemples `terminator.fr` de la documentation deviennent `leflechoir.fr`.
 - Les mots-clés vont dans les titres et les textes des pages, pas seulement dans le nom.

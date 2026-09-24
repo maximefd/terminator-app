@@ -240,8 +240,8 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - un **environnement de staging** : un second serveur doublerait le budget. La pile isolée des tests locaux (API, PostgreSQL et Mailpit jetables) en tient lieu.
 
 ### 6b. Nom et domaine (#110, #111)
-- **Le nom :** **Le Fléchoir**, sur `leflechoir.fr` ([ADR 0018](adr/0018-nom-du-site-francais.md)). Reste la vérification des marques avant l'achat. Terminator reste le nom du moteur ([ADR 0017](adr/0017-un-site-par-langue.md)).
-- **Le domaine :** `leflechoir.fr` acheté avec renouvellement automatique (et `leflechoir.com` pour rediriger, si possible). La zone Cloudflare sert `leflechoir.fr` (le site) et `api.leflechoir.fr` (le tunnel) ; l'hôte canonique est fixé une fois pour toutes.
+- **Le nom :** **Le Fléchoir**, sur `leflechoir.fr` ([ADR 0018](adr/0018-nom-du-site-francais.md)). Marque vérifiée à l'INPI, domaine acheté le 24/09/2026 ✅. Terminator reste le nom du moteur ([ADR 0017](adr/0017-un-site-par-langue.md)).
+- **Le domaine :** `leflechoir.fr` ✅, acheté chez OVH pour trois ans, zone chez Cloudflare. La zone Cloudflare sert `leflechoir.fr` (le site) et `api.leflechoir.fr` (le tunnel) ; l'hôte canonique est fixé une fois pour toutes.
 - **Les e-mails :**
   - `no-reply@` par Brevo, avec SPF, DKIM et DMARC ;
   - `contact@` et `securite@` par Cloudflare Email Routing.
