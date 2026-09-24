@@ -263,6 +263,13 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **Documentation qui contredisait le code** : le schéma d'[ARCHITECTURE](docs/ARCHITECTURE.md) montrait
+  encore un jeton `Bearer` entre le frontend et l'API, alors que la session voyage en cookies depuis
+  l'[ADR 0015](docs/adr/0015-session-en-cookies.md) ; ARCHITECTURE et le README du frontend donnaient
+  `http://localhost:5001` comme repli de `getApiBaseUrl()`, qui renvoie une chaîne vide (même origine, que
+  `next dev` relaie vers l'API) ; [SECURITY](docs/SECURITY.md) disait CORS « sans credentials ». Enfin, le
+  commentaire d'`AUTO_MIGRATE` (`backend/app.py`) prévoyait encore des migrations jouées au déploiement,
+  écartées par la [roadmap](docs/ROADMAP.md) (Phase 6). Aucun changement de comportement.
 - **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
   laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
   la limite de six heures. Le job a désormais une durée maximale de 20 minutes.

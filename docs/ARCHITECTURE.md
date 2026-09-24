@@ -12,7 +12,7 @@ Terminator est un monorepo en deux applications :
 ```mermaid
 flowchart LR
     U[👤 Navigateur] -->|HTTP| F[Frontend<br/>Next.js 15 · React 19]
-    F -->|fetch JSON<br/>Bearer JWT| A[API Flask<br/>backend/]
+    F -->|fetch JSON<br/>cookies httpOnly + CSRF| A[API Flask<br/>backend/]
     A -->|SQLAlchemy| DB[(PostgreSQL<br/>SQLite en test)]
     A -->|chargé au démarrage| T[DictionnaireTrie<br/>DELA en mémoire]
     A -->|par requête| G[GridGenerator]
@@ -126,7 +126,7 @@ erDiagram
 
 Le **dictionnaire commun (DELA)** n'est pas en base : il est lu depuis `backend/dela_clean.csv` et chargé en mémoire au démarrage de l'API (voir [LEXICON.md](LEXICON.md)).
 
-Le schéma évolue par **migrations Alembic** (`backend/migrations/`, [ADR 0010](adr/0010-migrations-de-schema.md)) : l'API applique les révisions en attente au démarrage, et `db.create_all()` ne subsiste que pour les tests. Une grille conservée garde son contenu en JSON plutôt que ses paramètres : le lexique est curé au fil des semaines, la même seed ne redonnerait pas la même grille plus tard. Et depuis l'[ADR 0012](adr/0012-grille-modifiable.md), elle n'est plus le procès-verbal d'une génération mais un **document** : l'auteur y corrige des lettres, et les mots se recalculent à partir de la grille — les emplacements, eux, ne bougent jamais.
+Le schéma évolue par **migrations Alembic** (`backend/migrations/`, [ADR 0010](adr/0010-migrations-de-schema.md)) : l'API applique les révisions en attente au démarrage, et `db.create_all()` ne subsiste que pour les tests. En production aussi : gunicorn charge l'application une seule fois avant de créer ses workers, les migrations ne s'y jouent donc qu'une fois. Les confier à une étape de déploiement, comme le prévoyait l'ADR 0010, a été écarté ([roadmap, Phase 6](ROADMAP.md#phase-6--durcissement-production)). Une grille conservée garde son contenu en JSON plutôt que ses paramètres : le lexique est curé au fil des semaines, la même seed ne redonnerait pas la même grille plus tard. Et depuis l'[ADR 0012](adr/0012-grille-modifiable.md), elle n'est plus le procès-verbal d'une génération mais un **document** : l'auteur y corrige des lettres, et les mots se recalculent à partir de la grille — les emplacements, eux, ne bougent jamais.
 
 ### Parcours d'une génération
 
@@ -168,8 +168,8 @@ sequenceDiagram
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
 | `src/lib/api-client.ts` | `apiFetch` : cookies de session et jeton CSRF, renouvellement automatique sur 401, messages d'erreur de l'API |
-| `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon `http://localhost:5001` en local |
-| `next.config.ts` | Export statique au build (`out/`), en-têtes de sécurité en dev ; refuse un build sans `NEXT_PUBLIC_API_BASE_URL` |
+| `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon chaîne vide : les requêtes restent sur la même origine, que `next dev` relaie vers l'API |
+| `next.config.ts` | Export statique au build (`out/`), refusé sans `NEXT_PUBLIC_API_BASE_URL` ; en dev, en-têtes de sécurité et, sans cette variable, relais de `/api/*` vers `API_PROXY_TARGET` |
 | `tests/` | Tests end-to-end Playwright |
 
 ### Authentification
