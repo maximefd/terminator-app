@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import { useState } from "react";
+import { site } from "@/config/site";
 
 export function Header() {
   const { isAuthenticated, logout } = useAuth();
@@ -31,7 +32,7 @@ export function Header() {
             className="flex items-center gap-2 text-xl font-bold"
           >
             <span role="img" aria-label="Pièce de puzzle">🧩</span>
-            <span className="hidden sm:inline-block">Terminator</span>
+            <span className="hidden sm:inline-block">{site.name}</span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-2">
@@ -88,7 +89,7 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center gap-2 text-lg font-semibold mb-4"
                   >
-                    <span role="img" aria-label="Pièce de puzzle">🧩</span> Terminator
+                    <span role="img" aria-label="Pièce de puzzle">🧩</span> {site.name}
                   </Link>
                   {navItems.map((item) => (
                     <Link

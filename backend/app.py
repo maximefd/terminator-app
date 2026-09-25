@@ -15,9 +15,13 @@ from lexicon_loader import LexiconManager
 from logging_setup import LOG_FORMATS, configure_logging, register_request_id
 from mailer import MAIL_BACKENDS
 from monitoring import init_sentry
+from usage import init_usage
+from stats import init_stats_cli
 
 DEV_SECRET = 'default-secret-for-dev'
-DEFAULT_MAIL_FROM = 'Terminator <terminator@localhost>'
+# Nom public du site (ADR 0017) : Terminator est le nom du moteur, jamais montré aux visiteurs
+DEFAULT_SITE_NAME = 'Le Fléchoir'
+DEFAULT_MAIL_FROM = f'{DEFAULT_SITE_NAME} <no-reply@localhost>'
 MIN_SECRET_BYTES = 32
 # Première migration : le schéma tel qu'il existait avant l'arrivée d'Alembic
 BASELINE_REVISION = '0001_schema_initial'
@@ -59,6 +63,8 @@ DEFAULT_SETTINGS = dict(
     # Vérification des changements du lexique (0 : pas de rechargement à chaud). Jamais en production :
     # le lexique y est un fichier livré avec l'application (ADR 0013).
     LEXICON_RELOAD_INTERVAL_S=30,
+    # Faux pour une commande qui n'en a pas besoin (flask stats) : le lexique coûte des centaines de Mo
+    LEXICON_LOAD=True,
     # Session en cookies httpOnly ([ADR 0015](../docs/adr/0015-session-en-cookies.md)). L'en-tête Authorization
     # reste accepté, en premier : les tests et un client autre que le navigateur s'en servent. Le navigateur,
     # lui, n'a jamais de jeton en main : il n'en reçoit que des cookies illisibles par JavaScript.
@@ -80,6 +86,12 @@ DEFAULT_SETTINGS = dict(
     SECRET_KEY=DEV_SECRET,
     # E-mails du compte (mailer.py, ADR 0014) : « console » écrit le message dans le journal au lieu de l'envoyer
     MAIL_BACKEND='console',
+    SITE_NAME=DEFAULT_SITE_NAME,  # Objet et texte des e-mails
+    # Le site que sert cette API et sa langue (ADR 0017) : chaque événement d'usage les porte (usage.py)
+    SITE='fr',
+    SITE_LANG='fr',
+    # Mesure d'usage côté serveur (ADR 0016)
+    USAGE_ENABLED=True,
     MAIL_FROM=DEFAULT_MAIL_FROM,
     SMTP_HOST='localhost',
     SMTP_PORT=25,
@@ -160,6 +172,9 @@ def _load_config_from_env() -> dict:
         RELEASE=os.environ.get('RELEASE', '').strip(),
         LOG_FORMAT=log_format,
         MAIL_BACKEND=mail_backend,
+        SITE_NAME=os.environ.get('SITE_NAME', '').strip() or DEFAULT_SITE_NAME,
+        SITE=os.environ.get('SITE', '').strip() or DEFAULT_SETTINGS['SITE'],
+        SITE_LANG=os.environ.get('SITE_LANG', '').strip() or DEFAULT_SETTINGS['SITE_LANG'],
         MAIL_FROM=os.environ.get('MAIL_FROM') or DEFAULT_MAIL_FROM,
         SMTP_HOST=os.environ.get('SMTP_HOST', 'localhost'),
         SMTP_PORT=int(os.environ.get('SMTP_PORT') or 25),
@@ -186,6 +201,7 @@ def _load_config_from_env() -> dict:
         LEXICON_RELOAD_INTERVAL_S=float(
             os.environ.get('LEXICON_RELOAD_INTERVAL_S', DEFAULT_SETTINGS['LEXICON_RELOAD_INTERVAL_S'])
         ) if app_env != 'production' else 0,
+        LEXICON_LOAD=os.environ.get('LEXICON_LOAD', '1').lower() not in ('0', 'false', 'non'),
     )
 
 
@@ -267,11 +283,13 @@ def create_app(test_config=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     init_rate_limiting(app)
+    init_usage(app)
+    init_stats_cli(app)
 
     # Le lexique n'est pas chargé en mode test (les tests fournissent un petit Trie)
     app.dela_trie = None
     app.lexicon = None
-    if not app.config.get("TESTING", False):
+    if not app.config.get("TESTING", False) and app.config['LEXICON_LOAD']:
         manager = LexiconManager(app.config['LEXICON_PATH'])
         try:
             manager.check()

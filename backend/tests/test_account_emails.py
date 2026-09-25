@@ -45,6 +45,19 @@ def test_registering_sends_a_confirmation_link(client, outbox):
     assert account(client, tokens)["email_verified"] is False
 
 
+def test_emails_carry_the_site_name_not_the_engine_name(client, outbox, test_app, monkeypatch):
+    """Le nom public vient de la configuration (ADR 0017) ; Terminator est celui du moteur."""
+    monkeypatch.setitem(test_app.config, "SITE_NAME", "Le Fléchoir")
+    email, _ = register(client)
+    send(client, "post", "/api/auth/password/forgot", {"email": email})
+
+    assert [m["Subject"] for m in outbox] == ["Confirmez votre adresse — Le Fléchoir",
+                                             "Nouveau mot de passe — Le Fléchoir"]
+    for message in outbox:
+        assert "votre compte Le Fléchoir" in message.get_content()
+        assert "Terminator" not in message.as_string()
+
+
 def test_the_confirmation_link_confirms_the_address(client, outbox):
     _, tokens = register(client)
     token = link_token(outbox[0], "/verify-email")

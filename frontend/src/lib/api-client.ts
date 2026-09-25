@@ -129,8 +129,9 @@ export async function apiFetch(endpoint: string, options: ApiFetchOptions = {}, 
       credentials: "include",
     });
   } catch {
-    // Erreur réseau (« Failed to fetch ») : API arrêtée, en cours de redémarrage ou injoignable
-    throw new Error("Impossible de joindre le serveur de Terminator. Vérifiez qu'il est lancé (make dev-api), puis réessayez.");
+    // Erreur réseau (« Failed to fetch ») : connexion coupée, API arrêtée ou en cours de redémarrage.
+    // Un visiteur ne peut rien lancer : en développement, c'est `make dev-api` qui manque.
+    throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion, puis réessayez dans un instant.");
   }
 
   // Jeton expiré ou refusé : une seule tentative de renouvellement, puis déconnexion.

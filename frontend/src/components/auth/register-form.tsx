@@ -89,6 +89,11 @@ export function RegisterForm() {
               </p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
+            <p className="text-xs text-muted-foreground">
+              En créant un compte, vous acceptez les{" "}
+              <Link href="/terms" className="underline">conditions d&apos;utilisation</Link>. Ce qui est conservé :
+              la <Link href="/privacy" className="underline">page de confidentialité</Link>.
+            </p>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Création du compte…" : "Créer un compte"}
             </Button>

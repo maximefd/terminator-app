@@ -4,24 +4,92 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 
 ## [Non publié]
 
-### Modifié
-- **Écran de génération simplifié** : la taille se choisit en vignettes (petites, moyennes, grandes),
-  la grille apparaît à côté du formulaire, et les mots imposés deviennent une option repliée. Un mot
-  ajouté arrive **souhaité** — il ne fait jamais échouer la grille — et « Obligatoire » se coche. Les
-  mots souhaités restés sans place sont nommés sous la grille ; mise en page et seed passent au survol.
-- **La dernière grille générée survit à la connexion** : générée sans compte, elle attend dans le
-  navigateur pendant qu'on se connecte ou s'inscrit, et la connexion ramène à la page d'origine
-  (`/login?next=/grid`, chemins internes seulement). Oubliée à la déconnexion.
-- **Après « Conserver »**, un bouton « Relire et écrire les définitions » mène à la grille, au lieu d'un
-  simple lien vers la liste.
-- **Éditeur de grille en trois étapes numérotées** : relire les mots, définitions, mise en page et
-  export. Une grille neuve s'ouvre sur la relecture — la liste de ses mots, ceux à regarder de près en
-  tête, avec des remplaçants qui gardent les croisements —, une grille entamée sur les définitions.
-  L'avancement des définitions s'affiche en pourcentage, l'export PDF prévient quand des définitions ou
-  des lettres manquent, la grille s'archive sans quitter l'écran, et le style des définitions (gras,
-  **italique**, nouveau) se règle dans l'aperçu, là où l'on en voit l'effet.
-
 ### Ajouté
+- **`make deploy-lexicon`** ([#118](https://github.com/maximefd/terminator-app/issues/118)) : le lexique curé
+  exporté sur le Mac part sur le serveur sans sa colonne de définitions (Wiktionnaire, non servies), avec une
+  empreinte vérifiée ; l'API redémarre, et le lexique précédent reprend sa place si elle ne charge pas le
+  nouveau (lexique curé, 50 000 mots au moins). `make deploy-status` en donne la date. Lexique de lancement :
+  l'export du curateur tel qu'utilisé chaque jour (filtre « aucun »). `make deploy` accepte désormais un
+  `decisions.csv` modifié (le curateur l'écrit sans cesse ; il n'entre dans l'application que par le lexique),
+  et `docs/PRODUCTION.md` donne l'ordre de la première mise en ligne.
+- **Sauvegardes de la nuit copiées hors du serveur** ([#120](https://github.com/maximefd/terminator-app/issues/120)) :
+  `tools/db/backup-offsite.sh` fait un dump chiffré pour la clé publique `age` (il refuse sans elle), le copie
+  sur Cloudflare R2 (seau en juridiction UE, rotation à 30 jours par le seau), vérifie la taille de la copie,
+  rattrape les sauvegardes de la semaine qui manqueraient là-bas, note la dernière réussite (affichée par
+  `make deploy-status`) et peut prévenir un service de surveillance. Les scripts de sauvegarde lisent
+  `ENV_FILE`. Essayé avec un stockage compatible S3 : copie, rattrapage, restauration depuis la copie distante.
+- **Déploiement** ([#119](https://github.com/maximefd/terminator-app/issues/119),
+  [ADR 0019](docs/adr/0019-deploiement.md), [PRODUCTION.md](docs/PRODUCTION.md)) :
+  - `make deploy` : le commit (jamais un dossier de travail) part par SSH ; le serveur sauvegarde la base,
+    construit l'image, attend qu'elle soit « healthy », vérifie `/api/status`, et revient seul à la version
+    précédente en cas d'échec ; puis le site, construit à partir du même commit, part sur Cloudflare Pages ;
+  - `make rollback`, `make deploy-status` ; quatre versions gardées, avec leurs images ;
+  - `/api/status` vérifie aussi la base de données (503 et `reason: database_unavailable` si elle est
+    injoignable) ;
+  - `docs/PRODUCTION.md` devient le runbook : préparer le serveur (SSH par clé, pare-feu, mises à jour
+    automatiques, journald), Cloudflare, déployer, revenir en arrière, restaurer, changer un secret, surveiller ;
+  - essayé sur un serveur simulé : premier et deuxième déploiement, version cassée, retour arrière, ménage.
+- **Compose de production** ([#117](https://github.com/maximefd/terminator-app/issues/117),
+  [PRODUCTION.md](docs/PRODUCTION.md)) : `docker-compose.prod.yml` (PostgreSQL, API sous gunicorn, cloudflared),
+  sans aucun port publié ; réglages un par un depuis `.env.production` (modèle versionné), le jeton du tunnel
+  n'entrant pas dans l'environnement de l'API ; healthcheck de l'API ; journaux dans journald, effacés à
+  14 jours. Essayé de bout en bout sur une machine de test. Dependabot suit les images Docker.
+- **Mesure d'usage côté serveur** ([#116](https://github.com/maximefd/terminator-app/issues/116),
+  [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)), sans cookie ni script tiers :
+  - un événement par génération (format, layout, mots imposés en nombre, longueur et présence dans le lexique,
+    issue — grille, raison du `422`, refus « occupé » ou rate limiting —, durée, temps CPU, tentatives), par
+    recherche (forme du motif, pas son texte), par étape de compte, par grille conservée, et par erreur sur une
+    route connue ;
+  - chaque événement porte le site, la langue, le pays et une empreinte du jour : un hachage de l'IP et du
+    navigateur avec un sel quotidien détruit le lendemain. L'adresse IP n'est jamais enregistrée ;
+  - conservation : texte des mots imposés 90 jours, événements 13 mois, suppression avec le compte ; purge
+    faite chaque jour par la première requête mesurée (`flask usage purge` à la main) ;
+  - `flask stats` : chiffres du jour, de 7 et de 30 jours, seuils de l'ADR 0013, formats, réussite selon le
+    nombre de mots imposés, mots imposés absents du lexique, pays, erreurs par route, dernières générations ;
+  - `created_at` et `last_login_at` sur les comptes (migration 0007) ; une session renouvelée compte comme
+    une connexion, une fois par jour au plus ;
+  - la page de confidentialité et le registre décrivent cette mesure ; les erreurs de génération qui n'en
+    avaient pas reçoivent un code `reason` (`no_words`, `unknown_format`).
+- **Pages légales pour l'ouverture** ([#114](https://github.com/maximefd/terminator-app/issues/114)) :
+  - **mentions légales** réécrites : éditeur particulier non nommé (LCEN, art. 6, III, 2), hébergeurs (OVH,
+    Cloudflare), contact, crédits affichés sur le site (DELA, Lexique, Archivo Narrow, Inter) ;
+  - **confidentialité** réécrite pour le site en ligne : responsable, données et bases légales, journaux
+    (14 jours), rapports d'erreur, messages de contact, durées (dont les comptes inactifs depuis 3 ans),
+    sous-traitants et lieux de traitement, droits et CNIL ;
+  - **conditions d'utilisation** (`/terms`) : âge minimum, ce qui appartient à l'utilisateur (dictionnaires,
+    grilles, libres d'usage), suggestions de mots données au site, abus, absence de garantie ; citées à
+    l'inscription et dans le pied de page ;
+  - **registre des traitements** ([docs/RGPD.md](docs/RGPD.md)) ;
+  - plus aucun lien vers GitHub sur les pages publiques (test Playwright).
+- **Page contact et `security.txt`** ([#115](https://github.com/maximefd/terminator-app/issues/115)) : `/contact`
+  donne `contact@leflechoir.fr` (suggestions, problèmes, demandes sur ses données) et `securite@leflechoir.fr`
+  (failles), avec un lien dans le pied de page ; `/.well-known/security.txt` (RFC 9116) est écrit au build, avec
+  une expiration à 360 jours. Les adresses viennent de la configuration du site. Le formulaire viendra en Phase 8.
+- **Référencement technique** ([#113](https://github.com/maximefd/terminator-app/issues/113)), écrit au build de
+  l'export statique :
+  - `robots.txt` ouvert à tous les robots, moteurs de réponse IA compris, et `sitemap.xml` des cinq pages
+    publiques (accueil, recherche, génération, mentions légales, confidentialité) ;
+  - sur ces pages : description, adresse canonique, aperçu de partage (Open Graph, image `og.png`) ;
+    sur l'accueil, des données structurées `WebApplication` ;
+  - les pages privées (compte, grilles, dictionnaires, connexion, liens reçus par e-mail) en `noindex`, sans
+    `Disallow` : un robot doit pouvoir lire la page pour voir son `noindex` ;
+  - un manifeste, et une page 404 en français ;
+  - un test Playwright des titres et des balises.
+- **Roadmap jusqu'au lancement public et au-delà** ([roadmap](docs/ROADMAP.md), PRD mis à jour) :
+  - La **Phase 6 devient « Durcissement et lancement public »**, de 6b à 6g :
+    - nom et domaine ;
+    - site configurable et référencement technique ;
+    - pages légales et contact ;
+    - mesure côté serveur ;
+    - serveur et déploiement ;
+    - bêta privée, puis ouverture.
+  - **Quatre nouvelles phases** : 8 (poste de pilotage), 9 (acquisition), 10 (international) et 11 (grilles à thème par IA, offre payante).
+  - Un **critère mesurable de fin de la curation française**, préalable à l'international.
+  - Les **suggestions de mots des utilisateurs** (1e) : signaler un mot à retirer, proposer un mot à ajouter ; l'auteur tranche dans le curateur.
+  - **Trois ADR** :
+    - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
+    - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;
+    - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : le site français s'appelle **Le Fléchoir** (`leflechoir.fr`).
 - Miniature de chaque grille dans « Mes grilles » : l'API envoie la **forme** avec le résumé
   (`x` case définition, `-` case lettre), et la liste la dessine. Avec cent grilles, c'est la
   silhouette qu'on reconnaît — ni lettres ni mots ne transitent pour l'afficher. Vignette de 44 px,
@@ -245,6 +313,27 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Le site s'appelle Le Fléchoir** ([#112](https://github.com/maximefd/terminator-app/issues/112),
+  [ADR 0017](docs/adr/0017-un-site-par-langue.md)) : le nom public vient de la configuration du site
+  (`frontend/src/config/site.ts`, choisi par `NEXT_PUBLIC_SITE`) et, pour les e-mails, de `SITE_NAME`.
+  Plus aucun « Terminator » visible : titres des pages (« Mes grilles | Le Fléchoir »), en-tête, pied de page,
+  pages légales, objet et texte des e-mails. La mise en page racine passe côté serveur pour porter ces
+  métadonnées. Le message d'erreur réseau ne cite plus `make dev-api`.
+- **Écran de génération simplifié** : la taille se choisit en vignettes (petites, moyennes, grandes),
+  la grille apparaît à côté du formulaire, et les mots imposés deviennent une option repliée. Un mot
+  ajouté arrive **souhaité** — il ne fait jamais échouer la grille — et « Obligatoire » se coche. Les
+  mots souhaités restés sans place sont nommés sous la grille ; mise en page et seed passent au survol.
+- **La dernière grille générée survit à la connexion** : générée sans compte, elle attend dans le
+  navigateur pendant qu'on se connecte ou s'inscrit, et la connexion ramène à la page d'origine
+  (`/login?next=/grid`, chemins internes seulement). Oubliée à la déconnexion.
+- **Après « Conserver »**, un bouton « Relire et écrire les définitions » mène à la grille, au lieu d'un
+  simple lien vers la liste.
+- **Éditeur de grille en trois étapes numérotées** : relire les mots, définitions, mise en page et
+  export. Une grille neuve s'ouvre sur la relecture — la liste de ses mots, ceux à regarder de près en
+  tête, avec des remplaçants qui gardent les croisements —, une grille entamée sur les définitions.
+  L'avancement des définitions s'affiche en pourcentage, l'export PDF prévient quand des définitions ou
+  des lettres manquent, la grille s'archive sans quitter l'écran, et le style des définitions (gras,
+  **italique**, nouveau) se règle dans l'aperçu, là où l'on en voit l'effet.
 - L'éditeur devient un **plan de travail** : sur grand écran il occupe la fenêtre, et la grille se
   voit **en entier quelle que soit sa taille** — un 13×18 n'oblige plus à faire défiler entre deux
   lettres. Un test le vérifie à deux tailles de fenêtre plutôt que de s'en remettre à une marge fixe.
@@ -295,6 +384,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **API** : SQLAlchemy figé sur 2.0.54. Il n'était installé que comme dépendance de Flask-SQLAlchemy, donc
+  en dernière version ; or SQLAlchemy 2.1 prend psycopg 3 par défaut pour `postgresql://`, et l'API ne
+  démarrait plus (`No module named 'psycopg'`). Les parcours end-to-end et toute nouvelle image étaient touchés.
+- **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
+  laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
+  la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
+- **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
+  collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
+  qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
 - **La police des grilles ne se chargeait pas dans le navigateur.** Un chunk CSS périmé du serveur de
   développement omettait la règle `@font-face` : l'écran affichait la police de secours depuis le
   début, alors que le PDF — qui embarque le fichier lui-même — était correct. Conséquence moins
@@ -304,12 +402,6 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
   est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
   et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.
-- **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
-  laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
-  la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
-- **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
-  collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
-  qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
 - Les migrations jouées au démarrage éteignaient tous les loggers déjà créés (`fileConfig` d'Alembic) :
   sous gunicorn, plus aucun journal d'accès ni de démarrage des workers.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
@@ -328,6 +420,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **L'image de l'API tourne sans droits** (uid 10001) et ne peut pas modifier son code ; `.dockerignore` écarte
+  tests, benchmarks, caches et fichiers `.env`.
 - **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
   autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
   Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`

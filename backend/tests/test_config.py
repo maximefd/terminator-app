@@ -2,7 +2,8 @@ import pytest
 
 from app import DEV_SECRET, _load_config_from_env
 
-ENV_VARS = ["APP_ENV", "SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GENERATION_TIME_BUDGET_S"]
+ENV_VARS = ["APP_ENV", "SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GENERATION_TIME_BUDGET_S", "SITE_NAME",
+            "SITE", "SITE_LANG", "LEXICON_LOAD"]
 
 
 @pytest.fixture(autouse=True)
@@ -135,3 +136,27 @@ def test_the_visitor_header_is_read_from_the_environment(monkeypatch):
 
     monkeypatch.setenv('CLIENT_IP_HEADER', ' CF-Connecting-IP ')
     assert _load_config_from_env()['CLIENT_IP_HEADER'] == 'CF-Connecting-IP'
+
+
+def test_site_name_comes_from_the_environment(monkeypatch):
+    monkeypatch.setenv("SITE_NAME", "Die Pfeilwerkstatt")
+
+    assert _load_config_from_env()["SITE_NAME"] == "Die Pfeilwerkstatt"
+
+
+def test_site_name_defaults_to_the_french_site():
+    assert _load_config_from_env()["SITE_NAME"] == "Le Fléchoir"
+
+
+def test_a_command_can_skip_the_lexicon(monkeypatch):
+    """flask stats n'en a pas besoin : sur le serveur, le charger coûterait des centaines de Mo."""
+    assert _load_config_from_env()["LEXICON_LOAD"] is True
+    monkeypatch.setenv("LEXICON_LOAD", "0")
+    assert _load_config_from_env()["LEXICON_LOAD"] is False
+
+
+def test_the_site_and_its_language_come_from_the_environment(monkeypatch):
+    assert (_load_config_from_env()["SITE"], _load_config_from_env()["SITE_LANG"]) == ("fr", "fr")
+    monkeypatch.setenv("SITE", "de")
+    monkeypatch.setenv("SITE_LANG", "de")
+    assert (_load_config_from_env()["SITE"], _load_config_from_env()["SITE_LANG"]) == ("de", "de")

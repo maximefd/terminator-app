@@ -11,6 +11,7 @@ import { Trash2, PlusCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { site } from "@/config/site";
 
 // --- TYPES ---
 type Dictionary = {
@@ -247,7 +248,7 @@ export function DictionaryPanel() {
               <DialogTitle>Supprimer « {activeDictionary?.name} » ?</DialogTitle>
               <DialogDescription>
                 Ses {words?.length ?? 0} mot{(words?.length ?? 0) > 1 ? "s" : ""} seront effacés avec lui.
-                C&apos;est définitif : Terminator ne garde pas de copie.
+                C&apos;est définitif : {site.name} ne garde pas de copie.
                 {dictionaries?.length === 1 && " C'est votre dernier : un « Dictionnaire par défaut » vide prendra sa place."}
               </DialogDescription>
             </DialogHeader>

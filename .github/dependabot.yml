@@ -24,6 +24,29 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
+  # Image de base de l'API (python:3.11-slim). Changer de version de Python est un chantier (CI, dépendances,
+  # benchmark), pas une mise à jour : Dependabot ne le propose pas. Les correctifs de sécurité de l'image
+  # arrivent sous la même étiquette 3.11-slim, à chaque reconstruction.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    labels: [ci, backend]
+    ignore:
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
+
+  # Images de docker-compose.prod.yml. Une version majeure de PostgreSQL ne lit pas les données de la
+  # précédente : elle demande une migration (sauvegarde, restauration), jamais une simple mise à jour.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [ci, backend]
+    ignore:
+      - dependency-name: postgres
+        update-types: [version-update:semver-major]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
