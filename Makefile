@@ -7,7 +7,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
 .PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check db-backup db-restore-check stats \
-	deploy deploy-api deploy-front rollback deploy-status \
+	deploy deploy-api deploy-front deploy-lexicon rollback deploy-status \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls \
 	preview-remote
@@ -135,6 +135,9 @@ deploy-api: ## Déploie seulement l'API (retour automatique à la version préc�
 
 deploy-front: ## Déploie seulement le site
 	tools/deploy/deploy.sh front
+
+deploy-lexicon: ## Met en service sur le serveur le lexique curé de ce Mac (#118), sans ses définitions
+	tools/deploy/deploy.sh lexicon
 
 rollback: ## Remet en service la version précédente de l'API
 	tools/deploy/deploy.sh rollback

@@ -156,6 +156,22 @@ Compter quelques minutes. L'API est coupée environ une minute, le temps de char
 
 **Les migrations sont additives** ([ADR 0019](adr/0019-deploiement.md)) : on ne retire ni ne renomme une colonne dans le même déploiement que le code qui cesse de s'en servir.
 
+## Publier le lexique
+
+L'API lit le lexique curé que le curateur exporte sur le Mac (`data/lexicon/build/lexique_cure.csv`, réécrit tous les 500 mots triés). C'est le lexique de lancement : le même que celui du site local, filtre « aucun » (#118). Sans lui, le serveur se rabat sur le DELA complet, avec ses formes rares.
+
+```bash
+make deploy-lexicon
+```
+
+La commande :
+- envoie le fichier **sans la colonne des définitions** : elles viennent du Wiktionnaire (CC BY-SA), le site ne les sert pas, elles restent donc sur le Mac ;
+- fait vérifier son empreinte par le serveur, puis redémarre l'API (environ une minute de coupure) ;
+- s'assure que l'API a bien chargé le lexique curé, avec plus de 50 000 mots ;
+- remet le lexique précédent en service si ce n'est pas le cas.
+
+À relancer après une séance de curation pour publier ses progrès, de préférence aux heures creuses. `make deploy-status` affiche la date du lexique en service.
+
 ## En cas de problème
 
 | Situation | Geste |
@@ -246,6 +262,10 @@ Sur une machine de test, avec Docker et une configuration factice :
   - rattrapage d'une nuit ratée ;
   - restauration depuis la copie distante, avec les 1 000 lignes retrouvées ;
   - refus d'envoyer quoi que ce soit sans clé publique.
+- **Le lexique** (`make deploy-lexicon`), du Mac jusqu'à un serveur simulé :
+  - lexique valide : en service, sans la colonne des définitions ;
+  - lexique tronqué (10 lignes) : refusé, le précédent reprend sa place, code de sortie 1 ;
+  - second lexique valide : en service, avec le précédent gardé.
 - **Le déploiement**, sur un serveur simulé (`LEFLECHOIR_BASE`) :
   - premier déploiement : 53 s ;
   - deuxième, précédé d'une sauvegarde : 25 s ;
@@ -255,6 +275,6 @@ Sur une machine de test, avec Docker et une configuration factice :
 
 ## Reste à faire
 
-- **Le lexique curé livré** (#118) : sans lui, l'API se rabat sur le DELA complet de l'image (`/api/status` : `curated: false`).
+- **Le premier `make deploy-lexicon`** (#118), juste après le premier déploiement.
 - **La première sauvegarde de la nuit restaurée depuis R2** (#120), sur le vrai serveur.
 - **Le premier vrai déploiement** et un retour arrière, joués de bout en bout sur le VPS (#119).

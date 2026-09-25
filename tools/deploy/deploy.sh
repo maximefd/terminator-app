@@ -2,6 +2,7 @@
 # Déploie le commit en cours (HEAD), depuis le Mac ([ADR 0019](../../docs/adr/0019-deploiement.md)).
 #
 # Usage : tools/deploy/deploy.sh [all|api|front]     (make deploy, make deploy-api, make deploy-front)
+#         tools/deploy/deploy.sh lexicon             (make deploy-lexicon : le lexique curé de ce Mac part en service)
 #         tools/deploy/deploy.sh rollback            (make rollback : l'API revient à la version précédente)
 #
 # - api   : le code du commit part par SSH sur le serveur, qui construit l'image, la démarre, la vérifie et
@@ -83,11 +84,49 @@ deploy_front() {
     say "Site : $VERSION en ligne."
 }
 
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
+
+# Le lexique curé que le curateur exporte sur ce Mac (tous les 500 mots triés) : il part tel quel, sans la
+# colonne des définitions. Elles viennent du Wiktionnaire (CC BY-SA) et le site ne les sert pas : elles
+# restent sur le Mac. Le serveur vérifie l'empreinte, redémarre l'API, et reprend le précédent si elle échoue.
+deploy_lexicon() {
+    source_file="data/lexicon/build/lexique_cure.csv"
+    [ -s "$source_file" ] || die "$source_file absent : le curateur l'écrit tous les 500 mots triés (ou make lexicon-export)"
+    command -v python3 >/dev/null || die "python3 introuvable"
+    work="$(mktemp -d)"
+    trap 'rm -rf "$work"' EXIT
+    lines="$(python3 - "$source_file" "$work/lexique_cure.csv" <<'PY'
+import csv
+import sys
+
+source, target = sys.argv[1], sys.argv[2]
+count = 0
+with open(source, encoding="utf-8", newline="") as f, open(target, "w", encoding="utf-8", newline="") as out:
+    writer = csv.writer(out, delimiter=";", lineterminator="\n")
+    for row in csv.reader(f, delimiter=";"):
+        if not row:
+            continue
+        row = (row + ["", "", "", ""])[:4]
+        row[2] = ""
+        writer.writerow(row)
+        count += 1
+print(count)
+PY
+)"
+    say "Lexique : $lines lignes, exporté le $(date -r "$source_file" '+%d/%m/%Y à %H:%M'). Envoi sur $DEPLOY_HOST…"
+    ssh_server "mkdir -p $REMOTE_BASE/lexicon && cat > $REMOTE_BASE/lexicon/lexique_cure.csv.nouveau" < "$work/lexique_cure.csv"
+    ssh_server "sh $REMOTE_BASE/current/tools/deploy/server.sh lexicon $(sha256 "$work/lexique_cure.csv")"
+    curl -fsS --max-time 20 "$DEPLOY_API_URL/api/status" >/dev/null \
+        || die "l'API ne répond pas par $DEPLOY_API_URL : voir docs/PRODUCTION.md"
+    say "Lexique en service."
+}
+
 case "${1:-all}" in
     all) check_commit; deploy_api; deploy_front ;;
     api) check_commit; deploy_api ;;
     front) check_commit; deploy_front ;;
-    rollback) ssh_server "sh $REMOTE_BASE/releases/\$(basename \$(readlink $REMOTE_BASE/current))/tools/deploy/server.sh rollback" ;;
-    status) ssh_server "sh $REMOTE_BASE/releases/\$(basename \$(readlink $REMOTE_BASE/current))/tools/deploy/server.sh status" ;;
-    *) die "Usage : deploy.sh [all|api|front|rollback|status]" ;;
+    lexicon) deploy_lexicon ;;
+    rollback) ssh_server "sh $REMOTE_BASE/current/tools/deploy/server.sh rollback" ;;
+    status) ssh_server "sh $REMOTE_BASE/current/tools/deploy/server.sh status" ;;
+    *) die "Usage : deploy.sh [all|api|front|lexicon|rollback|status]" ;;
 esac
