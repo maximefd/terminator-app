@@ -344,7 +344,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - ✅ Sentry (projets UE) ; reste UptimeRobot ;
   - ✅ le premier déploiement réel, et un retour arrière joué deux fois sur le VPS (25/09/2026).
 - ✅ **Sauvegardes** (#120) : nocturnes et chiffrées, copiées sur R2 (juridiction UE) et vérifiées, avec une restauration vérifiée chaque mois ([PRODUCTION.md](PRODUCTION.md)). ✅ Une sauvegarde du vrai serveur restaurée depuis R2 (25/09/2026) ; première nuit : le 26/09 à 3 h 30 UTC.
-- **CI sur l'export statique :** aujourd'hui, la CSP n'est testée que contre `next dev`.
+- ✅ **CI sur l'export statique** (#121) : le job de bout en bout tourne aussi sur l'export publié (`out/` et `out/_headers`), servi comme par Cloudflare Pages ; la CSP par page y est testée.
 - **Dépôt privé :**
   - ce qu'on perd sur GitHub Free : protection de branche, CodeQL, signalement privé des failles, minutes d'Actions ;
   - comment le compenser ;

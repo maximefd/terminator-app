@@ -5,6 +5,13 @@ import path from 'path';
 // On lit le fichier .env qui se trouve à la racine de notre projet frontend
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+// PLAYWRIGHT_STATIC=1 : les parcours visent le site tel qu'il est publié (#121), l'export de `pnpm build`
+// (`out/` et `out/_headers`) servi comme par Cloudflare Pages. C'est là seulement que la CSP par page
+// existe (`csp.spec.ts`). Sinon, le serveur de développement.
+const staticExport = process.env.PLAYWRIGHT_STATIC === '1';
+const port = new URL(baseURL).port || '3000';
+
 export default defineConfig({
   testDir: './tests',
   timeout: 30 * 1000,
@@ -20,15 +27,15 @@ export default defineConfig({
 
   use: {
     // On utilise la variable d'environnement, avec un fallback sécurisé sur localhost
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
 
   webServer: {
-    // On s'assure que le serveur de dev écoute bien sur toutes les adresses
-    command: 'pnpm dev --hostname 0.0.0.0',
-    // On utilise la même URL que le baseURL pour que Playwright sache quand le serveur est prêt
-    url: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    // Le serveur de dev écoute sur toutes les adresses ; l'export, lui, doit avoir été construit avant
+    command: staticExport ? `pnpm serve:static --port ${port}` : `pnpm dev --hostname 0.0.0.0 --port ${port}`,
+    // La même URL que baseURL, pour que Playwright sache quand le serveur est prêt
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     // Démarrage à froid en CI : Next compile chaque page à la première visite
     timeout: 180 * 1000,

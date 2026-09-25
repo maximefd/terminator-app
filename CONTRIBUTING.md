@@ -55,6 +55,8 @@ Le contrôle d'accessibilité (`tests/accessibility.spec.ts`) passe **axe** sur 
 Il ne juge que ce qui se vérifie par le code — contraste, intitulés, rôles, ordre des titres. Un écran qui
 y passe peut rester incompréhensible : c'est le rôle de la [revue UX](docs/AUDIT-UX.md).
 
+Parcours sur **l'export statique**, le site tel qu'il est publié (#121) : construire l'export dans une copie du dépôt (jamais dans `frontend/` pendant que le serveur de dev tourne), puis `PLAYWRIGHT_STATIC=1 PLAYWRIGHT_BASE_URL=http://localhost:3098 pnpm exec playwright test` depuis son `frontend/`. Playwright sert `out/` comme Cloudflare Pages (`pnpm serve:static`, avec `_headers`), et `csp.spec.ts` y tourne, alors qu'il est sauté sur le serveur de dev. La CI le fait à chaque PR.
+
 Captures d'écran du README (API et frontend démarrés) : `cd frontend && pnpm exec playwright test tests/screenshots.spec.ts`. Playwright utilise le **Google Chrome installé** sur la machine (`channel: 'chrome'` dans `playwright.config.ts`) : inutile de lancer `playwright install chromium`, dont le téléchargement se fige sur la machine de l'auteur.
 
 **Règle du moteur** : toute modification de `backend/engine/`, `grid_generator.py` ou `trie_engine.py` doit être accompagnée d'un benchmark comparé à `backend/benchmarks/baseline.json`. Voir [ENGINE.md](docs/ENGINE.md).

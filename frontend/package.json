@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack && node scripts/write-headers.mjs",
-    "lint": "eslint"
+    "lint": "eslint",
+    "serve:static": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.140.0 pages dev out --ip 0.0.0.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
