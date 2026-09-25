@@ -15,7 +15,7 @@ Terminator : outil personnel de création de mots fléchés (recherche par motif
 
 ## Règles
 
-- **Pas de déploiement en ligne** pour l'instant ([ADR 0004](docs/adr/0004-pas-de-deploiement-en-ligne.md)) ; la cible est choisie ([ADR 0013](docs/adr/0013-cible-hebergement-production.md) : VPS derrière Cloudflare) et le lancement du site français se prépare (Phase 6 de la roadmap). Render et Vercel sont supprimés : ne plus les proposer.
+- **Le site est en ligne** depuis le 25/09/2026 ([ADR 0013](docs/adr/0013-cible-hebergement-production.md) : VPS derrière Cloudflare). On déploie un commit de `main` par `make deploy` ([ADR 0019](docs/adr/0019-deploiement.md)), jamais à la main sur le serveur ; le lexique par `make deploy-lexicon` ; runbook : [docs/PRODUCTION.md](docs/PRODUCTION.md). Render et Vercel sont supprimés : ne plus les proposer.
 - **Nom et langues** ([ADR 0017](docs/adr/0017-un-site-par-langue.md)) :
   - Terminator est le nom du moteur ; le nom public du site vient de sa configuration, jamais en dur ;
   - toute nouvelle donnée liée au lexique ou à l'usage porte sa langue (`lang`) ;

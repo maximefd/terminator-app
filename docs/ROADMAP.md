@@ -25,7 +25,7 @@
 | 10 — International | ⏳ après la fin de la curation française : un site par langue, anglais puis allemand puis espagnol ([ADR 0017](adr/0017-un-site-par-langue.md)) |
 | 11 — Grilles à thème par IA | ⏳ après l'international : mots du thème et définitions proposés par l'IA, offre payante |
 
-Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)). Le serveur visé est choisi depuis le 22/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)).
+Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)). Le serveur visé est choisi depuis le 22/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)). **Le site est en ligne depuis le 25/09/2026** : l'ADR 0013 remplace l'ADR 0004.
 
 Décisions du 24/09/2026 :
 - le site français ouvre **directement sur le VPS**, sans hébergement intermédiaire sur l'ordinateur de l'auteur ;
@@ -339,10 +339,10 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Serveur et déploiement** (#119, [ADR 0019](adr/0019-deploiement.md), [PRODUCTION.md](PRODUCTION.md)) :
   - ✅ VPS : SSH par clé, pare-feu, mises à jour automatiques (guide pas à pas) ;
   - ✅ `make deploy`, avec sauvegarde, test de fumée, retour automatique, `make rollback` et runbook, essayés sur un serveur simulé ;
-  - Pages sur le domaine propre ;
-  - Sentry (projets UE) et UptimeRobot ;
-  - reste : le premier déploiement réel, et un retour arrière joué sur le VPS.
-- ✅ **Sauvegardes** (#120) : nocturnes et chiffrées, copiées sur R2 (juridiction UE) et vérifiées, avec une restauration vérifiée chaque mois ([PRODUCTION.md](PRODUCTION.md)). Reste : la première nuit restaurée depuis R2, sur le vrai serveur.
+  - ✅ Pages sur le domaine propre (25/09/2026) ;
+  - ✅ Sentry (projets UE) ; reste UptimeRobot ;
+  - ✅ le premier déploiement réel, et un retour arrière joué deux fois sur le VPS (25/09/2026).
+- ✅ **Sauvegardes** (#120) : nocturnes et chiffrées, copiées sur R2 (juridiction UE) et vérifiées, avec une restauration vérifiée chaque mois ([PRODUCTION.md](PRODUCTION.md)). ✅ Une sauvegarde du vrai serveur restaurée depuis R2 (25/09/2026) ; première nuit : le 26/09 à 3 h 30 UTC.
 - **CI sur l'export statique :** aujourd'hui, la CSP n'est testée que contre `next dev`.
 - **Dépôt privé :**
   - ce qu'on perd sur GitHub Free : protection de branche, CodeQL, signalement privé des failles, minutes d'Actions ;
@@ -350,12 +350,12 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - une alternative : code public et données privées.
 
 ### 6g. Bêta privée, ouverture, première semaine (#123, #124)
-- **Bêta privée :** le premier déploiement de production passe derrière Cloudflare Access, pour quelques testeurs et la session d'utilisabilité (#90). Ce jour-là, l'ADR 0004 est marquée « remplacée par 0013 ».
-- **Avant d'ouvrir :**
-  - checklist de [SECURITY.md](SECURITY.md) à 14/14 ;
+- ~~**Bêta privée** derrière Cloudflare Access~~ : **abandonnée** (décision du 25/09/2026). Le site est ouvert et indexable dès sa mise en ligne, le 25/09/2026 ; l'ADR 0004 est remplacée par 0013 ce jour-là. La session d'utilisabilité (#90) se fera sur le site ouvert.
+- **Au plus tôt, le site étant ouvert :**
+  - checklist de [SECURITY.md](SECURITY.md) à 14/14 (13/14 vérifiés sur le serveur le 25/09/2026) ;
   - contrôle ASVS sur l'adresse publique ;
-  - `.env` et clé `age` hors du serveur.
-- **Ouverture :** Access retiré, Search Console et Bing, sitemap soumis.
+  - ✅ `.env` et clé `age` hors du serveur.
+- **Ouverture** (25/09/2026, sans Access) : restent Search Console et Bing, sitemap soumis.
 - **Première semaine :** `load_profile.py` sur le VPS, puis lecture des seuils de l'ADR 0013, pour décider du passage au VPS-2.
 
 **Terminé quand :**

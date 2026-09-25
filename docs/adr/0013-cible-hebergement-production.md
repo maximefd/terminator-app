@@ -1,6 +1,6 @@
 # 0013 — Cible d'hébergement de production
 
-- Statut : acceptée
+- Statut : acceptée (remplace l'[ADR 0004](0004-pas-de-deploiement-en-ligne.md) depuis la mise en ligne du 25/09/2026)
 - Date : 2026-09-22
 
 ## Contexte
@@ -86,4 +86,4 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
 - **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.
 - **Rate limiting** : ses compteurs restent en mémoire, par worker. Une limite de 10 par minute vaut donc jusqu'à 30 avec 3 workers. Les générations simultanées, elles, sont comptées entre tous les workers.
 - **Dépôt GitHub** : public pendant le développement, **privé à la mise en ligne** (décision du 24/09/2026), pour protéger la curation (`decisions.csv`) et les layouts. Sur GitHub Free, un dépôt privé perd la protection de branche qui impose la CI verte : la règle continuera d'être suivie à la main.
-- **L'ADR 0004 reste en vigueur** jusqu'à la mise en ligne. Ce jour-là, elle sera remplacée par la présente.
+- **L'ADR 0004 est remplacée** par la présente depuis la mise en ligne du 25/09/2026.

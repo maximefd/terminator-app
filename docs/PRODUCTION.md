@@ -31,6 +31,8 @@ Sur le serveur, tout vit dans `/opt/leflechoir` :
 
 Les sections suivantes détaillent chaque geste. 👤 marque ce qui demande l'auteur : un tableau de bord ou une autorisation dans le navigateur. Tout le reste se fait en ligne de commande, depuis le Mac.
 
+> Faite le 25/09/2026 : voir « Mis en ligne le 25/09/2026 », plus bas.
+
 1. **Le serveur** : « Préparer le serveur », étapes 1 à 7. La configuration se crée sur le serveur, à partir de `.env.production.example`, et les secrets internes (`POSTGRES_PASSWORD`, `SECRET_KEY`, `JWT_SECRET_KEY`) y sont **tirés au hasard sur place** : ils ne transitent nulle part.
 2. 👤 **Les secrets des tableaux de bord**, recopiés dans un fichier du Mac hors du dépôt (`~/leflechoir-secrets.env`, `chmod 600`), au format `CLE=valeur` :
    - `CLOUDFLARE_TUNNEL_TOKEN` : « Préparer Cloudflare », le tunnel ;
@@ -111,8 +113,8 @@ Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `s
 
 - **Le tunnel** :
   1. Zero Trust → Networks → Tunnels → *Create a tunnel* (type *Cloudflared*) ;
-  2. nom d'hôte public `api.leflechoir.fr` → service `http://api:5000` ;
-  3. le jeton va dans `CLOUDFLARE_TUNNEL_TOKEN`.
+  2. le jeton va dans `CLOUDFLARE_TUNNEL_TOKEN` : c'est la longue suite `eyJ…` de la commande d'installation affichée, sans rien installer ;
+  3. le tunnel → onglet *Published application routes* (anciennement *Public hostname*) → *Add a published application route* : sous-domaine `api`, domaine `leflechoir.fr`, type `HTTP`, URL `api:5000`. Cloudflare crée lui-même l'enregistrement DNS.
 - **Le projet Pages**, créé depuis le Mac. La première commande ouvre le navigateur pour autoriser l'accès, une seule fois :
 
   ```bash
@@ -121,11 +123,13 @@ Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `s
   ```
   Puis, dans Pages → `leflechoir` → *Custom domains* :
   - ajouter `leflechoir.fr` et `www.leflechoir.fr` ;
-  - faire rediriger `www` vers `leflechoir.fr`, avec une règle de redirection (*Rules → Redirect Rules*).
+  - faire rediriger `www` vers `leflechoir.fr`, avec une règle de redirection (*Rules → Redirect Rules*, modèle *Redirect from WWW to root*) ;
+  - si `leflechoir.fr` affiche encore « Site en construction », la page d'attente d'OVH : supprimer d'abord, dans Cloudflare → *DNS* → *Records*, les `A` et `AAAA` de `leflechoir.fr` et de `www` repris d'OVH. Garder les `MX` (Email Routing), les `TXT`, les `CNAME` de Brevo (`brevo1._domainkey`, `brevo2._domainkey`, `mail`) et `api`.
 - **Les réglages de la zone** (#111) :
   - robots des moteurs de recherche et de réponse IA autorisés (*AI Crawl Control*) ;
   - Bot Fight Mode coupé pour `api.` : ses défis cassent les appels du site ;
-  - Web Analytics de Pages coupé : la CSP bloquerait son script.
+  - Web Analytics de Pages coupé : la CSP bloquerait son script ;
+  - *Always Use HTTPS* (*SSL/TLS → Edge Certificates*) : Pages redirige seul, mais sans ce réglage `api.` répond aussi en HTTP simple.
 
 ## Préparer les sauvegardes (une fois)
 
@@ -137,9 +141,10 @@ Chaque nuit, `tools/db/backup-offsite.sh` fait un dump de la base, **chiffré** 
    age-keygen -o ~/leflechoir-sauvegardes.key     # affiche la clé publique : age1…
    ```
    Dans le `.env` du Mac, avec le chemin complet (le `~` n'y est pas compris) : `BACKUP_AGE_IDENTITY=/Users/TON_NOM/leflechoir-sauvegardes.key`, pour `make db-restore-check`.
-2. **Le seau R2**, dans Cloudflare → R2 :
+2. **Le seau R2**, dans Cloudflare → R2 (à activer une fois : une carte est demandée, l'offre gratuite suffit) :
    - créer le seau `leflechoir-sauvegardes`, avec la **juridiction « European Union »**. Le registre annonce des sauvegardes dans l'UE, et ce choix ne se change plus ;
    - dans le seau → *Settings* → *Object lifecycle rules* : supprimer les objets **après 30 jours** ;
+   - ces deux gestes se font aussi depuis le Mac, wrangler autorisé : `pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.140.0 r2 bucket create leflechoir-sauvegardes --jurisdiction eu`, puis `… r2 bucket lifecycle add leflechoir-sauvegardes expire-30j --expire-days 30 --jurisdiction eu` ;
    - R2 → *Manage API tokens* → créer un jeton *Object Read & Write* limité à ce seau. Noter l'identifiant et le secret, et l'adresse S3 du compte, en `https://<compte>.eu.r2.cloudflarestorage.com` pour un seau européen.
 3. **Dans `.env.production`** : `BACKUP_AGE_RECIPIENT` (la clé publique), `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` et `R2_SECRET_ACCESS_KEY`.
 4. **Un premier essai**, puis la tâche de la nuit, à 3 h 30 UTC, avant les mises à jour de 4 h 30 :
@@ -228,7 +233,12 @@ ssh ubuntu@ADRESSE 'docker start leflechoir-api-1'
 
 ### Vérifier une sauvegarde, chaque mois
 
-1. Télécharger la sauvegarde de la nuit depuis le seau R2 (tableau de bord Cloudflare → R2 → `leflechoir-sauvegardes`).
+1. Télécharger la sauvegarde de la nuit depuis le seau R2 (tableau de bord Cloudflare → R2 → `leflechoir-sauvegardes`). Ou depuis le Mac, avec le nom que donne `make deploy-status` :
+
+   ```bash
+   pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.140.0 r2 object get leflechoir-sauvegardes/terminator-AAAAMMJJ-HHMMSS.dump.age \
+     --file ~/Downloads/terminator-AAAAMMJJ-HHMMSS.dump.age --jurisdiction eu --remote
+   ```
 2. Sur le Mac, avec l'API de développement démarrée (`make dev-api`) :
 
    ```bash
@@ -273,7 +283,29 @@ C="docker compose -p leflechoir -f /opt/leflechoir/current/docker-compose.prod.y
 
   Alertes par e-mail.
 
-## Vérifié le 25/09/2026
+## Mis en ligne le 25/09/2026
+
+Sur le vrai serveur (OVH VPS-1), en suivant « Première mise en ligne, dans l'ordre » :
+- **Le serveur** : mots de passe SSH refusés (essayé depuis une seconde connexion), seul le port 22 ouvert de l'extérieur, mises à jour automatiques, journald à 14 jours.
+- **Le déploiement** : une première version depuis `c9b2d56`, puis `8750a5b` par `make deploy-api`, avec une sauvegarde chiffrée juste avant. `make rollback`, deux fois : 38 s à chaque fois, et l'API répondait par le tunnel après chacun.
+- **Le lexique curé** (`make deploy-lexicon`) : 692 516 mots, en 42 s, sans la colonne des définitions sur le serveur. L'API occupe alors 770 Mo, sur 4 Go.
+- **Les sauvegardes** :
+  - copiées sur R2 (seau en juridiction UE, règle de 30 jours) ;
+  - la tâche de la nuit essayée dans l'environnement de cron ;
+  - une sauvegarde contenant un compte, récupérée depuis R2, déchiffrée sur le Mac et restaurée par `make db-restore-check` : le compte y était.
+- **Le site**, sur `leflechoir.fr` :
+  - `www` et `http` redirigent en 301 ;
+  - les en-têtes de sécurité sont servis, et la console du navigateur est vide ;
+  - recherche et génération (une grille 6×7 en 0,4 s, aller-retour compris) ;
+  - CORS limité à `https://leflechoir.fr`.
+- **Un compte de test** : inscription, e-mail de confirmation reçu par Brevo, lien suivi, puis compte supprimé. Les événements d'usage portent le pays, jamais l'adresse IP.
+- **Écarts trouvés en route** :
+  - `pnpm dlx wrangler` refusé par pnpm 12, et projet Pages créé sur Workers sans `--force` (#160) ;
+  - la copie sur R2 qui ne réussissait qu'au second essai de rclone (#161) ;
+  - les requêtes préliminaires CORS comptées comme des recherches et des générations (#162).
+- **À savoir** : juste après la création de `api.leflechoir.fr`, le Mac garde en cache la réponse « domaine inconnu », jusqu'à 30 minutes. `make deploy` échoue alors à sa dernière vérification, alors que le serveur est à jour. Vérifier avec `dig +short @1.1.1.1 api.leflechoir.fr`, puis `curl --resolve api.leflechoir.fr:443:ADRESSE https://api.leflechoir.fr/api/status`.
+
+## Vérifié sur une machine de test, le 25/09/2026
 
 Sur une machine de test, avec Docker et une configuration factice :
 - **Le compose de production** (#117) :
@@ -302,6 +334,11 @@ Sur une machine de test, avec Docker et une configuration factice :
 
 ## Reste à faire
 
-- **Le premier `make deploy-lexicon`** (#118), juste après le premier déploiement.
-- **La première sauvegarde de la nuit restaurée depuis R2** (#120), sur le vrai serveur.
-- **Le premier vrai déploiement** et un retour arrière, joués de bout en bout sur le VPS (#119).
+- ***Always Use HTTPS*** dans la zone : le dernier point de la checklist de [SECURITY.md](SECURITY.md).
+- **UptimeRobot** : les deux moniteurs (« Surveillance »).
+- **Sentry** : *Prevent Storing of IP Addresses* dans l'organisation, que la page de confidentialité promet.
+- **Les liens des e-mails du compte** : s'ils passent par `mail.leflechoir.fr` (suivi des clics de Brevo), couper ce suivi, car les jetons de confirmation et de mot de passe transiteraient par Brevo.
+- **Search Console et Bing Webmaster**, sitemap soumis (Phase 6g).
+- **La première semaine** : `backend/benchmarks/load_profile.py` sur le VPS, puis les seuils de l'[ADR 0013](adr/0013-cible-hebergement-production.md).
+- **#111** : un message de test à `contact@` ; le double facteur sur Cloudflare, OVH, GitHub, Brevo et Sentry.
+- **Le dépôt privé** ([ADR 0013](adr/0013-cible-hebergement-production.md)) : à décider maintenant que le site est en ligne.
