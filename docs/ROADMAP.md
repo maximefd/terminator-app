@@ -333,10 +333,9 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - PostgreSQL sans port publié ;
   - cloudflared ;
   - `.dockerignore`, journaux dans journald effacés à 14 jours, Dependabot pour Docker.
-- **Lexique de lancement :**
-  - mode d'export choisi sur le benchmark complet ;
-  - fichier sans définitions ;
-  - livré comme artefact avec empreinte, ou construit sur le serveur.
+- ✅ **Lexique de lancement** (#118) :
+  - l'export du curateur, filtre « aucun » : le lexique que l'auteur utilise chaque jour en local (décision du 25/09/2026). Le filtre « moyen » (plus de mots courants, moins de choix) sera évalué plus tard, sur le benchmark complet ;
+  - envoyé par `make deploy-lexicon`, sans les définitions, avec une empreinte vérifiée par le serveur et un retour au précédent si l'API ne le charge pas ([PRODUCTION.md](PRODUCTION.md)).
 - **Serveur et déploiement** (#119, [ADR 0019](adr/0019-deploiement.md), [PRODUCTION.md](PRODUCTION.md)) :
   - ✅ VPS : SSH par clé, pare-feu, mises à jour automatiques (guide pas à pas) ;
   - ✅ `make deploy`, avec sauvegarde, test de fumée, retour automatique, `make rollback` et runbook, essayés sur un serveur simulé ;

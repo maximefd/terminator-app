@@ -27,6 +27,33 @@ Sur le serveur, tout vit dans `/opt/leflechoir` :
 └── lexicon/               le lexique curé (#118)
 ```
 
+## Première mise en ligne, dans l'ordre
+
+Les sections suivantes détaillent chaque geste. 👤 marque ce qui demande l'auteur : un tableau de bord ou une autorisation dans le navigateur. Tout le reste se fait en ligne de commande, depuis le Mac.
+
+1. **Le serveur** : « Préparer le serveur », étapes 1 à 7. La configuration se crée sur le serveur, à partir de `.env.production.example`, et les secrets internes (`POSTGRES_PASSWORD`, `SECRET_KEY`, `JWT_SECRET_KEY`) y sont **tirés au hasard sur place** : ils ne transitent nulle part.
+2. 👤 **Les secrets des tableaux de bord**, recopiés dans un fichier du Mac hors du dépôt (`~/leflechoir-secrets.env`, `chmod 600`), au format `CLE=valeur` :
+   - `CLOUDFLARE_TUNNEL_TOKEN` : « Préparer Cloudflare », le tunnel ;
+   - `SMTP_USER` et `SMTP_PASSWORD` : Brevo → *SMTP & API* → *SMTP* → générer une clé SMTP ;
+   - `SENTRY_DSN` : le DSN du projet Sentry `leflechoir-api` ;
+   - `R2_ENDPOINT`, `R2_ACCESS_KEY_ID` et `R2_SECRET_ACCESS_KEY` : « Préparer les sauvegardes », étape 2.
+
+   Ce fichier part sur le serveur par `scp` et se fond dans `.env.production`. On ne l'affiche jamais, et on ne le commite jamais.
+3. **Les sauvegardes** : la paire de clés `age` sur le Mac (étape 1), et `BACKUP_AGE_RECIPIENT` dans `.env.production`.
+4. 👤 **Pages** : `pnpm dlx wrangler@4.140.0 login` ouvre le navigateur une fois. Ensuite, `pages project create leflechoir --production-branch main`.
+5. **Le premier déploiement, et l'essai du retour arrière sur le vrai serveur.**
+   1. Depuis un `git worktree` d'un commit plus ancien de `main` qui contient déjà `tools/deploy` (par exemple `c9b2d56`), lancer `DEPLOY_HOST=… tools/deploy/deploy.sh api`.
+   2. Puis `make deploy` depuis `main` : l'API et le site. La version précédente est alors l'ancienne.
+   3. `make rollback` : l'ancienne revient en service. `make rollback` une seconde fois : la dernière revient.
+6. 👤 **Le domaine du site** : Pages → `leflechoir` → *Custom domains* → `leflechoir.fr` et `www.leflechoir.fr`, puis la redirection de `www` et les réglages de la zone (« Préparer Cloudflare »).
+7. **Le lexique** : `make deploy-lexicon`, puis `make deploy-status`, qui doit indiquer un lexique curé.
+8. **La sauvegarde de la nuit** : un premier `backup-offsite.sh` à la main, puis la tâche cron. Récupérer ensuite la sauvegarde depuis R2 et la vérifier avec `make db-restore-check`.
+9. **Les vérifications finales :**
+   - `https://api.leflechoir.fr/api/status` répond `"database":"ok"` ;
+   - `https://leflechoir.fr` affiche le site, et une recherche y fonctionne ;
+   - une inscription de test avec une adresse de l'auteur reçoit l'e-mail de confirmation (Brevo). Les liens y pointent-ils vers `leflechoir.fr` ou vers `mail.leflechoir.fr` (suivi des clics, #111) ? Puis on supprime ce compte de test ;
+   - `make deploy-status` affiche les versions, le lexique et la dernière sauvegarde.
+
 ## Préparer le serveur (une fois)
 
 Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `ssh ubuntu@ADRESSE`.
@@ -156,6 +183,22 @@ Compter quelques minutes. L'API est coupée environ une minute, le temps de char
 
 **Les migrations sont additives** ([ADR 0019](adr/0019-deploiement.md)) : on ne retire ni ne renomme une colonne dans le même déploiement que le code qui cesse de s'en servir.
 
+## Publier le lexique
+
+L'API lit le lexique curé que le curateur exporte sur le Mac (`data/lexicon/build/lexique_cure.csv`, réécrit tous les 500 mots triés). C'est le lexique de lancement : le même que celui du site local, filtre « aucun » (#118). Sans lui, le serveur se rabat sur le DELA complet, avec ses formes rares.
+
+```bash
+make deploy-lexicon
+```
+
+La commande :
+- envoie le fichier **sans la colonne des définitions** : elles viennent du Wiktionnaire (CC BY-SA), le site ne les sert pas, elles restent donc sur le Mac ;
+- fait vérifier son empreinte par le serveur, puis redémarre l'API (environ une minute de coupure) ;
+- s'assure que l'API a bien chargé le lexique curé, avec plus de 50 000 mots ;
+- remet le lexique précédent en service si ce n'est pas le cas.
+
+À relancer après une séance de curation pour publier ses progrès, de préférence aux heures creuses. `make deploy-status` affiche la date du lexique en service.
+
 ## En cas de problème
 
 | Situation | Geste |
@@ -246,6 +289,10 @@ Sur une machine de test, avec Docker et une configuration factice :
   - rattrapage d'une nuit ratée ;
   - restauration depuis la copie distante, avec les 1 000 lignes retrouvées ;
   - refus d'envoyer quoi que ce soit sans clé publique.
+- **Le lexique** (`make deploy-lexicon`), du Mac jusqu'à un serveur simulé :
+  - lexique valide : en service, sans la colonne des définitions ;
+  - lexique tronqué (10 lignes) : refusé, le précédent reprend sa place, code de sortie 1 ;
+  - second lexique valide : en service, avec le précédent gardé.
 - **Le déploiement**, sur un serveur simulé (`LEFLECHOIR_BASE`) :
   - premier déploiement : 53 s ;
   - deuxième, précédé d'une sauvegarde : 25 s ;
@@ -255,6 +302,6 @@ Sur une machine de test, avec Docker et une configuration factice :
 
 ## Reste à faire
 
-- **Le lexique curé livré** (#118) : sans lui, l'API se rabat sur le DELA complet de l'image (`/api/status` : `curated: false`).
+- **Le premier `make deploy-lexicon`** (#118), juste après le premier déploiement.
 - **La première sauvegarde de la nuit restaurée depuis R2** (#120), sur le vrai serveur.
 - **Le premier vrai déploiement** et un retour arrière, joués de bout en bout sur le VPS (#119).

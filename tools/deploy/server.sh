@@ -4,7 +4,8 @@
 #
 # Usage : server.sh deploy VERSION   met en service releases/VERSION (déjà copiée par deploy.sh)
 #         server.sh rollback         revient à la version précédente
-#         server.sh status           versions en service et précédente
+#         server.sh lexicon SHA256   met en service le lexique envoyé par deploy.sh (lexicon/…nouveau)
+#         server.sh status           versions, lexique et dernière sauvegarde
 #
 # Disposition sur le serveur (LEFLECHOIR_BASE, défaut /opt/leflechoir) :
 #   .env.production        la configuration (modèle : .env.production.example), jamais dans une version
@@ -40,7 +41,9 @@ schema_version() {
         2>/dev/null || true
 }
 
-# L'API répond, sa base aussi, et le lexique est chargé
+# L'API répond, sa base aussi, et le lexique est chargé. Avec « curated » : le lexique curé, et pas un
+# fichier tronqué (MIN_WORDS), sinon l'API se serait rabattue sur le DELA complet
+MIN_WORDS=50000
 smoke() {
     compose "$1" exec -T api python -c "
 import json, sys, urllib.request
@@ -50,6 +53,8 @@ if status.get('status') != 'ok' or status.get('database') != 'ok' or not status.
     sys.exit('API en mauvais état : %s' % status)
 lexicon = status.get('lexicon') or {}
 print('  lexique : %s, %s mots, curé : %s' % (lexicon.get('source'), status.get('word_count'), lexicon.get('curated')))
+if '${2:-}' == 'curated' and (not lexicon.get('curated') or status.get('word_count', 0) < $MIN_WORDS):
+    sys.exit('le lexique curé n a pas été chargé')
 "
 }
 
@@ -108,6 +113,30 @@ deploy() {
     exit 1
 }
 
+# Le lexique curé, envoyé par deploy.sh : vérifié, mis en service, et remplacé par le précédent si l'API
+# ne le charge pas. Il vit hors des versions (LEXICON_DIR), et l'API le lit au démarrage.
+lexicon() {
+    expected="${1:?Usage : server.sh lexicon SHA256}"
+    dir="$BASE/lexicon"
+    new="$dir/lexique_cure.csv.nouveau"; live="$dir/lexique_cure.csv"; old="$dir/lexique_cure.csv.precedent"
+    [ -s "$new" ] || die "$new absent : relancer make deploy-lexicon"
+    [ "$(sha256sum "$new" | cut -d' ' -f1)" = "$expected" ] || die "le lexique reçu est abîmé (empreinte différente) : relancer make deploy-lexicon"
+    current="$(release_of current)"
+    [ -n "$current" ] || die "aucune version en service : make deploy d'abord"
+
+    [ -f "$live" ] && cp -p "$live" "$old"
+    mv "$new" "$live"
+    say "Redémarrage de l'API avec le nouveau lexique ($(wc -l < "$live" | tr -d ' ') lignes)…"
+    if compose "$current" restart api && start "$current" && smoke "$current" curated; then
+        say "Lexique en service."
+        return 0
+    fi
+    say "L'API ne tourne pas avec ce lexique : retour au précédent." >&2
+    if [ -f "$old" ]; then mv "$old" "$live"; else rm -f "$live"; fi
+    compose "$current" restart api && start "$current" && smoke "$current"
+    exit 1
+}
+
 rollback() {
     current="$(release_of current)"; previous="$(release_of previous)"
     [ -n "$previous" ] || die "aucune version précédente"
@@ -122,6 +151,11 @@ status() {
     say "En service : $(release_of current)"
     say "Précédente : $(release_of previous)"
     say "Schéma de la base : $(schema_version)"
+    if [ -f "$BASE/lexicon/lexique_cure.csv" ]; then
+        say "Lexique curé : $(wc -l < "$BASE/lexicon/lexique_cure.csv" | tr -d ' ') lignes, reçu le $(date -r "$BASE/lexicon/lexique_cure.csv" '+%d/%m/%Y %H:%M')"
+    else
+        say "Lexique curé : aucun (l'API se rabat sur le DELA complet : make deploy-lexicon)"
+    fi
     # Écrite par tools/db/backup-offsite.sh après chaque copie réussie sur R2
     if [ -f "$BASE/backups/derniere-sauvegarde" ]; then
         say "Dernière sauvegarde copiée sur R2 : $(cat "$BASE/backups/derniere-sauvegarde")"
@@ -133,6 +167,7 @@ status() {
 case "${1:-}" in
     deploy) deploy "${2:-}" ;;
     rollback) rollback ;;
+    lexicon) lexicon "${2:-}" ;;
     status) status ;;
-    *) die "Usage : server.sh deploy VERSION | rollback | status" ;;
+    *) die "Usage : server.sh deploy VERSION | rollback | lexicon SHA256 | status" ;;
 esac
