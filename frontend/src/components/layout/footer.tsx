@@ -13,8 +13,11 @@ export function Footer() {
           &copy; {currentYear} {site.name}. Tous droits réservés.
         </p>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+          <Link href="/contact" className="hover:text-primary">
+            Contact
+          </Link>
           <Link href="/legal" className="hover:text-primary">
-            Mentions Légales
+            Mentions légales
           </Link>
           <Link href="/privacy" className="hover:text-primary">
             Confidentialité

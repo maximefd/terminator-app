@@ -2,4 +2,4 @@ blank_issues_enabled: false
 contact_links:
   - name: 🔐 Signaler une vulnérabilité
     url: https://github.com/maximefd/terminator-app/security/advisories/new
-    about: Merci de ne pas ouvrir d'issue publique pour une faille de sécurité.
+    about: Merci de ne pas ouvrir d'issue publique pour une faille de sécurité. Signalement privé ici, ou par e-mail à securite@leflechoir.fr.

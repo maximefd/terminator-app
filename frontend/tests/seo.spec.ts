@@ -12,6 +12,7 @@ const PUBLIC_PAGES = [
   { path: "/", title: "Le Fléchoir — l'atelier des mots fléchés", canonical: SITE_URL },
   { path: "/search", title: "Recherche de mots | Le Fléchoir", canonical: `${SITE_URL}/search` },
   { path: "/grid", title: "Générer une grille | Le Fléchoir", canonical: `${SITE_URL}/grid` },
+  { path: "/contact", title: "Contact | Le Fléchoir", canonical: `${SITE_URL}/contact` },
   { path: "/legal", title: "Mentions légales | Le Fléchoir", canonical: `${SITE_URL}/legal` },
   { path: "/privacy", title: "Confidentialité | Le Fléchoir", canonical: `${SITE_URL}/privacy` },
 ];
@@ -68,6 +69,28 @@ test("l'image de partage est un PNG", async ({ request }) => {
 
   expect(response.ok()).toBe(true);
   expect(response.headers()["content-type"]).toContain("image/png");
+});
+
+test("security.txt donne l'adresse des failles et une date d'expiration de moins d'un an", async ({ request }) => {
+  const response = await request.get("/.well-known/security.txt");
+  const body = await response.text();
+
+  expect(response.headers()["content-type"]).toContain("text/plain");
+  expect(body).toContain("Contact: mailto:securite@leflechoir.fr");
+  const expires = Date.parse(body.match(/^Expires: (.+)$/m)?.[1] ?? "");
+  expect(expires - Date.now()).toBeGreaterThan(0);
+  expect(expires - Date.now()).toBeLessThan(365 * 24 * 60 * 60 * 1000);
+});
+
+test("la page contact donne les deux adresses, et le pied de page y mène", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Contact" }).click();
+
+  await expect(page).toHaveURL(/\/contact$/);
+  await expect(page.getByRole("link", { name: "contact@leflechoir.fr" })).toHaveAttribute(
+    "href", "mailto:contact@leflechoir.fr");
+  await expect(page.getByRole("link", { name: "securite@leflechoir.fr" })).toHaveAttribute(
+    "href", "mailto:securite@leflechoir.fr");
 });
 
 test("une adresse inconnue répond en français", async ({ page }) => {
