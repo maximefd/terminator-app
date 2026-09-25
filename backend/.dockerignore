@@ -1,0 +1,12 @@
+# Ce qui n'a rien à faire dans l'image de production : tests, mesures, caches, secrets locaux
+tests/
+benchmarks/
+test_harness.py
+convert_layouts.py
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+.env.*
+*.log

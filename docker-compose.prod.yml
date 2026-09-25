@@ -1,0 +1,100 @@
+# Production sur le VPS, derrière Cloudflare Tunnel ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)).
+#
+#   cp .env.production.example .env.production   # puis remplir les secrets (jamais versionné)
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Aucun port n'est publié : cloudflared ouvre une connexion sortante vers Cloudflare, et le trafic des
+# visiteurs arrive par elle jusqu'à l'API, sur le réseau interne. PostgreSQL n'est joignable que par l'API.
+name: leflechoir
+
+# Journaux : pilote journald de l'hôte, qui les efface au bout de 14 jours (MaxRetentionSec=14day,
+# docs/PRODUCTION.md). Le journal d'accès contient l'adresse IP des visiteurs : la page de confidentialité
+# annonce 14 jours. LOG_DRIVER=local pour essayer ce fichier sur une machine sans journald.
+x-logging: &logging
+  driver: ${LOG_DRIVER:-journald}
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Remplir .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Remplir .env.production}
+      POSTGRES_DB: ${POSTGRES_DB:?Remplir .env.production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+  api:
+    build: ./backend
+    image: leflechoir-api:${RELEASE:-local}
+    restart: unless-stopped
+    # Réglages lus dans .env.production (modèle : .env.production.example), un par un : le jeton du tunnel
+    # n'entre pas dans l'environnement de l'API
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SECRET_KEY: ${SECRET_KEY:?Remplir .env.production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Remplir .env.production}
+      # Le site (ADR 0017, 0018)
+      SITE: ${SITE:-fr}
+      SITE_LANG: ${SITE_LANG:-fr}
+      SITE_NAME: ${SITE_NAME:-Le Fléchoir}
+      CORS_ORIGINS: ${CORS_ORIGINS:?Remplir .env.production}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:?Remplir .env.production}
+      FRONTEND_URL: ${FRONTEND_URL:?Remplir .env.production}
+      # E-mails du compte, par Brevo (ADR 0014)
+      MAIL_BACKEND: smtp
+      MAIL_FROM: ${MAIL_FROM:?Remplir .env.production}
+      SMTP_HOST: ${SMTP_HOST:-smtp-relay.brevo.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_STARTTLS: "true"
+      SMTP_USER: ${SMTP_USER:?Remplir .env.production}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?Remplir .env.production}
+      # Suivi des erreurs (projet Sentry dans l'UE) : vide, rien n'est envoyé
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      RELEASE: ${RELEASE:-local}
+      LOG_FORMAT: json
+      # Derrière le tunnel, toutes les connexions viennent de cloudflared : l'adresse du visiteur est
+      # dans CF-Connecting-IP, que seul Cloudflare peut poser puisque l'API n'a aucun port ouvert
+      CLIENT_IP_HEADER: CF-Connecting-IP
+      TRUST_PROXY_HOPS: "0"
+      # Capacité (ADR 0013) : deux générations à la fois, un worker de plus pour le reste
+      GENERATION_MAX_CONCURRENT: ${GENERATION_MAX_CONCURRENT:-2}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+      # Lexique curé livré avec l'application (#118) ; à défaut, le DELA complet de l'image
+      LEXICON_PATH: ${LEXICON_PATH:-/lexicon/lexique_cure.csv}
+    volumes:
+      - ./data/lexicon/build:/lexicon:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # Le premier démarrage charge le lexique (de l'ordre d'une minute sur le VPS)
+      start_period: 120s
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      # Jeton du tunnel (tableau de bord Cloudflare : Zero Trust → Networks → Tunnels). Le nom d'hôte
+      # public api.leflechoir.fr y pointe vers http://api:5000.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Remplir .env.production}
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  pgdata:

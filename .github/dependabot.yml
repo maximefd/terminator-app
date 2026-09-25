@@ -24,6 +24,20 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
+  # Image de base de l'API (python:3.11-slim)
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    labels: [ci, backend]
+
+  # Images de docker-compose.prod.yml (PostgreSQL, cloudflared)
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [ci, backend]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

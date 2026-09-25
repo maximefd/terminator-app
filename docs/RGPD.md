@@ -16,7 +16,7 @@ L'éditeur du site, un particulier, à titre non professionnel. Son identité n'
 | 3 | Session | Titulaires d'un compte | Cookies de session (JWT), liste des jetons révoqués | Rester connecté, se déconnecter | Contrat ; cookies strictement nécessaires, sans consentement | 7 jours au plus | Navigateur ; base |
 | 4 | E-mails du compte | Titulaires d'un compte | Adresse e-mail, lien signé | Confirmer l'adresse, changer un mot de passe oublié | Contrat (art. 6.1.b) | Selon Brevo (journal d'envoi) | Brevo (France) |
 | 5 | Protection contre les abus | Tout visiteur | Adresse IP | Limiter le nombre de requêtes | Intérêt légitime (art. 6.1.f) | En mémoire, une heure au plus | Serveur (OVH) |
-| 6 | Journaux techniques | Tout visiteur | Adresse IP, date, méthode, chemin sans paramètres, statut, durée, identifiant de requête | Diagnostiquer une panne ou une attaque | Intérêt légitime (art. 6.1.f) | 14 jours (rotation des journaux Docker, #117) | Serveur (OVH) |
+| 6 | Journaux techniques | Tout visiteur | Adresse IP, date, méthode, chemin sans paramètres, statut, durée, identifiant de requête | Diagnostiquer une panne ou une attaque | Intérêt légitime (art. 6.1.f) | 14 jours (journald, `MaxRetentionSec=14day`, [PRODUCTION.md](PRODUCTION.md)) | Serveur (OVH) |
 | 7 | Rapports d'erreur | Visiteur touché par une erreur | Page ou action en cause, pile d'appel ; ni IP, ni cookie, ni corps de requête | Corriger les pannes | Intérêt légitime (art. 6.1.f) | 90 jours au plus (réglage du projet Sentry) | Sentry (UE) |
 | 8 | Sauvegardes | Titulaires d'un compte | Copie chiffrée de la base (traitements 1 à 3) | Restaurer après un incident | Intérêt légitime (art. 6.1.f) | 30 jours | Cloudflare R2 (UE) |
 | 9 | Messages de contact | Qui écrit à `contact@` ou `securite@` | Adresse e-mail, message | Répondre, suivre la demande | Intérêt légitime (art. 6.1.f) | Un an après le dernier échange | Cloudflare Email Routing, puis la messagerie de l'éditeur |
@@ -43,6 +43,6 @@ Voir [SECURITY.md](SECURITY.md) : mots de passe hachés, cookies httpOnly, CSP, 
 
 ## À faire avant l'ouverture
 
-- Rotation des journaux Docker à 14 jours (#117).
+- Rétention de journald à 14 jours sur le serveur ([PRODUCTION.md](PRODUCTION.md)).
 - Régler la rétention du projet Sentry à 90 jours au plus.
 - Suppression des comptes inactifs depuis 3 ans, avec e-mail de prévenance : la date de dernière connexion est enregistrée depuis #116 ; la commande de purge peut attendre (première suppression possible en 2029).

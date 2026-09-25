@@ -84,6 +84,8 @@ Merci de **ne pas ouvrir d'issue publique**. Écrivez à **securite@leflechoir.f
 
 ## Checklist de mise en production
 
+`docker-compose.prod.yml` ([PRODUCTION.md](PRODUCTION.md)) pose d'office `APP_ENV`, `CLIENT_IP_HEADER`, `TRUST_PROXY_HOPS`, gunicorn, `MAIL_BACKEND=smtp`, l'absence de `FLASK_DEBUG` et de port publié ; restent à vérifier sur le serveur.
+
 - [ ] `APP_ENV=production`
 - [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
 - [ ] `DATABASE_URL` vers PostgreSQL
