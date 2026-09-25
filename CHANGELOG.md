@@ -15,6 +15,7 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
     - bêta privée, puis ouverture.
   - **Quatre nouvelles phases** : 8 (poste de pilotage), 9 (acquisition), 10 (international) et 11 (grilles à thème par IA, offre payante).
   - Un **critère mesurable de fin de la curation française**, préalable à l'international.
+  - Les **suggestions de mots des utilisateurs** (1e) : signaler un mot à retirer, proposer un mot à ajouter ; l'auteur tranche dans le curateur.
   - **Trois ADR** :
     - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
     - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;

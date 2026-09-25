@@ -13,6 +13,7 @@
 | 1a — Pipeline du lexique | ✅ PR #42 |
 | 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`). **Sa fin, mesurée ([1d](#1d-fin-de-la-curation-française--préalable-à-la-phase-10)), conditionne la Phase 10** |
 | 1c — Lexique curé chargé par l'API | ✅ PR #46 : export et rechargement automatiques tous les 500 mots triés |
+| 1e — Suggestions des utilisateurs | ⏳ juste après le poste de pilotage (Phase 8) : signaler un mot à retirer, proposer un mot à ajouter ; l'auteur tranche dans le curateur |
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve levée, et elle révèle un problème** : la baseline comporte désormais des cas avec mots obligatoires (`--must-words`). Un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %**, tous layouts sous le critère ([mesures](../backend/benchmarks/README.md)). Le changement de layout (#73) améliore le cas où un format compte plusieurs layouts — 6×7 de 6/20 à 11/20 — sans rien résoudre sur le fond. **Traité non par le taux mais par l'aveu** : l'écran annonce la difficulté avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)), et la mesure a désigné le vrai facteur — la **longueur** des mots imposés, pas leur nombre (#73 reste ouverte). Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
 | 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed (#89). page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair (#90) |
@@ -157,6 +158,40 @@ Issues : #125 (critère de fin), #126 (avis de l'IA), et #127, un bug de normali
 - Ce serait une suggestion, **jamais une décision** ([ADR 0005](adr/0005-pipeline-du-lexique-et-decisions.md)).
 - Avant tout usage, on mesure son accord avec les décisions déjà prises, comme pour les règles automatiques ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)).
 - Traité par lots, le coût se compte en dizaines de dollars.
+
+### 1e. Suggestions des utilisateurs — mots à retirer, mots à ajouter
+
+Les utilisateurs voient les mots du lexique dans la recherche et dans les grilles. Ce sont les mieux placés pour repérer un mot rare ou fautif, ou un mot courant qui manque. Leurs suggestions **alimentent la curation sans la remplacer** : c'est toujours l'auteur qui décide, dans le curateur ([ADR 0005](adr/0005-pipeline-du-lexique-et-decisions.md)). Rien de ce qu'un utilisateur envoie ne modifie le lexique de lui-même.
+
+**Ce que voit l'utilisateur :**
+- **retirer un mot** : un lien « Signaler ce mot » sur un résultat de recherche et sur un mot d'une grille générée ;
+- **ajouter un mot** : « Ce mot manque ? Proposez-le » quand une recherche sans `?` ne trouve rien, et à côté de « ranger dans un dictionnaire » quand l'éditeur signale un mot hors lexique.
+
+**Ce que voit l'auteur :**
+- dans le poste de pilotage, les mots suggérés, regroupés et comptés : un mot signalé par dix personnes passe devant un mot signalé une fois ;
+- dans le curateur, un onglet « Suggestions », alimenté par un export du serveur, avec les touches habituelles. La décision s'écrit dans `decisions.csv` comme les autres, et le lexique change au déploiement suivant.
+
+**S'y ajoutent des signaux implicites**, déjà mesurés ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
+- les mots imposés absents du lexique ;
+- les mots que plusieurs utilisateurs rangent dans leurs dictionnaires personnels ;
+- les mots générés que les auteurs remplacent à la main dans l'éditeur.
+
+**Règles :**
+- un compte est requis : une suggestion par mot et par compte, avec une limite de débit ;
+- chaque suggestion porte sa langue (`lang`) ;
+- les suggestions disparaissent avec le compte, et la page confidentialité les mentionne.
+
+**Deux temps :**
+1. **Retirer un mot** : simple, car les décisions portent déjà sur les mots du lexique.
+2. **Ajouter un mot absent du DELA** : il faut un morceau de pipeline qui n'existe pas, puisque les décisions ne portent aujourd'hui que sur des mots connus. Ce sera un fichier d'ajouts versionné, en ajout seul comme `decisions.csv`, versé à l'export. Une ADR sera écrite à ce moment-là.
+
+**Prérequis :**
+- une seule normalisation (#127), sinon « porte-monnaie » et « PORTEMONNAIE » feraient deux suggestions ;
+- l'espace d'administration (#128).
+
+**Quand :** juste après le poste de pilotage (Phase 8), dont il réutilise les briques : comptes, limite de débit, boîte de réception. Il ne conditionne pas la fin de la curation (1d), mais ses retours l'alimentent, et ils continueront après elle.
+
+**Terminé quand** : un mot signalé depuis le site apparaît dans le curateur, et la décision de l'auteur se retrouve dans le lexique au déploiement suivant.
 
 ---
 
@@ -469,6 +504,8 @@ flowchart LR
   F --> G["6g Bêta privée, ouverture, première semaine"]
   G --> P8["8 Poste de pilotage"]
   G --> P9["9 Acquisition, en continu"]
+  P8 --> S["1e Suggestions de mots"]
+  S -. retours .-> C1
   C1["1d Fin de la curation française"] --> P10["10 International"]
   P8 --> P10
   P10 --> P11["11 Grilles à thème par IA"]
@@ -478,7 +515,7 @@ flowchart LR
 ```
 
 1. **Avant l'ouverture, fin de la Phase 6.** D'abord **6b** : le nom fixe les cookies, les e-mails, la zone Cloudflare et le référencement. Puis 6c, 6d et 6e en parallèle, puis 6f et 6g.
-2. **Juste après l'ouverture, la Phase 8.** Les événements s'accumulent depuis le premier jour ; le poste de pilotage les montre.
+2. **Juste après l'ouverture, la Phase 8.** Les événements s'accumulent depuis le premier jour ; le poste de pilotage les montre. Dans la foulée viennent les suggestions de mots des utilisateurs (1e), qui en réutilisent les briques.
 3. **En continu :**
    - la curation quotidienne (1d), jusqu'à son critère de fin ;
    - la Phase 9 ;

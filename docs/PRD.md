@@ -47,6 +47,7 @@ Ce n'est **pas un jeu**, c'est un **outil de création**.
 | F14 | Référencement | Pages publiques indexées, application en `noindex`, contenus d'usage, visibilité dans les moteurs de réponse IA | Phase 6 (technique), Phase 9 (contenus) |
 | F15 | Autres langues | Un site et un nom par langue : anglais, allemand, espagnol | Phase 10 ([ADR 0017](adr/0017-un-site-par-langue.md)) |
 | F16 | Grilles à thème par IA | Mots du thème et définitions proposés par l'IA, grille prête à imprimer ; offre payante | Phase 11 |
+| F17 | Suggestions de mots | Signaler un mot à retirer du lexique, proposer un mot à ajouter ; l'auteur tranche dans le curateur | Après la Phase 8 (1e) |
 
 ## 4. Contraintes
 
