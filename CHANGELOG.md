@@ -5,6 +5,17 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Pages légales pour l'ouverture** ([#114](https://github.com/maximefd/terminator-app/issues/114)) :
+  - **mentions légales** réécrites : éditeur particulier non nommé (LCEN, art. 6, III, 2), hébergeurs (OVH,
+    Cloudflare), contact, crédits affichés sur le site (DELA, Lexique, Archivo Narrow, Inter) ;
+  - **confidentialité** réécrite pour le site en ligne : responsable, données et bases légales, journaux
+    (14 jours), rapports d'erreur, messages de contact, durées (dont les comptes inactifs depuis 3 ans),
+    sous-traitants et lieux de traitement, droits et CNIL ;
+  - **conditions d'utilisation** (`/terms`) : âge minimum, ce qui appartient à l'utilisateur (dictionnaires,
+    grilles, libres d'usage), suggestions de mots données au site, abus, absence de garantie ; citées à
+    l'inscription et dans le pied de page ;
+  - **registre des traitements** ([docs/RGPD.md](docs/RGPD.md)) ;
+  - plus aucun lien vers GitHub sur les pages publiques (test Playwright).
 - **Page contact et `security.txt`** ([#115](https://github.com/maximefd/terminator-app/issues/115)) : `/contact`
   donne `contact@leflechoir.fr` (suggestions, problèmes, demandes sur ses données) et `securite@leflechoir.fr`
   (failles), avec un lien dans le pied de page ; `/.well-known/security.txt` (RFC 9116) est écrit au build, avec

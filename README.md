@@ -101,6 +101,7 @@ terminator-app/
 | [Layouts](docs/LAYOUTS.md) | Format des mises en page, ajout d'un layout |
 | [Lexique](docs/LEXICON.md) | Dictionnaire DELA et projet de curation |
 | [Sécurité](docs/SECURITY.md) | Modèle de menace, mesures, limites connues |
+| [Registre RGPD](docs/RGPD.md) | Données personnelles traitées, durées, sous-traitants |
 | [Décisions (ADR)](docs/adr/) | Choix d'architecture et leurs raisons |
 | [Contribuer](CONTRIBUTING.md) | Installation, tests, conventions, processus de PR |
 | [Changelog](CHANGELOG.md) | Historique des versions |

@@ -1,8 +1,6 @@
-// DANS src/app/privacy/page.tsx
-
 import { type Metadata } from "next";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { linkClass, Section } from "@/components/legal/section";
 import { site } from "@/config/site";
 import { publicPage } from "@/lib/seo";
 
@@ -10,39 +8,48 @@ export const metadata: Metadata = publicPage({
   path: "/privacy",
   title: "Confidentialité",
   description:
-    `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.`,
+    `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles —, pour combien de temps, qui y touche et comment tout effacer.`,
 });
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-      {children}
-    </section>
-  );
-}
+/**
+ * Chaque traitement ici figure au registre (docs/RGPD.md), et inversement. Tout nouveau champ mesuré y est
+ * déclaré (ADR 0016, CLAUDE.md).
+ */
 
-const linkClass = "underline underline-offset-2 hover:text-foreground";
+// Les prestataires qui traitent des données pour le site (sous-traitants, RGPD art. 28)
+const PROCESSORS = [
+  { name: "OVH", what: "héberge le serveur de l'application et sa base de données", where: "France" },
+  {
+    name: "Cloudflare",
+    what: "sert les pages du site, relaie les connexions au serveur, garde les sauvegardes chiffrées et fait suivre les messages envoyés à l'adresse de contact",
+    where: "Union européenne et États-Unis (certifié Data Privacy Framework)",
+  },
+  { name: "Brevo", what: "envoie les e-mails du compte (confirmation de l'adresse, mot de passe oublié)", where: "France" },
+  {
+    name: "Sentry",
+    what: "reçoit les rapports d'erreur, sans adresse IP, cookie ni contenu de formulaire",
+    where: "Union européenne (Allemagne)",
+  },
+];
 
 export default function PrivacyPage() {
   return (
     <main className="container mx-auto max-w-3xl p-4 md:p-8">
       <h1 className="text-3xl font-bold">Confidentialité</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Dernière mise à jour : 23 septembre 2026</p>
+      <p className="mt-2 text-sm text-muted-foreground">Dernière mise à jour : 25 septembre 2026</p>
 
       <div className="mt-8 space-y-8 text-muted-foreground">
         <p className="rounded-lg border bg-secondary/20 p-4 text-foreground">
-          {site.name} conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles.
-          Rien d&apos;autre : pas de mesure d&apos;audience, pas de publicité, aucun cookie en dehors de ceux de
-          votre session, et aucune donnée transmise à qui que ce soit.
+          {site.name} conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles, si
+          vous créez un compte. Rien d&apos;autre : pas de mesure d&apos;audience, pas de publicité, aucun cookie en
+          dehors de ceux de votre session, et aucune donnée vendue ni cédée.
         </p>
 
-        <Section title={`Où tourne ${site.name}`}>
+        <Section title="Qui est responsable">
           <p>
-            {site.name} est un outil personnel, en développement. Il n&apos;est pas publié en ligne : l&apos;application
-            et sa base de données tournent sur l&apos;ordinateur de son auteur. Lors d&apos;un essai à distance,
-            l&apos;auteur ouvre un tunnel temporaire : les échanges transitent alors par Cloudflare, qui relaie la
-            connexion jusqu&apos;à son ordinateur.
+            L&apos;éditeur du site, un particulier (voir les{" "}
+            <Link href="/legal" className={linkClass}>mentions légales</Link>), joignable à{" "}
+            <a href={`mailto:${site.contactEmail}`} className={linkClass}>{site.contactEmail}</a>.
           </p>
         </Section>
 
@@ -60,12 +67,13 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <p>
-            Vos recherches et les grilles que vous générez sans les conserver ne sont pas enregistrées. En invité,
-            rien ne l&apos;est.
+            Pourquoi : pour vous fournir le service que vous demandez en créant un compte (RGPD, art. 6.1.b). Vos
+            recherches et les grilles que vous générez sans les conserver ne sont pas enregistrées. En invité, rien
+            ne l&apos;est.
           </p>
         </Section>
 
-        <Section title="Ce qui passe sans être conservé">
+        <Section title="Ce qui passe sans être conservé longtemps">
           <ul className="list-disc space-y-1 pl-5">
             <li>
               <strong className="text-foreground">Votre session</strong> : des cookies strictement nécessaires à la
@@ -76,42 +84,66 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-foreground">Votre adresse IP</strong> : gardée en mémoire pour limiter le
               nombre de requêtes et protéger le service des abus, puis oubliée, au plus tard après une heure. Le
-              journal technique de l&apos;application peut aussi la contenir, avec la page demandée : il reste sur
-              l&apos;ordinateur de l&apos;auteur.
+              journal technique du serveur la note aussi, avec la page demandée, pour diagnostiquer une panne ou une
+              attaque ; il est effacé au bout de 14 jours (intérêt légitime, RGPD art. 6.1.f).
+            </li>
+            <li>
+              <strong className="text-foreground">Les rapports d&apos;erreur</strong> : quand quelque chose casse, la
+              page ou l&apos;action en cause part chez Sentry, sans adresse IP, cookie, mot de passe ni contenu de
+              formulaire. Sentry les efface au bout de 90 jours au plus.
             </li>
           </ul>
         </Section>
 
-        <Section title="Durée et suppression">
+        <Section title="Si vous écrivez à l'adresse de contact">
           <p>
-            Vos données sont gardées tant que votre compte existe. Vous pouvez le supprimer à tout moment depuis{" "}
-            <Link href="/account" className={linkClass}>Mon compte</Link> : l&apos;adresse e-mail, le mot de passe,
-            les dictionnaires, les mots et les grilles sont effacés immédiatement et définitivement. Si
-            l&apos;auteur a fait une sauvegarde de la base avant votre suppression, vos données y subsistent jusqu&apos;à
-            son effacement, au plus 30 jours.
+            Votre message et votre adresse sont gardés le temps de vous répondre et de suivre votre demande, puis
+            effacés au plus tard un an après le dernier échange.
           </p>
+        </Section>
+
+        <Section title="Durée et suppression">
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              Vos données sont gardées tant que votre compte existe. Vous pouvez le supprimer à tout moment depuis{" "}
+              <Link href="/account" className={linkClass}>Mon compte</Link> : l&apos;adresse e-mail, le mot de passe,
+              les dictionnaires, les mots et les grilles sont effacés immédiatement et définitivement.
+            </li>
+            <li>
+              Un compte où personne ne s&apos;est connecté depuis 3 ans est supprimé, après un e-mail de prévenance
+              un mois avant.
+            </li>
+            <li>
+              Des sauvegardes chiffrées de la base sont faites chaque nuit et gardées 30 jours : après la suppression
+              d&apos;un compte, ses données y subsistent jusqu&apos;à l&apos;effacement de la dernière sauvegarde qui
+              les contient.
+            </li>
+          </ul>
+        </Section>
+
+        <Section title="Qui y touche">
+          <p>
+            L&apos;éditeur, et les prestataires ci-dessous, pour le seul fonctionnement du site. Aucun ne reçoit vos
+            dictionnaires ou vos grilles pour son propre usage.
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {PROCESSORS.map((processor) => (
+              <li key={processor.name}>
+                <strong className="text-foreground">{processor.name}</strong> {processor.what}. Données traitées en :{" "}
+                {processor.where}.
+              </li>
+            ))}
+          </ul>
         </Section>
 
         <Section title="Vos droits">
           <p>
             Vous pouvez consulter vos données dans l&apos;application (Mon compte, Dictionnaires, Mes grilles), les
-            corriger, les effacer, et demander à les recevoir dans un format lisible. Pour toute demande, écrivez à
-            l&apos;auteur par le{" "}
-            <a href="https://github.com/maximefd/terminator-app/issues" className={linkClass}>
-              dépôt du projet
-            </a>
-            . Vous pouvez aussi saisir la{" "}
-            <a href="https://www.cnil.fr/fr/plaintes" className={linkClass}>CNIL</a>.
-          </p>
-        </Section>
-
-        <Section title="Le jour d'une mise en ligne">
-          <p>
-            {site.name} sera un jour hébergé sur un serveur en France, derrière Cloudflare. Plusieurs choses changeront
-            alors : un hébergeur et Cloudflare traiteront les connexions, un prestataire enverra les e-mails de
-            réinitialisation du mot de passe, un service de suivi des erreurs (Sentry) recevra les rapports de panne,
-            sans rien qui vous identifie, des sauvegardes chiffrées seront gardées 30 jours, et le serveur tiendra
-            un journal des requêtes. Cette page sera réécrite avant, et dira qui fait quoi.
+            corriger, les effacer, vous opposer à un traitement ou en demander la limitation, et demander à les
+            recevoir dans un format lisible. Écrivez à{" "}
+            <a href={`mailto:${site.contactEmail}`} className={linkClass}>{site.contactEmail}</a>, depuis
+            l&apos;adresse de votre compte : la réponse vient sous un mois. Si elle ne vous satisfait pas, vous pouvez
+            saisir la <a href="https://www.cnil.fr/fr/plaintes" className={linkClass}>CNIL</a>.
           </p>
         </Section>
       </div>

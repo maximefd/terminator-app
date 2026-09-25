@@ -19,6 +19,9 @@ export function Footer() {
           <Link href="/legal" className="hover:text-primary">
             Mentions légales
           </Link>
+          <Link href="/terms" className="hover:text-primary">
+            Conditions
+          </Link>
           <Link href="/privacy" className="hover:text-primary">
             Confidentialité
           </Link>

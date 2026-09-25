@@ -308,14 +308,14 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - un test Playwright des balises.
 
 ### 6d. Pages légales, contact et vie privée (#114, #115)
-- **Pages réécrites :** mentions légales, confidentialité, CGU et crédits. Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, la mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)), les durées de conservation et le droit d'opposition. Plus aucun lien vers GitHub : le dépôt devient privé.
+- ✅ **Pages réécrites** (#114) : mentions légales (éditeur non nommé, LCEN art. 6, III, 2), confidentialité, CGU (`/terms`) et crédits, avec le registre [RGPD.md](RGPD.md). Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, les durées de conservation et les droits. La mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) s'y ajoutera avec 6e. Plus aucun lien vers GitHub : le dépôt devient privé.
 - **Contact et sécurité :**
-  - une page contact avec l'adresse `contact@` ;
-  - un `security.txt` avec `securite@` ;
-  - `SECURITY.md` et le modèle d'issue mis à jour.
+  - ✅ une page contact avec l'adresse `contact@` (#115) ;
+  - ✅ un `security.txt` avec `securite@` ;
+  - ✅ `SECURITY.md` et le modèle d'issue mis à jour.
 
   Le formulaire vient en Phase 8.
-- **Données personnelles :** un registre des traitements, des durées de conservation, et la rotation des journaux Docker.
+- **Données personnelles :** ✅ registre des traitements et durées de conservation ([RGPD.md](RGPD.md)). Restent, avant l'ouverture : la rotation des journaux Docker à 14 jours (#117), la rétention Sentry à 90 jours au plus, la suppression des comptes inactifs depuis 3 ans.
 
 ### 6e. Mesure côté serveur dès le premier jour (#116)
 - **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :

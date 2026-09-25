@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
  * Ne vaut que pour l'export statique (`pnpm build`, servi depuis `out/`) : `next dev` n'a pas de CSP par page
  * et garde 'unsafe-inline'. Sur le serveur de dev, ces tests sont ignorés.
  */
-const PAGES = ["/", "/search", "/grid", "/grids", "/dictionaries", "/login", "/register", "/account", "/contact", "/privacy",
+const PAGES = ["/", "/search", "/grid", "/grids", "/dictionaries", "/login", "/register", "/account", "/contact", "/privacy", "/terms",
   "/legal", "/forgot-password", "/grids/edit?id=1", "/page-inexistante"];
 
 for (const path of PAGES) {
