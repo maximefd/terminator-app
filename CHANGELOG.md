@@ -357,6 +357,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - **API** : SQLAlchemy figé sur 2.0.54. Il n'était installé que comme dépendance de Flask-SQLAlchemy, donc
   en dernière version ; or SQLAlchemy 2.1 prend psycopg 3 par défaut pour `postgresql://`, et l'API ne
   démarrait plus (`No module named 'psycopg'`). Les parcours end-to-end et toute nouvelle image étaient touchés.
+- **Sauvegardes sur R2** : chaque copie échouait d'abord en `501 NotImplemented`, puis réussissait au second
+  essai de rclone. R2 renvoie un identifiant de version après l'envoi, et rclone 1.60 relisait l'objet avec
+  `HEAD ?versionId=…`, que R2 n'implémente pas. `backup-offsite.sh` ne relit plus l'objet (`no_head`) :
+  l'intégrité reste contrôlée par le `Content-MD5` vérifié par R2 et par la taille de la copie. Constaté sur le
+  vrai seau lors de la première mise en ligne.
 - **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
   laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
   la limite de six heures. Le job a désormais une durée maximale de 20 minutes.

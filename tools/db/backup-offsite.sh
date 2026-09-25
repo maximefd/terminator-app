@@ -49,6 +49,10 @@ export RCLONE_CONFIG_R2_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
 export RCLONE_CONFIG_R2_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
 # Le jeton ne voit que son seau : ne pas chercher à lister ni créer les seaux du compte
 export RCLONE_CONFIG_R2_NO_CHECK_BUCKET=true
+# Ne pas relire l'objet après l'envoi : R2 renvoie un identifiant de version, et rclone (1.60, celui
+# d'Ubuntu 24.04) relit alors par HEAD ?versionId=…, que R2 refuse (501 NotImplemented). La copie réussissait
+# au second essai seulement. L'intégrité reste vérifiée : Content-MD5 contrôlé par R2, puis la taille ci-dessous
+export RCLONE_CONFIG_R2_NO_HEAD=true
 # Tout ce qui manque là-bas depuis une semaine part aussi : une nuit ratée, les sauvegardes d'avant déploiement
 rclone copy --quiet --max-age 7d --include 'terminator-*.dump.age' "$BACKUPS" "r2:$R2_BUCKET"
 
