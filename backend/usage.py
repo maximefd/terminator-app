@@ -118,6 +118,10 @@ def _deduced_outcome(kind: str, response) -> str:
 
 
 def _event_for(response) -> dict | None:
+    # La requête préliminaire CORS (OPTIONS) précède chaque appel du site, qui est sur un autre domaine que
+    # l'API : elle n'est ni une recherche ni une génération, et fausserait compteurs et durées
+    if request.method == "OPTIONS":
+        return None
     endpoint = request.endpoint
     described = g.get("usage_event")
     if endpoint in ALWAYS_MEASURED:
@@ -127,7 +131,7 @@ def _event_for(response) -> dict | None:
         return event
     if described and response.status_code < 400:
         return described
-    if response.status_code >= 400 and request.url_rule is not None and request.method != "OPTIONS":
+    if response.status_code >= 400 and request.url_rule is not None:
         return {"kind": "error", "outcome": None, "user_id": None, "data": {}, "words": None}
     return None
 

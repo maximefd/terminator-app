@@ -360,6 +360,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
   laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
   la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
+- **Mesure d'usage** ([ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)) : la requête préliminaire
+  CORS (`OPTIONS`), que le navigateur envoie avant chaque appel du site à l'API (deux origines en
+  production), était comptée comme une recherche ou une génération, à 0 ou 1 ms. Les compteurs doublaient
+  presque, et les durées médianes et le p95, qui décident d'un changement de serveur (ADR 0013), baissaient.
+  Elle n'est plus mesurée. Constaté sur le serveur lors de la première mise en ligne.
 - **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
   collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
   qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.

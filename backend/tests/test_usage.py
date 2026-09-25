@@ -199,6 +199,17 @@ def test_an_unknown_address_is_not_counted(client):
     assert events() == []
 
 
+def test_a_cors_preflight_is_not_counted(grid_app, client):
+    # En production, le site (leflechoir.fr) et l'API (api.) sont deux origines : le navigateur envoie un
+    # OPTIONS avant chaque POST. Compté, il doublait les recherches et les générations, à 0 ms
+    preflight = {**BROWSER, "Origin": "https://leflechoir.fr", "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "content-type"}
+    for path in ("/api/grids/generate", "/api/search", "/api/grids/999999"):
+        assert client.options(path, headers=preflight).status_code == 200
+
+    assert events() == []
+
+
 def test_measuring_never_breaks_a_request(grid_app, client, monkeypatch):
     def broken(_today):
         raise RuntimeError("base indisponible")
