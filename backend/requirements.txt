@@ -1,6 +1,8 @@
 # Versions figées : mises à jour par Dependabot (PR hebdomadaires), auditées par pip-audit en CI
 Flask==3.1.3
 Flask-SQLAlchemy==3.1.1
+# SQLAlchemy 2.1 prend psycopg 3 par défaut pour postgresql:// : rester en 2.0 tant que le pilote est psycopg2
+SQLAlchemy==2.0.54
 Flask-Migrate==4.1.0
 psycopg2-binary==2.9.13
 Flask-Cors==6.0.5

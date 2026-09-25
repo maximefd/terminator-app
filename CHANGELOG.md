@@ -278,6 +278,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **API** : SQLAlchemy figé sur 2.0.54. Il n'était installé que comme dépendance de Flask-SQLAlchemy, donc
+  en dernière version ; or SQLAlchemy 2.1 prend psycopg 3 par défaut pour `postgresql://`, et l'API ne
+  démarrait plus (`No module named 'psycopg'`). Les parcours end-to-end et toute nouvelle image étaient touchés.
 - **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
   laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
   la limite de six heures. Le job a désormais une durée maximale de 20 minutes.
