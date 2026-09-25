@@ -5,6 +5,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Sauvegardes de la nuit copiées hors du serveur** ([#120](https://github.com/maximefd/terminator-app/issues/120)) :
+  `tools/db/backup-offsite.sh` fait un dump chiffré pour la clé publique `age` (il refuse sans elle), le copie
+  sur Cloudflare R2 (seau en juridiction UE, rotation à 30 jours par le seau), vérifie la taille de la copie,
+  rattrape les sauvegardes de la semaine qui manqueraient là-bas, note la dernière réussite (affichée par
+  `make deploy-status`) et peut prévenir un service de surveillance. Les scripts de sauvegarde lisent
+  `ENV_FILE`. Essayé avec un stockage compatible S3 : copie, rattrapage, restauration depuis la copie distante.
 - **Déploiement** ([#119](https://github.com/maximefd/terminator-app/issues/119),
   [ADR 0019](docs/adr/0019-deploiement.md), [PRODUCTION.md](docs/PRODUCTION.md)) :
   - `make deploy` : le commit (jamais un dossier de travail) part par SSH ; le serveur sauvegarde la base,

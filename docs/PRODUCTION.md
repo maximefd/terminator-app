@@ -1,7 +1,7 @@
 # 🚀 Production — Le Fléchoir
 
 > Le runbook du site en ligne : préparer le serveur, déployer, revenir en arrière, restaurer, changer un secret.
-> Décisions : [ADR 0013](adr/0013-cible-hebergement-production.md) (VPS derrière Cloudflare), [ADR 0019](adr/0019-deploiement.md) (déploiement). Les sauvegardes planifiées vers R2 (#120) compléteront ce document.
+> Décisions : [ADR 0013](adr/0013-cible-hebergement-production.md) (VPS derrière Cloudflare), [ADR 0019](adr/0019-deploiement.md) (déploiement).
 
 ## Ce qui tourne
 
@@ -100,6 +100,30 @@ Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `s
   - Bot Fight Mode coupé pour `api.` : ses défis cassent les appels du site ;
   - Web Analytics de Pages coupé : la CSP bloquerait son script.
 
+## Préparer les sauvegardes (une fois)
+
+Chaque nuit, `tools/db/backup-offsite.sh` fait un dump de la base, **chiffré** pour une clé publique `age`, puis le copie sur Cloudflare R2, vérifie la copie et note la réussite. Le serveur n'a que la clé publique : il chiffre ses sauvegardes sans pouvoir les relire.
+
+1. **La paire de clés, sur le Mac** (`brew install age`). La clé privée ne va **jamais** sur le serveur ; garde-la aussi dans ton gestionnaire de mots de passe, car sans elle aucune sauvegarde ne se relit :
+
+   ```bash
+   age-keygen -o ~/leflechoir-sauvegardes.key     # affiche la clé publique : age1…
+   ```
+   Dans le `.env` du Mac, avec le chemin complet (le `~` n'y est pas compris) : `BACKUP_AGE_IDENTITY=/Users/TON_NOM/leflechoir-sauvegardes.key`, pour `make db-restore-check`.
+2. **Le seau R2**, dans Cloudflare → R2 :
+   - créer le seau `leflechoir-sauvegardes`, avec la **juridiction « European Union »**. Le registre annonce des sauvegardes dans l'UE, et ce choix ne se change plus ;
+   - dans le seau → *Settings* → *Object lifecycle rules* : supprimer les objets **après 30 jours** ;
+   - R2 → *Manage API tokens* → créer un jeton *Object Read & Write* limité à ce seau. Noter l'identifiant et le secret, et l'adresse S3 du compte, en `https://<compte>.eu.r2.cloudflarestorage.com` pour un seau européen.
+3. **Dans `.env.production`** : `BACKUP_AGE_RECIPIENT` (la clé publique), `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID` et `R2_SECRET_ACCESS_KEY`.
+4. **Un premier essai**, puis la tâche de la nuit, à 3 h 30 UTC, avant les mises à jour de 4 h 30 :
+
+   ```bash
+   sh /opt/leflechoir/current/tools/db/backup-offsite.sh      # « Sauvegarde copiée sur R2 : … »
+   ( crontab -l 2>/dev/null; echo '30 3 * * * sh /opt/leflechoir/current/tools/db/backup-offsite.sh 2>&1 | systemd-cat -t leflechoir-sauvegarde' ) | crontab -
+   ```
+   Le journal se lit avec `journalctl -t leflechoir-sauvegarde`, et `make deploy-status` affiche la dernière réussite.
+5. **Être prévenu si une nuit échoue** (facultatif) : un contrôle gratuit sur [Healthchecks.io](https://healthchecks.io), ou un moniteur de tâche de Sentry, dont l'adresse va dans `BACKUP_PING_URL`. Le script l'appelle après chaque réussite, et le service envoie un e-mail si l'appel ne vient plus.
+
 ## Préparer le Mac (une fois)
 
 Dans le `.env` du dépôt (jamais versionné) :
@@ -159,6 +183,16 @@ ssh ubuntu@ADRESSE 'docker start leflechoir-api-1'
 
 À répéter une fois pour de vrai avant l'ouverture (6g) : une sauvegarde jamais restaurée n'est pas une sauvegarde.
 
+### Vérifier une sauvegarde, chaque mois
+
+1. Télécharger la sauvegarde de la nuit depuis le seau R2 (tableau de bord Cloudflare → R2 → `leflechoir-sauvegardes`).
+2. Sur le Mac, avec l'API de développement démarrée (`make dev-api`) :
+
+   ```bash
+   make db-restore-check FILE=~/Downloads/terminator-AAAAMMJJ-HHMMSS.dump.age
+   ```
+   La sauvegarde est restaurée dans une base jetable, qui est comptée puis supprimée. La base de développement n'est pas touchée.
+
 ### Changer un secret
 
 1. Modifier `/opt/leflechoir/.env.production` sur le serveur.
@@ -205,6 +239,13 @@ Sur une machine de test, avec Docker et une configuration factice :
   - migrations jouées ;
   - événements d'usage sans adresse IP ;
   - journal d'accès en JSON.
+- **Les sauvegardes** : sur un PostgreSQL nommé comme en production, avec un stockage compatible S3 à la place de R2 et une vraie paire de clés `age`, les étapes suivantes ont été vérifiées :
+  - dump chiffré ;
+  - copie et vérification de sa taille ;
+  - trace de réussite ;
+  - rattrapage d'une nuit ratée ;
+  - restauration depuis la copie distante, avec les 1 000 lignes retrouvées ;
+  - refus d'envoyer quoi que ce soit sans clé publique.
 - **Le déploiement**, sur un serveur simulé (`LEFLECHOIR_BASE`) :
   - premier déploiement : 53 s ;
   - deuxième, précédé d'une sauvegarde : 25 s ;
@@ -215,5 +256,5 @@ Sur une machine de test, avec Docker et une configuration factice :
 ## Reste à faire
 
 - **Le lexique curé livré** (#118) : sans lui, l'API se rabat sur le DELA complet de l'image (`/api/status` : `curated: false`).
-- **Les sauvegardes nocturnes vers R2** (#120), et la restauration vérifiée chaque mois.
+- **La première sauvegarde de la nuit restaurée depuis R2** (#120), sur le vrai serveur.
 - **Le premier vrai déploiement** et un retour arrière, joués de bout en bout sur le VPS (#119).

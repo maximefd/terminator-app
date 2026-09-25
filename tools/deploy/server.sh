@@ -122,6 +122,12 @@ status() {
     say "En service : $(release_of current)"
     say "Précédente : $(release_of previous)"
     say "Schéma de la base : $(schema_version)"
+    # Écrite par tools/db/backup-offsite.sh après chaque copie réussie sur R2
+    if [ -f "$BASE/backups/derniere-sauvegarde" ]; then
+        say "Dernière sauvegarde copiée sur R2 : $(cat "$BASE/backups/derniere-sauvegarde")"
+    else
+        say "Dernière sauvegarde copiée sur R2 : aucune"
+    fi
 }
 
 case "${1:-}" in
