@@ -4,11 +4,14 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode } from "react";
 import { site } from "@/config/site";
+import { publicPage } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPage({
+  path: "/legal",
   title: "Mentions légales",
-  description: `Qui fait ${site.name}, où il tourne, et les ressources qu'il emprunte.`,
-};
+  description:
+    `Qui fait ${site.name}, où il tourne, et les ressources qu'il emprunte.`,
+});
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

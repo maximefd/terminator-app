@@ -1,11 +1,12 @@
 import { type Metadata } from "next";
 import { Suspense } from "react";
 import { GridEditorFromAddress } from "@/components/grid/grid-editor-page";
+import { privatePage } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = privatePage({
   title: "Définitions",
   description: "Écrivez les définitions de votre grille, puis exportez-la en PDF.",
-};
+});
 
 /**
  * L'éditeur d'une grille conservée : /grids/edit?id=12.

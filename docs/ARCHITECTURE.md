@@ -166,6 +166,7 @@ sequenceDiagram
 | `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
 | `src/app/legal`, `privacy` | Mentions légales (crédits compris), confidentialité : ce qui est conservé, et rien d'autre |
 | `src/config/site.ts` | Le site du build (`NEXT_PUBLIC_SITE`, défaut `fr`) : nom public, adresse, langue, contacts ([ADR 0017](adr/0017-un-site-par-langue.md)). Les pages ne donnent que leur titre ; la mise en page racine ajoute « \| Le Fléchoir » |
+| `src/lib/seo.ts`, `src/app/robots.ts`, `sitemap.ts`, `manifest.ts`, `og.png/` | Référencement technique (#113) : pages publiques (canonique, aperçu de partage, sitemap) et privées (`noindex`, jamais de `Disallow`) ; tout est écrit au build |
 | `src/components/` | Composants (recherche, dictionnaires, grille, layout, `providers.tsx` = tout ce qui vit dans le navigateur, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
 | `src/lib/api-client.ts` | `apiFetch` : cookies de session et jeton CSRF, renouvellement automatique sur 401, messages d'erreur de l'API |

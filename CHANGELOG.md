@@ -5,6 +5,16 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Référencement technique** ([#113](https://github.com/maximefd/terminator-app/issues/113)), écrit au build de
+  l'export statique :
+  - `robots.txt` ouvert à tous les robots, moteurs de réponse IA compris, et `sitemap.xml` des cinq pages
+    publiques (accueil, recherche, génération, mentions légales, confidentialité) ;
+  - sur ces pages : description, adresse canonique, aperçu de partage (Open Graph, image `og.png`) ;
+    sur l'accueil, des données structurées `WebApplication` ;
+  - les pages privées (compte, grilles, dictionnaires, connexion, liens reçus par e-mail) en `noindex`, sans
+    `Disallow` : un robot doit pouvoir lire la page pour voir son `noindex` ;
+  - un manifeste, et une page 404 en français ;
+  - un test Playwright des titres et des balises.
 - **Roadmap jusqu'au lancement public et au-delà** ([roadmap](docs/ROADMAP.md), PRD mis à jour) :
   - La **Phase 6 devient « Durcissement et lancement public »**, de 6b à 6g :
     - nom et domaine ;
