@@ -26,8 +26,11 @@ done
 DEPLOY_API_URL="${DEPLOY_API_URL:-https://api.leflechoir.fr}"
 PAGES_PROJECT="${PAGES_PROJECT:-leflechoir}"
 REMOTE_BASE=/opt/leflechoir
-# Version figée : l'outil de Cloudflare n'est pas une dépendance du projet (il pèserait sur chaque CI)
+# Version figée : l'outil de Cloudflare n'est pas une dépendance du projet (il pèserait sur chaque CI).
+# pnpm (depuis la 11) refuse les dépendances dont le script d'installation n'est pas autorisé
+# (ERR_PNPM_IGNORED_BUILDS) : esbuild et workerd, les binaires natifs de wrangler, le sont ici.
 WRANGLER=wrangler@4.140.0
+wrangler() { pnpm dlx --allow-build=esbuild --allow-build=workerd "$WRANGLER" "$@"; }
 
 say() { printf '%s\n' "$*"; }
 die() { printf 'ERREUR : %s\n' "$*" >&2; exit 1; }
@@ -80,7 +83,7 @@ deploy_front() {
             NEXT_PUBLIC_SENTRY_DSN="${NEXT_PUBLIC_SENTRY_DSN:-}" \
             pnpm build
         say "Site : envoi à Cloudflare Pages (projet $PAGES_PROJECT)…"
-        pnpm dlx "$WRANGLER" pages deploy out --project-name "$PAGES_PROJECT" --branch main \
+        wrangler pages deploy out --project-name "$PAGES_PROJECT" --branch main \
             --commit-hash "$VERSION" --commit-message "$MESSAGE"
     )
     say "Site : $VERSION en ligne."

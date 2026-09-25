@@ -384,6 +384,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **Déploiement du site** : `wrangler` était lancé par un simple `pnpm dlx`, que pnpm 12 arrête
+  (`ERR_PNPM_IGNORED_BUILDS` : scripts d'installation d'esbuild et de workerd non autorisés). `deploy.sh` les
+  autorise explicitement. `docs/PRODUCTION.md` crée le projet Pages avec `--force` : sans lui, wrangler 4.140
+  crée un projet Workers en détectant seul le dépôt, au lieu du projet Pages classique de l'ADR 0019.
 - **API** : SQLAlchemy figé sur 2.0.54. Il n'était installé que comme dépendance de Flask-SQLAlchemy, donc
   en dernière version ; or SQLAlchemy 2.1 prend psycopg 3 par défaut pour `postgresql://`, et l'API ne
   démarrait plus (`No module named 'psycopg'`). Les parcours end-to-end et toute nouvelle image étaient touchés.
