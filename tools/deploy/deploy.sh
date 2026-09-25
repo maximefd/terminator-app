@@ -37,9 +37,11 @@ ssh_server() {
     ssh -o BatchMode=yes "$DEPLOY_HOST" "$@"
 }
 
-# On déploie un commit, jamais un dossier de travail : ce qui tourne doit se retrouver dans l'historique
+# On déploie un commit, jamais un dossier de travail : ce qui tourne doit se retrouver dans l'historique.
+# Seule exception : decisions.csv, que le curateur modifie sans cesse sur ce Mac. Ce sont des données, pas du
+# code, et elles n'entrent dans l'application que par make deploy-lexicon.
 check_commit() {
-    [ -z "$(git status --porcelain --untracked-files=no)" ] \
+    [ -z "$(git status --porcelain --untracked-files=no -- . ':(exclude)data/lexicon/decisions.csv')" ] \
         || die "des modifications ne sont pas commitées : commiter (ou mettre de côté) avant de déployer"
     git fetch -q origin main
     if ! git merge-base --is-ancestor HEAD origin/main; then

@@ -9,7 +9,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   exporté sur le Mac part sur le serveur sans sa colonne de définitions (Wiktionnaire, non servies), avec une
   empreinte vérifiée ; l'API redémarre, et le lexique précédent reprend sa place si elle ne charge pas le
   nouveau (lexique curé, 50 000 mots au moins). `make deploy-status` en donne la date. Lexique de lancement :
-  l'export du curateur tel qu'utilisé chaque jour (filtre « aucun »).
+  l'export du curateur tel qu'utilisé chaque jour (filtre « aucun »). `make deploy` accepte désormais un
+  `decisions.csv` modifié (le curateur l'écrit sans cesse ; il n'entre dans l'application que par le lexique),
+  et `docs/PRODUCTION.md` donne l'ordre de la première mise en ligne.
 - **Sauvegardes de la nuit copiées hors du serveur** ([#120](https://github.com/maximefd/terminator-app/issues/120)) :
   `tools/db/backup-offsite.sh` fait un dump chiffré pour la clé publique `age` (il refuse sans elle), le copie
   sur Cloudflare R2 (seau en juridiction UE, rotation à 30 jours par le seau), vérifie la taille de la copie,

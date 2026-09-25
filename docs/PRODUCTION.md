@@ -27,6 +27,33 @@ Sur le serveur, tout vit dans `/opt/leflechoir` :
 └── lexicon/               le lexique curé (#118)
 ```
 
+## Première mise en ligne, dans l'ordre
+
+Les sections suivantes détaillent chaque geste. 👤 marque ce qui demande l'auteur : un tableau de bord ou une autorisation dans le navigateur. Tout le reste se fait en ligne de commande, depuis le Mac.
+
+1. **Le serveur** : « Préparer le serveur », étapes 1 à 7. La configuration se crée sur le serveur, à partir de `.env.production.example`, et les secrets internes (`POSTGRES_PASSWORD`, `SECRET_KEY`, `JWT_SECRET_KEY`) y sont **tirés au hasard sur place** : ils ne transitent nulle part.
+2. 👤 **Les secrets des tableaux de bord**, recopiés dans un fichier du Mac hors du dépôt (`~/leflechoir-secrets.env`, `chmod 600`), au format `CLE=valeur` :
+   - `CLOUDFLARE_TUNNEL_TOKEN` : « Préparer Cloudflare », le tunnel ;
+   - `SMTP_USER` et `SMTP_PASSWORD` : Brevo → *SMTP & API* → *SMTP* → générer une clé SMTP ;
+   - `SENTRY_DSN` : le DSN du projet Sentry `leflechoir-api` ;
+   - `R2_ENDPOINT`, `R2_ACCESS_KEY_ID` et `R2_SECRET_ACCESS_KEY` : « Préparer les sauvegardes », étape 2.
+
+   Ce fichier part sur le serveur par `scp` et se fond dans `.env.production`. On ne l'affiche jamais, et on ne le commite jamais.
+3. **Les sauvegardes** : la paire de clés `age` sur le Mac (étape 1), et `BACKUP_AGE_RECIPIENT` dans `.env.production`.
+4. 👤 **Pages** : `pnpm dlx wrangler@4.140.0 login` ouvre le navigateur une fois. Ensuite, `pages project create leflechoir --production-branch main`.
+5. **Le premier déploiement, et l'essai du retour arrière sur le vrai serveur.**
+   1. Depuis un `git worktree` d'un commit plus ancien de `main` qui contient déjà `tools/deploy` (par exemple `c9b2d56`), lancer `DEPLOY_HOST=… tools/deploy/deploy.sh api`.
+   2. Puis `make deploy` depuis `main` : l'API et le site. La version précédente est alors l'ancienne.
+   3. `make rollback` : l'ancienne revient en service. `make rollback` une seconde fois : la dernière revient.
+6. 👤 **Le domaine du site** : Pages → `leflechoir` → *Custom domains* → `leflechoir.fr` et `www.leflechoir.fr`, puis la redirection de `www` et les réglages de la zone (« Préparer Cloudflare »).
+7. **Le lexique** : `make deploy-lexicon`, puis `make deploy-status`, qui doit indiquer un lexique curé.
+8. **La sauvegarde de la nuit** : un premier `backup-offsite.sh` à la main, puis la tâche cron. Récupérer ensuite la sauvegarde depuis R2 et la vérifier avec `make db-restore-check`.
+9. **Les vérifications finales :**
+   - `https://api.leflechoir.fr/api/status` répond `"database":"ok"` ;
+   - `https://leflechoir.fr` affiche le site, et une recherche y fonctionne ;
+   - une inscription de test avec une adresse de l'auteur reçoit l'e-mail de confirmation (Brevo). Les liens y pointent-ils vers `leflechoir.fr` ou vers `mail.leflechoir.fr` (suivi des clics, #111) ? Puis on supprime ce compte de test ;
+   - `make deploy-status` affiche les versions, le lexique et la dernière sauvegarde.
+
 ## Préparer le serveur (une fois)
 
 Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `ssh ubuntu@ADRESSE`.
