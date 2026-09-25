@@ -182,8 +182,8 @@ Les utilisateurs voient les mots du lexique dans la recherche et dans les grille
 - les suggestions disparaissent avec le compte, et la page confidentialité les mentionne.
 
 **Deux temps :**
-1. **Retirer un mot** : simple, car les décisions portent déjà sur les mots du lexique.
-2. **Ajouter un mot absent du DELA** : il faut un morceau de pipeline qui n'existe pas, puisque les décisions ne portent aujourd'hui que sur des mots connus. Ce sera un fichier d'ajouts versionné, en ajout seul comme `decisions.csv`, versé à l'export. Une ADR sera écrite à ce moment-là.
+1. **Retirer un mot** (#144) : simple, car les décisions portent déjà sur les mots du lexique.
+2. **Ajouter un mot absent du DELA** (#145) : il faut un morceau de pipeline qui n'existe pas, puisque les décisions ne portent aujourd'hui que sur des mots connus. Ce sera un fichier d'ajouts versionné, en ajout seul comme `decisions.csv`, versé à l'export. Une ADR sera écrite à ce moment-là.
 
 **Prérequis :**
 - une seule normalisation (#127), sinon « porte-monnaie » et « PORTEMONNAIE » feraient deux suggestions ;
