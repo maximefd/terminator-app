@@ -354,7 +354,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - ~~**Bêta privée** derrière Cloudflare Access~~ : **abandonnée** (décision du 25/09/2026). Le site est ouvert et indexable dès sa mise en ligne, le 25/09/2026 ; l'ADR 0004 est remplacée par 0013 ce jour-là. La session d'utilisabilité (#90) se fera sur le site ouvert.
 - **Au plus tôt, le site étant ouvert :**
   - checklist de [SECURITY.md](SECURITY.md) à 14/14 (13/14 vérifiés sur le serveur le 25/09/2026) ;
-  - contrôle ASVS sur l'adresse publique ;
+  - ✅ contrôle ASVS sur l'adresse publique (25/09/2026, [AUDIT-SECURITE.md](AUDIT-SECURITE.md)) : une redirection ouverte corrigée (#165) ; restent *Always Use HTTPS* et TLS 1.2 minimum dans la zone ;
   - ✅ `.env` et clé `age` hors du serveur.
 - **Ouverture** (25/09/2026, sans Access) : restent Search Console et Bing, sitemap soumis.
 - **Première semaine :** `load_profile.py` sur le VPS, puis lecture des seuils de l'ADR 0013, pour décider du passage au VPS-2.

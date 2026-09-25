@@ -123,11 +123,14 @@ Audit complet, essais compris : [AUDIT-SECURITE.md](AUDIT-SECURITE.md).
 | V4 — Contrôle d'accès côté serveur sur chaque ressource | ✅ testé |
 | V5 — Validation des entrées par liste blanche | ✅ |
 | V5 — Requêtes paramétrées / échappement SQL | ✅ |
+| V5 — Redirections limitées au site | ✅ depuis #165 (`?next=` jugé une fois l'adresse analysée) |
 | V7 — Pas de détail technique dans les erreurs | ✅ |
 | V7 — Pas de donnée sensible dans les logs | ✅ (aucun mot de passe ni jeton loggé) |
 | V8 — Effacement des données personnelles | ✅ |
 | V12 — Taille des requêtes limitée | ✅ |
 | V13 — Limitation de débit des API | ✅ (mémoire) |
+| V9 — TLS 1.2 au minimum | ⚠️ le site oui ; l'API accepte encore TLS 1.0 et 1.1 (*Minimum TLS Version* dans la zone) |
+| V9 — HTTPS uniquement | ⚠️ le site oui ; l'API répond aussi en HTTP (*Always Use HTTPS* dans la zone) |
 | V14 — En-têtes de sécurité HTTP | ✅ |
 | V14 — CORS restrictif | ✅ |
 | V14 — Dépendances surveillées | ✅ versions figées, `pip-audit` en CI, Dependabot (pip, npm, GitHub Actions) |

@@ -442,6 +442,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ### Sécurité
 - **L'image de l'API tourne sans droits** (uid 10001) et ne peut pas modifier son code ; `.dockerignore` écarte
   tests, benchmarks, caches et fichiers `.env`.
+- **Contrôle ASVS de l'adresse publique** (25/09/2026, [AUDIT-SECURITE.md](docs/AUDIT-SECURITE.md)) : jetons
+  forgés, méthodes, tailles, en-têtes, ports, fichiers exposés, limite de débit derrière le tunnel. Une
+  redirection ouverte trouvée et corrigée ; l'API accepte encore HTTP et TLS 1.0/1.1, deux réglages de zone.
 - **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
   autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
   Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`
