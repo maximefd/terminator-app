@@ -343,7 +343,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - Pages sur le domaine propre ;
   - Sentry (projets UE) et UptimeRobot ;
   - reste : le premier déploiement réel, et un retour arrière joué sur le VPS.
-- **Sauvegardes :** nocturnes et chiffrées, copiées sur R2, avec une restauration vérifiée chaque mois.
+- ✅ **Sauvegardes** (#120) : nocturnes et chiffrées, copiées sur R2 (juridiction UE) et vérifiées, avec une restauration vérifiée chaque mois ([PRODUCTION.md](PRODUCTION.md)). Reste : la première nuit restaurée depuis R2, sur le vrai serveur.
 - **CI sur l'export statique :** aujourd'hui, la CSP n'est testée que contre `next dev`.
 - **Dépôt privé :**
   - ce qu'on perd sur GitHub Free : protection de branche, CodeQL, signalement privé des failles, minutes d'Actions ;
