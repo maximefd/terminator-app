@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { ResetPasswordForm } from "@/components/auth/email-link-forms";
 
 export const metadata: Metadata = {
-  title: "Nouveau mot de passe | Terminator",
+  title: "Nouveau mot de passe",
   description: "Choisir un nouveau mot de passe à partir du lien reçu par e-mail.",
 };
 

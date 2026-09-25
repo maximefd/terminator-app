@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DictionaryPanel } from "@/components/dictionary/dictionary-panel";
 import { useAuth } from "@/contexts/auth-context";
+import { site } from "@/config/site";
 
 export function DictionariesClientLayout() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -28,7 +29,7 @@ export function DictionariesClientLayout() {
           <div className="rounded-lg border bg-secondary/20 p-6 text-center">
             <h2 className="font-semibold">Un compte est nécessaire ici</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-              Les dictionnaires sont les seules données que Terminator conserve. La recherche et la génération,
+              Les dictionnaires sont les seules données que {site.name} conserve. La recherche et la génération,
               elles, fonctionnent en invité.
             </p>
             <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">

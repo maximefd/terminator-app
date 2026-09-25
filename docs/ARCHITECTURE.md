@@ -165,7 +165,8 @@ sequenceDiagram
 | `src/app/login`, `register` | Authentification |
 | `src/app/account/` | Mon compte : l'adresse, ce que le compte contient, sa suppression |
 | `src/app/legal`, `privacy` | Mentions légales (crédits compris), confidentialité : ce qui est conservé, et rien d'autre |
-| `src/components/` | Composants (recherche, dictionnaires, grille, layout, `ui/` = shadcn) |
+| `src/config/site.ts` | Le site du build (`NEXT_PUBLIC_SITE`, défaut `fr`) : nom public, adresse, langue, contacts ([ADR 0017](adr/0017-un-site-par-langue.md)). Les pages ne donnent que leur titre ; la mise en page racine ajoute « \| Le Fléchoir » |
+| `src/components/` | Composants (recherche, dictionnaires, grille, layout, `providers.tsx` = tout ce qui vit dans le navigateur, `ui/` = shadcn) |
 | `src/contexts/auth-context.tsx` | État de connexion, écoute de l'expiration de session |
 | `src/lib/api-client.ts` | `apiFetch` : cookies de session et jeton CSRF, renouvellement automatique sur 401, messages d'erreur de l'API |
 | `src/lib/utils.ts` | `getApiBaseUrl()` : `NEXT_PUBLIC_API_BASE_URL`, sinon `http://localhost:5001` en local |

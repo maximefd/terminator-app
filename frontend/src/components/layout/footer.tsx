@@ -1,6 +1,7 @@
 // DANS src/components/layout/footer.tsx
 
 import Link from "next/link";
+import { site } from "@/config/site";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -9,7 +10,7 @@ export function Footer() {
     <footer className="border-t">
       <div className="container mx-auto flex flex-col items-center justify-between gap-4 p-4 md:flex-row">
         <p className="text-sm text-muted-foreground">
-          &copy; {currentYear} Terminator. Tous droits réservés.
+          &copy; {currentYear} {site.name}. Tous droits réservés.
         </p>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
           <Link href="/legal" className="hover:text-primary">

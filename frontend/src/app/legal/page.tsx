@@ -3,10 +3,11 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode } from "react";
+import { site } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: "Mentions légales | Terminator",
-  description: "Qui fait Terminator, où il tourne, et les ressources qu'il emprunte.",
+  title: "Mentions légales",
+  description: `Qui fait ${site.name}, où il tourne, et les ressources qu'il emprunte.`,
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -29,7 +30,7 @@ export default function LegalPage() {
       <div className="mt-8 space-y-8 text-muted-foreground">
         <Section title="Éditeur">
           <p>
-            Terminator est un outil personnel de création de mots fléchés, développé par un particulier, à titre non
+            {site.name} est un outil personnel de création de mots fléchés, développé par un particulier, à titre non
             commercial. Pour le contacter : le{" "}
             <a href="https://github.com/maximefd/terminator-app/issues" className={linkClass}>
               dépôt du projet
@@ -40,7 +41,7 @@ export default function LegalPage() {
 
         <Section title="Hébergement">
           <p>
-            Aucun à ce jour : Terminator n&apos;est pas publié en ligne, il tourne sur l&apos;ordinateur de son auteur.
+            Aucun à ce jour : {site.name} n&apos;est pas publié en ligne, il tourne sur l&apos;ordinateur de son auteur.
             Le jour d&apos;une mise en ligne, cette page indiquera l&apos;hébergeur et l&apos;identité complète de
             l&apos;éditeur, comme la loi le demande.
           </p>
@@ -48,7 +49,7 @@ export default function LegalPage() {
 
         <Section title="Données personnelles">
           <p>
-            Ce que Terminator conserve, pourquoi, et comment le supprimer :{" "}
+            Ce que {site.name} conserve, pourquoi, et comment le supprimer :{" "}
             <Link href="/privacy" className={linkClass}>page de confidentialité</Link>.
           </p>
         </Section>

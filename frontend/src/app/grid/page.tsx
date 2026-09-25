@@ -5,7 +5,7 @@ import { GridClientLayout } from '@/components/grid/grid-client-layout'; // On i
 
 // Ce fichier est maintenant un Composant Serveur, il peut exporter les métadonnées.
 export const metadata: Metadata = {
-  title: 'Générer une grille | Terminator',
+  title: 'Générer une grille',
   description: 'Créez automatiquement des grilles de mots fléchés remplies. Choisissez la taille et laissez notre algorithme construire une grille complète pour vous.',
 };
 
