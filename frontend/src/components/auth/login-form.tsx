@@ -1,21 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { nextPath, withNext } from "@/lib/next-path";
+import { useSharedEmail } from "@/hooks/use-shared-email";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
+  const { email, setEmail, forgetEmail } = useSharedEmail();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
+  // Le lien vers l'autre formulaire garde la destination : l'adresse n'est lisible qu'une fois monté
+  const [otherHref, setOtherHref] = useState("/register");
+  useEffect(() => {
+    const next = nextPath("");
+    if (next) setOtherHref(withNext("/register", next));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +31,9 @@ export function LoginForm() {
     setSubmitting(true);
     try {
       await login(email, password);
-      router.push("/");
+      forgetEmail();
+      // Venu d'une page qui attend la connexion (une grille à conserver) : on y retourne
+      router.push(nextPath());
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -82,7 +92,7 @@ export function LoginForm() {
           </form>
           <div className="mt-4 text-center text-sm">
             Pas encore de compte ?{" "}
-            <Link href="/register" className="underline">
+            <Link href={otherHref} className="underline">
               S&apos;inscrire
             </Link>
           </div>

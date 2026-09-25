@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Grid3x3, Loader2, RefreshCw } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api-client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { GridDisplay, type GridData } from "@/components/grid/grid-display";
 import { WordList, type WordEntry } from "@/components/grid/word-list";
 import { DifficultyPanel, type Difficulty } from "@/components/grid/difficulty-panel";
 import { DictionaryPicker } from "@/components/grid/dictionary-picker";
-import { SaveGrid } from "@/components/grid/save-grid";
+import { SaveGrid, type SavedRef } from "@/components/grid/save-grid";
+import { loadLastGrid, storeLastGrid } from "@/lib/last-grid";
 
 type GridFormat = { width: number; height: number; layouts: number };
 
@@ -47,8 +47,8 @@ function RepeatedFailures({ attempts, rate, hardest }: { attempts: number; rate:
       <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
         {hardest && (
           <li>
-            passer <span className="font-mono font-semibold">{hardest}</span> en{" "}
-            <strong>souhaité</strong> : il sera placé s&apos;il rentre, sans faire échouer la grille ;
+            décocher « Obligatoire » pour <span className="font-mono font-semibold">{hardest}</span> : il
+            sera placé s&apos;il rentre, sans faire échouer la grille ;
           </li>
         )}
         <li>raccourcir : c&apos;est la longueur qui décide, bien plus que le nombre de mots ;</li>
@@ -93,7 +93,7 @@ function FailureNotice({
           <p className="text-sm text-muted-foreground">
             {data.suggested_layouts?.length
               ? `Ces mises en page les accueilleraient : ${data.suggested_layouts.join(", ")}.`
-              : "Aucune mise en page du catalogue ne les accueille : essayez un mot plus court, ou passez-le en souhaité."}
+              : "Aucune mise en page du catalogue ne les accueille : essayez un mot plus court, ou décochez « Obligatoire »."}
           </p>
         </>
       )}
@@ -103,7 +103,7 @@ function FailureNotice({
           Le solveur n&apos;a pas réussi à placer{" "}
           <span className="font-mono font-semibold">{(data.unplaced ?? []).join(", ")}</span>. Ces mots entrent
           dans la grille, mais aucun croisement ne fonctionne. Relancez pour tenter une autre disposition, ou
-          passez-les en souhaités.
+          décochez « Obligatoire ».
         </p>
       )}
 
@@ -116,17 +116,125 @@ function FailureNotice({
   );
 }
 
+/** Au-delà de trois mots, ou sous 70 % de chances, un mot ajouté arrive souhaité. */
+const MAX_REQUIRED_BY_DEFAULT = 3;
+const REQUIRED_THRESHOLD = 0.7;
+
+/** Trois familles de tailles : on choisit d'abord « petite ou grande », le détail ensuite. */
+const SIZE_GROUPS = [
+  { label: "Petites", upTo: 70 },
+  { label: "Moyennes", upTo: 140 },
+  { label: "Grandes", upTo: Number.POSITIVE_INFINITY },
+];
+
+/**
+ * Le choix du format, en vignettes plutôt qu'en liste déroulante : la silhouette d'une grille dit
+ * mieux sa taille que « 13 × 16 (4 mises en page) ». Des boutons radio natifs, masqués : les flèches
+ * du clavier passent d'un format à l'autre sans rien à coder.
+ */
+function FormatPicker({
+  formats,
+  value,
+  onChange,
+  disabled,
+}: {
+  formats: GridFormat[];
+  value: string | null;
+  onChange: (key: string) => void;
+  disabled?: boolean;
+}) {
+  const sorted = [...formats].sort((a, b) => a.width * a.height - b.width * b.height);
+  let lower = 0;
+  const groups = SIZE_GROUPS.map((group) => {
+    const members = sorted.filter((format) => format.width * format.height > lower && format.width * format.height <= group.upTo);
+    lower = group.upTo;
+    return { ...group, members };
+  }).filter((group) => group.members.length > 0);
+  const largest = Math.max(...formats.map((format) => Math.max(format.width, format.height)));
+
+  return (
+    <div role="radiogroup" aria-label="Taille de la grille" className="space-y-3">
+      {groups.map((group) => (
+        <div key={group.label}>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">{group.label}</p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-3">
+            {group.members.map((format) => {
+              const key = formatKey(format);
+              const scale = 22 / largest;
+              return (
+                <label key={key} className="relative" title={`${format.layouts} mise${format.layouts > 1 ? "s" : ""} en page`}>
+                  <input
+                    type="radio"
+                    name="format"
+                    value={key}
+                    checked={value === key}
+                    onChange={() => onChange(key)}
+                    disabled={disabled}
+                    className="peer sr-only"
+                  />
+                  <span className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border px-2 text-sm tabular-nums transition-colors hover:bg-secondary/60 peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:font-semibold peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50">
+                    <span
+                      aria-hidden
+                      className="inline-block rounded-[2px] border border-current opacity-60"
+                      style={{ width: format.width * scale + 4, height: format.height * scale + 4 }}
+                    />
+                    {format.width}&nbsp;×&nbsp;{format.height}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * L'écran de génération.
+ *
+ * Pensé pour quelqu'un qui arrive sans rien savoir : une taille, un bouton, une grille. Imposer des
+ * mots reste possible, mais c'est une **option**, repliée par défaut — l'ancien écran ouvrait sur la
+ * liste de mots et laissait croire qu'il fallait la remplir.
+ *
+ * La demande et la dernière grille sont gardées dans le navigateur (`last-grid`) : on peut aller se
+ * connecter et revenir la conserver.
+ */
 export function GridClientLayout() {
   const [entries, setEntries] = useState<WordEntry[]>([]);
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null);
   const [dictionaryIds, setDictionaryIds] = useState<number[]>([]);
   const [gridData, setGridData] = useState<GridData | null>(null);
+  const [saved, setSaved] = useState<SavedRef | null>(null);
+  // Les mots demandés que le moteur n'a pas pu placer : un souhaité absent doit se voir
+  const [unplaced, setUnplaced] = useState<string[]>([]);
+  const [restored, setRestored] = useState(false);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   // Échecs consécutifs pour une même demande : c'est leur répétition qui informe, pas le dernier
   const [failures, setFailures] = useState(0);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [isEstimating, setIsEstimating] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
+
+  // Lu après le montage : le stockage n'existe pas au rendu statique, et l'y lire casserait l'hydratation
+  useEffect(() => {
+    const last = loadLastGrid();
+    if (last) {
+      setSelectedFormat(last.format);
+      setEntries(last.entries);
+      setDictionaryIds(last.dictionaryIds);
+      setGridData(last.grid);
+      setSaved(last.saved);
+    }
+    setRestored(true);
+  }, []);
+
+  useEffect(() => {
+    // Avant la lecture, ce serait écraser la grille gardée par un écran encore vide
+    if (!restored) return;
+    storeLastGrid({ format: selectedFormat, entries, dictionaryIds, grid: gridData, saved });
+  }, [restored, selectedFormat, entries, dictionaryIds, gridData, saved]);
 
   const { data: formats, isLoading: isFormatsLoading, error: formatsError } = useQuery<GridFormat[], Error>({
     queryKey: ["grid-formats"],
@@ -161,12 +269,53 @@ export function GridClientLayout() {
     return () => { cancelled = true; };
   }, [estimateKey]);
 
+  /**
+   * Obligatoire ou souhaité, décidé à l'ajout : les trois premiers mots arrivent obligatoires tant
+   * que la grille garde **plus de 70 %** de chances d'aboutir avec eux ; au-delà, souhaités. Le taux
+   * est celui de l'ensemble — PORTE seul passe à 100 %, PORTE et MUSIQUE ensemble tombent à 61 %.
+   * Un mot à la fois, dans l'ordre de saisie, puisque chacun change le taux du suivant. L'auteur qui
+   * bascule un mot avant la réponse a le dernier mot : sa décision n'est pas écrasée.
+   */
+  useEffect(() => {
+    const next = entries.find((entry) => entry.pending);
+    if (!next || !currentFormat) return;
+    let cancelled = false;
+    const already = entries.filter((entry) => entry.required).map((entry) => entry.text);
+    const settle = (isRequired: boolean) =>
+      setEntries((list) =>
+        list.map((entry) =>
+          entry.id === next.id && entry.pending ? { ...entry, required: isRequired, pending: false } : entry,
+        ),
+      );
+    if (already.length >= MAX_REQUIRED_BY_DEFAULT) {
+      settle(false);
+      return;
+    }
+    apiFetch("/api/grids/difficulty", {
+      method: "POST",
+      body: {
+        must_words: [...already, next.text],
+        size: { width: currentFormat.width, height: currentFormat.height },
+      },
+    })
+      .then((data) => { if (!cancelled) settle(data.success_rate > REQUIRED_THRESHOLD); })
+      .catch(() => { if (!cancelled) settle(false); });
+    return () => { cancelled = true; };
+  }, [entries, currentFormat]);
+
   const generate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!currentFormat) return;
     setIsGenerating(true);
     setFailure(null);
     setGridData(null);
+    setSaved(null);
+    setUnplaced([]);
+    // Sur téléphone, le résultat tombe sous le formulaire : on l'amène à l'écran. Sur grand écran il
+    // est déjà à côté, et faire défiler cacherait le titre.
+    if (window.matchMedia("(max-width: 1023px)").matches) {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     try {
       const data = await apiFetch("/api/grids/generate", {
         method: "POST",
@@ -179,6 +328,11 @@ export function GridClientLayout() {
         },
       });
       setGridData(data.grid);
+      // Le moteur écrit sans accent ni tiret : ARC-EN-CIEL est placé sous la forme ARCENCIEL
+      const plain = (word: string) => word.normalize("NFD").replace(/[^A-Za-z]/g, "").toUpperCase();
+      setUnplaced(
+        wished.filter((word) => !(data.grid as GridData).words.some((placed) => plain(placed.text) === plain(word))),
+      );
       setFailures(0);
     } catch (error) {
       setFailures((count) => count + 1);
@@ -192,69 +346,101 @@ export function GridClientLayout() {
 
   return (
     <main className="container mx-auto p-4 md:p-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight">Générer une grille</h1>
+      <div className="max-w-2xl">
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Générer une grille</h1>
         <p className="mt-2 text-muted-foreground">
-          Choisissez un format, ajoutez les mots que vous voulez y voir, et lancez la génération.
+          Choisissez une taille : le moteur remplit la grille en quelques secondes. Vous relirez ensuite
+          ses mots et écrirez les définitions.
         </p>
       </div>
 
-      <form onSubmit={generate} className="mx-auto mt-8 max-w-xl space-y-6 rounded-lg border p-6">
-        <div className="space-y-2">
-          <Label htmlFor="format">Format de grille</Label>
-          <Select
-            value={currentFormat ? formatKey(currentFormat) : undefined}
-            onValueChange={setSelectedFormat}
-            disabled={isFormatsLoading || !formats?.length}
-          >
-            <SelectTrigger id="format" className="w-full">
-              <SelectValue placeholder={isFormatsLoading ? "Chargement des formats…" : "Aucun format disponible"} />
-            </SelectTrigger>
-            <SelectContent>
-              {formats?.map((format) => (
-                <SelectItem key={formatKey(format)} value={formatKey(format)}>
-                  {format.width} × {format.height} ({format.layouts} mise{format.layouts > 1 ? "s" : ""} en page)
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {formatsError && <p className="text-xs text-destructive">{formatsError.message}</p>}
-        </div>
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
+        <form onSubmit={generate} className="space-y-6 rounded-lg border p-5">
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold">Taille de la grille</h2>
+            {formats?.length ? (
+              <FormatPicker
+                formats={formats}
+                value={currentFormat ? formatKey(currentFormat) : null}
+                onChange={setSelectedFormat}
+                disabled={isGenerating}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {isFormatsLoading ? "Chargement des formats…" : "Aucun format disponible."}
+              </p>
+            )}
+            {formatsError && <p className="text-xs text-destructive">{formatsError.message}</p>}
+          </section>
 
-        <div className="space-y-2">
-          <Label>Mots à placer</Label>
-          <WordList entries={entries} onChange={setEntries} disabled={isGenerating} />
-        </div>
+          {/* Une option, dite comme telle : sans mot imposé, la grille se remplit seule */}
+          <section className="space-y-4 border-t pt-4">
+            <div>
+              <h2 className="text-sm font-semibold">
+                Imposer des mots
+                <span className="ml-1.5 font-normal text-muted-foreground">(facultatif)</span>
+              </h2>
+              <p className="text-xs text-muted-foreground">Un thème, des prénoms… Sinon, le moteur choisit tout seul.</p>
+            </div>
+            <WordList entries={entries} onChange={setEntries} disabled={isGenerating} />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Puiser dans vos dictionnaires</p>
+              <DictionaryPicker selected={dictionaryIds} onChange={setDictionaryIds} disabled={isGenerating} />
+            </div>
+            {required.length > 0 && (
+              <DifficultyPanel difficulty={difficulty} isLoading={isEstimating} hasRequiredWords />
+            )}
+          </section>
 
-        <div className="space-y-2">
-          <Label>Vos dictionnaires</Label>
-          <DictionaryPicker selected={dictionaryIds} onChange={setDictionaryIds} disabled={isGenerating} />
-        </div>
+          <Button type="submit" size="lg" disabled={isGenerating || !currentFormat} className="w-full">
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Génération en cours…
+              </>
+            ) : gridData ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Générer une autre grille
+              </>
+            ) : (
+              "Générer la grille"
+            )}
+          </Button>
+        </form>
 
-        <DifficultyPanel difficulty={difficulty} isLoading={isEstimating} hasRequiredWords={required.length > 0} />
-
-        <Button type="submit" disabled={isGenerating || !currentFormat} className="w-full">
-          {isGenerating ? "Génération en cours…" : "Générer la grille"}
-        </Button>
-      </form>
-
-      <div className="mt-8 w-full">
-        {failure && (
-          <div className="mx-auto max-w-xl">
+        <section ref={resultRef} aria-label="Grille générée" aria-live="polite" className="scroll-mt-20">
+          {failure && (
             <FailureNotice
               error={failure}
               attempts={failures}
               rate={difficulty?.success_rate ?? null}
               hardest={difficulty?.hardest ?? null}
             />
-          </div>
-        )}
-        {gridData && (
-          <div className="space-y-6">
-            <GridDisplay gridData={gridData} />
-            <SaveGrid grid={gridData} />
-          </div>
-        )}
+          )}
+          {gridData ? (
+            <div className="space-y-6">
+              <SaveGrid grid={gridData} saved={saved} onSaved={setSaved} />
+              <GridDisplay gridData={gridData} unplaced={unplaced} />
+            </div>
+          ) : (
+            !failure && (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <p className="mt-3 text-sm">Le moteur cherche des mots qui se croisent…</p>
+                  </>
+                ) : (
+                  <>
+                    <Grid3x3 className="h-8 w-8 opacity-40" />
+                    <p className="mt-3 text-sm">Votre grille apparaîtra ici.</p>
+                  </>
+                )}
+              </div>
+            )
+          )}
+        </section>
       </div>
     </main>
   );

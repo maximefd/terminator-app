@@ -131,10 +131,14 @@ type GridSvgProps = {
   cellSources?: Record<string, string>;
   /** Définitions en gras, comme dans la plupart des magazines. */
   boldDefinitions?: boolean;
+  /** Définitions en italique : une inclinaison du dessin, qui passe telle quelle dans le PDF. */
+  italicDefinitions?: boolean;
   /** Mode lettres : la case en cours de correction, et le mot qu'elle traverse. */
   selectedCell?: { x: number; y: number } | null;
   onSelectCell?: (cell: { x: number; y: number }) => void;
   litCells?: string[];
+  /** Classe du `<svg>` : c'est par elle qu'un écran borne la taille de la grille. */
+  className?: string;
   /** Mots absents du lexique : soulignés dans la grille, pour qu'on les voie sans lire la liste. */
   unknownCells?: string[];
 };
@@ -147,10 +151,12 @@ export function GridSvg({
   onSelect,
   cellSources,
   boldDefinitions = true,
+  italicDefinitions = false,
   selectedCell,
   onSelectCell,
   litCells,
   unknownCells,
+  className = "h-auto w-full",
 }: GridSvgProps) {
   const clues = grid.clues ?? [];
   const showLetters = variant !== "vierge";
@@ -188,7 +194,7 @@ export function GridSvg({
   return (
     <svg
       viewBox={`${-BORDER / 2} ${-BORDER / 2} ${grid.width * CELL + BORDER} ${grid.height * CELL + BORDER}`}
-      className="h-auto w-full"
+      className={className}
       role="img"
       aria-label={`Grille ${grid.width} sur ${grid.height}, ${grid.words.length} mots`}
     >
@@ -287,6 +293,7 @@ export function GridSvg({
                           height={boxHeight}
                           arrow={clue.arrow}
                           bold={boldDefinitions}
+                          italic={italicDefinitions}
                         />
                       )}
                       {onSelect && (
@@ -364,11 +371,20 @@ export function GridSvg({
  * prévenir serait le pire des silences.
  */
 /**
- * Largeur moyenne d'un caractère, en em, mesurée sur Archivo Narrow avec de vraies définitions.
- * Les capitales sont **50 % plus larges** que le bas de casse (0,60 contre 0,42) : la coupe des
- * lignes en dépend directement, et la même formule pour les deux tronquerait une ligne sur deux.
+ * Largeur moyenne d'un caractère, en em, mesurée sur **Archivo Narrow** avec de vraies définitions
+ * en capitales : 0,527 en gras, 0,523 en maigre.
+ *
+ * Les premières valeurs inscrites ici (0,64) mesuraient en réalité la police de secours : un chunk
+ * CSS périmé du serveur de développement empêchait Archivo Narrow de se charger, sans rien dire.
+ * Leçon : mesurer une police suppose d'abord de vérifier qu'elle est chargée (`document.fonts`).
  */
-const CHAR_WIDTH = { bold: 0.64, regular: 0.6 };
+const CHAR_WIDTH = { bold: 0.53, regular: 0.52 };
+/**
+ * Largeur du **pire mot** plutôt que du mot moyen, pour la borne qui empêche un mot de sortir de sa
+ * case. Mesuré sur Archivo Narrow gras : « DÉSAVANTAGÉS » 0,554, « RECOMMANDÉES » 0,596,
+ * « CŒUR » 0,649. La moyenne suffit à répartir les lignes ; elle laisse déborder les mots larges.
+ */
+const WIDEST_CHAR = 0.68;
 
 /** Comme dans les magazines : capitales accentuées. La saisie de l'auteur, elle, reste telle quelle. */
 export const printedCase = (text: string) => text.toLocaleUpperCase("fr");
@@ -419,16 +435,29 @@ export function wrapDefinition(text: string, arrow: string | null, half: boolean
     return { fontSize, lines, lineHeight: fontSize * 1.08 };
   };
 
-  // Une définition longue fait rétrécir sa police plutôt que de gagner une ligne : c'est ce que font
-  // les magazines, et c'est ce qui sauve « IL DONNE LA CADENCE » d'une troisième ligne à deux lettres.
-  const nominal = half ? CELL * 0.105 : CELL * 0.115;
+  // Un mot ne se coupe pas : s'il est plus large que la case, c'est la police qui cède. Sans cette
+  // borne, « RECOMMANDÉES » sortait de sa case — un texte qui déborde est un défaut, pas un choix.
+  const tenable = longest > 0 ? usable / (WIDEST_CHAR * longest) : Number.POSITIVE_INFINITY;
+  const nominal = Math.min(half ? CELL * 0.105 : CELL * 0.115, tenable);
+
+  // Une définition longue fait ensuite rétrécir sa police plutôt que de gagner une ligne : c'est ce
+  // que font les magazines, et c'est ce qui sauve « IL DONNE LA CADENCE » d'une troisième ligne à
+  // deux lettres.
   let best = layout(nominal);
   for (let size = nominal - 0.5; size >= nominal * 0.8; size -= 0.5) {
     const candidate = layout(size);
     if (candidate.lines.length < best.lines.length) best = candidate;
   }
 
-  const maxLines = Math.max(2, Math.floor((height - reserved.bottom - 4) / best.lineHeight));
+  /**
+   * Au-delà de trois lignes dans une demi-case, une définition n'est plus lisible dans une grille,
+   * même si elle y tient géométriquement. Le plafond est typographique, pas arithmétique : sans lui,
+   * une définition de soixante-dix caractères « passait » en six lignes minuscules, sans un mot.
+   */
+  const maxLines = Math.min(
+    half ? 3 : 5,
+    Math.max(2, Math.floor((height - reserved.bottom - 4) / best.lineHeight)),
+  );
 
   return {
     lines: best.lines.slice(0, maxLines),
@@ -447,6 +476,7 @@ function ClueText({
   height,
   arrow,
   bold,
+  italic,
 }: {
   text: string;
   x: number;
@@ -454,6 +484,7 @@ function ClueText({
   height: number;
   arrow: string | null;
   bold: boolean;
+  italic: boolean;
 }) {
   const half = height <= CELL / 2;
   const { lines: shown, fontSize, lineHeight, reserved, usable } = wrapDefinition(text, arrow, half, bold);
@@ -469,6 +500,12 @@ function ClueText({
       fontSize={fontSize}
       fontWeight={bold ? 700 : 400}
       fontFamily={GRID_FONT}
+      /*
+        Une inclinaison plutôt qu'une police italique : le PDF embarque la police du dessin, et une
+        troisième graisse à charger pour un réglage de style ne vaut pas son poids. Inclinée autour du
+        centre du texte, la définition reste dans sa case.
+      */
+      transform={italic ? `translate(${centerX} ${centerY}) skewX(-9) translate(${-centerX} ${-centerY})` : undefined}
     >
       {shown.map((line, index) => (
         <tspan key={line + index} x={centerX} y={startY + index * lineHeight}>

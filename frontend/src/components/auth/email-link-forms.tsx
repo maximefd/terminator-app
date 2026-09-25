@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api-client";
+import { useSharedEmail } from "@/hooks/use-shared-email";
 
 /**
  * Les écrans des e-mails du compte (ADR 0014) : demander un lien, choisir un nouveau mot de passe,
@@ -34,7 +35,8 @@ function Frame({ title, description, children }: { title: string; description: s
 }
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState("");
+  // La même adresse que sur la page de connexion, d'où l'on vient presque toujours
+  const { email, setEmail } = useSharedEmail();
   const [sent, setSent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);

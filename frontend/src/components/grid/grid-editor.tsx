@@ -4,15 +4,38 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, ArrowLeft, Check, Download, FileText, Pencil, Redo2, Undo2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  ArrowRight,
+  Bold,
+  Check,
+  Download,
+  FileText,
+  Italic,
+  Pencil,
+  Redo2,
+  Undo2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toggle } from "@/components/ui/toggle";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { withNext } from "@/lib/next-path";
 import { apiFetch } from "@/lib/api-client";
 import { useAuth } from "@/contexts/auth-context";
 import { useDebounce } from "@/hooks/use-debounce";
 import { GridSvg, clueKey, wrapDefinition, type Clue } from "@/components/grid/grid-svg";
-import { LetterPanel, type PlacedWord } from "@/components/grid/letter-panel";
+import { LetterPanel, WordReview, type PlacedWord } from "@/components/grid/letter-panel";
 import type { GridData } from "@/components/grid/grid-display";
 import { exportJson, exportPdf } from "@/lib/grid-export";
 
@@ -27,9 +50,29 @@ type SavedGrid = {
   archived: boolean;
 };
 
-type Mode = "definitions" | "lettres" | "apercu";
+type Mode = "lettres" | "definitions" | "apercu";
+
+/**
+ * Le travail sur une grille, dans l'ordre où il se fait : on ne définit pas un mot qu'on va
+ * remplacer, et la mise en forme ne se juge qu'une fois les définitions écrites.
+ */
+const STEPS: { mode: Mode; label: string }[] = [
+  { mode: "lettres", label: "Relire les mots" },
+  { mode: "definitions", label: "Définitions" },
+  { mode: "apercu", label: "Mise en page et export" },
+];
 
 type CellEdit = { x: number; y: number; char: string };
+
+/**
+ * La grille tient dans la fenêtre, quelle qu'elle soit.
+ *
+ * On travaille une grille en la voyant **entière** : un 13×18 qui déborde oblige à faire défiler
+ * entre deux lettres. Plutôt qu'une marge fixe — qui suppose une hauteur d'en-tête et se trompe dès
+ * qu'on change de fenêtre —, la colonne occupe la hauteur disponible et le dessin prend ce qui
+ * reste (`flex-1` + `min-h-0`), la largeur suivant le rapport du SVG.
+ */
+const FITS_SCREEN = "h-full max-h-full w-auto max-w-full";
 
 /**
  * L'éditeur d'une grille conservée : définitions, lettres, notes, export.
@@ -42,7 +85,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const { isAuthenticated, isLoading: isSessionLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  const [mode, setMode] = useState<Mode>("definitions");
+  const [mode, setMode] = useState<Mode>("lettres");
   const [selected, setSelected] = useState<string | null>(null);
   const [definitions, setDefinitions] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
@@ -52,6 +95,9 @@ export function GridEditor({ gridId }: { gridId: number }) {
   const [draftName, setDraftName] = useState<string | null>(null);
   const [isExporting, setExporting] = useState(false);
   const [bold, setBold] = useState(true);
+  const [italic, setItalic] = useState(false);
+  // L'export attend une confirmation quand la grille n'est pas finie : `true` = avec la solution
+  const [pendingPdf, setPendingPdf] = useState<boolean | null>(null);
   // Annulation : on garde les **lettres d'avant**, pas des copies de grille. Une correction ne
   // touche que quelques cases, et l'inverse d'une pose de lettre est une autre pose de lettre.
   const [past, setPast] = useState<CellEdit[][]>([]);
@@ -59,6 +105,9 @@ export function GridEditor({ gridId }: { gridId: number }) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const blankRef = useRef<HTMLDivElement>(null);
+  const lettersRef = useRef<HTMLDivElement>(null);
+  // Fermer l'avertissement d'export rend le focus au bouton PDF, sauf si l'on part compléter
+  const writeAfterDialog = useRef(false);
   const solutionRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error } = useQuery<SavedGrid, Error>({
@@ -83,23 +132,33 @@ export function GridEditor({ gridId }: { gridId: number }) {
     seeded.current = gridId;
     setDefinitions(data.definitions ?? {});
     setNotes(data.notes ?? "");
+    // Une grille neuve s'ouvre sur la relecture ; une grille déjà entamée, là où on l'avait laissée
+    setMode(Object.values(data.definitions ?? {}).some(Boolean) ? "definitions" : "lettres");
   }, [data, gridId]);
 
   useEffect(() => {
     try {
       setBold(localStorage.getItem("terminator:definitions-grasses") !== "non");
+      setItalic(localStorage.getItem("terminator:definitions-italiques") === "oui");
     } catch {
       // Stockage refusé (navigation privée) : on garde la valeur par défaut
     }
   }, []);
 
-  const changeBold = (next: boolean) => {
-    setBold(next);
+  const remember = (key: string, value: boolean) => {
     try {
-      localStorage.setItem("terminator:definitions-grasses", next ? "oui" : "non");
+      localStorage.setItem(key, value ? "oui" : "non");
     } catch {
       // Sans stockage, le réglage ne survit pas au rechargement : pas une raison d'échouer
     }
+  };
+  const changeBold = (next: boolean) => {
+    setBold(next);
+    remember("terminator:definitions-grasses", next);
+  };
+  const changeItalic = (next: boolean) => {
+    setItalic(next);
+    remember("terminator:definitions-italiques", next);
   };
 
   const patch = useMutation({
@@ -372,7 +431,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
           Les grilles conservées appartiennent à celui qui les a gardées.
         </p>
         <Button asChild className="mt-4" size="sm">
-          <Link href="/login">Se connecter</Link>
+          <Link href={withNext("/login", `/grids/edit?id=${gridId}`)}>Se connecter</Link>
         </Button>
       </main>
     );
@@ -389,13 +448,16 @@ export function GridEditor({ gridId }: { gridId: number }) {
   }
 
   const selectedClue = clues.find((clue) => clueKey(clue) === selected) ?? null;
-  const defined = clues.filter((clue) => definitions[clueKey(clue)]).length;
+  const defined = clues.filter((clue) => definitions[clueKey(clue)]?.trim()).length;
+  const missing = clues.length - defined;
+  const percent = clues.length ? Math.round((defined / clues.length) * 100) : 0;
   const current = selectedClue ? definitions[clueKey(selectedClue)] ?? "" : "";
   const sharesItsCell = (clue: Clue) =>
     clues.some((other) => other !== clue && other.cell_x === clue.cell_x && other.cell_y === clue.cell_y);
   const overflows = (clue: Clue, text: string) =>
     Boolean(text) && wrapDefinition(text, clue.arrow, sharesItsCell(clue), bold).overflow;
   const tooLong = clues.filter((clue) => overflows(clue, definitions[clueKey(clue)] ?? ""));
+  const unfinished = content.words.filter((word) => word.complete === false || word.text.includes("?"));
 
   const svgOf = (container: HTMLDivElement | null) => container?.querySelector("svg") ?? null;
   const downloadPdf = async (withSolution: boolean) => {
@@ -411,10 +473,50 @@ export function GridEditor({ gridId }: { gridId: number }) {
     }
   };
 
+  /** Une grille inachevée s'exporte quand même, mais pas sans que l'auteur l'ait su. */
+  const requestPdf = (withSolution: boolean) => {
+    if (missing > 0 || unfinished.length > 0) setPendingPdf(withSolution);
+    else void downloadPdf(withSolution);
+  };
+
+  const goToMissing = () => {
+    const first = clues.find((clue) => !definitions[clueKey(clue)]?.trim());
+    writeAfterDialog.current = true;
+    setPendingPdf(null);
+    setMode("definitions");
+    if (first) setSelected(clueKey(first));
+  };
+
+  const toggleArchive = () => {
+    const archived = !data.archived;
+    patch.mutate(
+      { archived },
+      {
+        onSuccess: () =>
+          toast.success(
+            archived ? "Grille archivée : elle est rangée dans Mes grilles › Archivées." : "Grille sortie de l'archive.",
+          ),
+      },
+    );
+  };
+
+  /** Choisir un mot dans la liste de relecture : le curseur s'y pose, et le clavier suit. */
+  const pickWord = (word: PlacedWord) => {
+    setCursor({ x: word.x, y: word.y });
+    setDirection(word.direction);
+    lettersRef.current?.focus();
+  };
+
   return (
-    <main className="container mx-auto p-4 md:p-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
+    /*
+     * Un plan de travail, pas une page qui défile : sur grand écran l'éditeur occupe la fenêtre
+     * (moins l'en-tête de 4 rem), la grille prend la hauteur qui reste et le panneau défile seul.
+     * En dessous de `lg`, la page redevient un document qu'on fait défiler — une grille et un
+     * panneau côte à côte n'y tiendraient pas.
+     */
+    <main className="container mx-auto flex flex-col p-4 md:p-6 lg:h-[calc(100svh-4rem)] lg:overflow-hidden">
+      <div className="mb-4 flex shrink-0 flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
           <Button asChild variant="ghost" size="sm" className="-ml-2">
             <Link href="/grids">
               <ArrowLeft className="mr-1 h-4 w-4" />
@@ -432,6 +534,11 @@ export function GridEditor({ gridId }: { gridId: number }) {
               >
                 <Pencil className="h-4 w-4" />
               </button>
+              {data.archived && (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  Archivée
+                </span>
+              )}
             </h1>
           ) : (
             <Input
@@ -452,10 +559,32 @@ export function GridEditor({ gridId }: { gridId: number }) {
               }}
             />
           )}
-          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              {defined} définition{defined > 1 ? "s" : ""} sur {clues.length}
-            </span>
+
+          {/* L'avancement, comme dans Mes grilles : c'est la question qu'on se pose en travaillant */}
+          <div className="mt-1 w-72 max-w-full">
+            <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+              <span>
+                {missing === 0 && clues.length > 0
+                  ? "Définitions complètes"
+                  : `${defined} définition${defined > 1 ? "s" : ""} sur ${clues.length}`}
+              </span>
+              <span className="tabular-nums">{percent} %</span>
+            </div>
+            <div
+              className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label="Définitions écrites"
+              aria-valuenow={percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className={missing === 0 ? "h-full bg-emerald-500" : "h-full bg-amber-500"}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             {content.unknown_words && content.unknown_words.length > 0 && (
               <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-500">
                 <AlertTriangle className="h-3.5 w-3.5" />
@@ -469,7 +598,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
               </span>
             )}
             {patch.isPending ? (
-              <span>· enregistrement…</span>
+              <span>enregistrement…</span>
             ) : (
               <span className="inline-flex items-center gap-1">
                 <Check className="h-3.5 w-3.5" />
@@ -480,54 +609,95 @@ export function GridEditor({ gridId }: { gridId: number }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled={isExporting} onClick={() => downloadPdf(false)}>
+          <Button variant="outline" size="sm" disabled={isExporting} onClick={() => requestPdf(false)}>
             <FileText className="mr-1 h-4 w-4" />
             PDF
           </Button>
-          <Button variant="outline" size="sm" disabled={isExporting} onClick={() => downloadPdf(true)}>
+          <Button variant="outline" size="sm" disabled={isExporting} onClick={() => requestPdf(true)}>
             <FileText className="mr-1 h-4 w-4" />
             PDF + solution
           </Button>
-          <Button variant="outline" size="sm" onClick={() => exportJson(data.name, content, definitions)}>
-            <Download className="mr-1 h-4 w-4" />
-            Fichier de travail
+          <Button variant="outline" size="sm" disabled={patch.isPending} onClick={toggleArchive}>
+            {data.archived ? (
+              <>
+                <ArchiveRestore className="mr-1 h-4 w-4" />
+                Sortir de l&apos;archive
+              </>
+            ) : (
+              <>
+                <Archive className="mr-1 h-4 w-4" />
+                Archiver
+              </>
+            )}
           </Button>
         </div>
       </div>
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div>
-          <div className="mb-3 flex w-fit flex-wrap gap-1 rounded-md border p-1">
-            <Toggle size="sm" pressed={mode === "definitions"} onPressedChange={() => setMode("definitions")}>
-              Définitions
-            </Toggle>
-            <Toggle size="sm" pressed={mode === "lettres"} onPressedChange={() => setMode("lettres")}>
-              Lettres
-            </Toggle>
-            <Toggle size="sm" pressed={mode === "apercu"} onPressedChange={() => setMode("apercu")}>
-              Aperçu imprimé
-            </Toggle>
-            <span className="mx-1 w-px bg-border" aria-hidden />
-            <Toggle size="sm" pressed={bold} onPressedChange={changeBold} aria-label="Définitions en gras">
-              Gras
-            </Toggle>
-          </div>
+      <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* Hauteur **définie** et non plafonnée : sans elle, le `100 %` du dessin n'a rien à quoi se
+            rapporter et le SVG reprend sa taille intrinsèque — le piège classique des pourcentages. */}
+        <div className="flex min-h-0 flex-col lg:h-full">
+          {/* Les étapes, numérotées : on voit par où commencer et où l'on en est */}
+          <nav aria-label="Étapes" className="mb-3 shrink-0">
+            <ol className="flex flex-wrap gap-1 rounded-md border p-1">
+              {STEPS.map((step, index) => {
+                const active = mode === step.mode;
+                return (
+                  <li key={step.mode}>
+                    <button
+                      type="button"
+                      aria-current={active ? "step" : undefined}
+                      onClick={() => setMode(step.mode)}
+                      className={`flex items-center gap-2 rounded px-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        active ? "bg-primary text-primary-foreground" : "hover:bg-secondary/60"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${
+                          active ? "bg-primary-foreground text-primary" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {index + 1}
+                      </span>
+                      {step.label}
+                      {step.mode === "definitions" && (
+                        <span className={`text-xs tabular-nums ${active ? "opacity-80" : "text-muted-foreground"}`}>
+                          {percent} %
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
 
           {/* Le mode lettres écoute le clavier : c'est la grille elle-même qui prend le focus */}
           <div
+            ref={lettersRef}
             tabIndex={mode === "lettres" ? 0 : -1}
             onKeyDown={mode === "lettres" ? onLetterKey : undefined}
-            className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-0 flex-1 items-start justify-center overflow-hidden rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={mode === "lettres" ? "Grille, correction des lettres" : undefined}
           >
             {mode === "apercu" ? (
-              <GridSvg grid={content} variant="vierge" definitions={definitions} boldDefinitions={bold} />
+              <GridSvg
+                grid={content}
+                variant="vierge"
+                definitions={definitions}
+                boldDefinitions={bold}
+                italicDefinitions={italic}
+                className={FITS_SCREEN}
+              />
             ) : mode === "lettres" ? (
               <GridSvg
                 grid={content}
+                className={FITS_SCREEN}
                 variant="lettres"
                 definitions={definitions}
                 boldDefinitions={bold}
+                italicDefinitions={italic}
                 selectedCell={cursor}
                 onSelectCell={selectCell}
                 litCells={litCells}
@@ -536,9 +706,11 @@ export function GridEditor({ gridId }: { gridId: number }) {
             ) : (
               <GridSvg
                 grid={content}
+                className={FITS_SCREEN}
                 variant="edition"
                 definitions={definitions}
                 boldDefinitions={bold}
+                italicDefinitions={italic}
                 selectedKey={selected}
                 unknownCells={unknownCells}
                 onSelect={(key) => {
@@ -550,53 +722,72 @@ export function GridEditor({ gridId }: { gridId: number }) {
           </div>
 
           {mode === "lettres" && (
-            <div className="mt-3 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => void undo()} disabled={past.length === 0}>
-                  <Undo2 className="mr-1 h-4 w-4" />
-                  Annuler
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => void redo()} disabled={future.length === 0}>
-                  <Redo2 className="mr-1 h-4 w-4" />
-                  Rétablir
-                </Button>
-                {past.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {past.length} modification{past.length > 1 ? "s" : ""} depuis l&apos;ouverture
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Cliquez une case et tapez. <kbd className="rounded border px-1">Tab</kbd> change de sens,
-                les flèches déplacent le curseur,{" "}
-                <kbd className="rounded border px-1">Retour arrière</kbd> efface en remontant et{" "}
-                <kbd className="rounded border px-1">Suppr</kbd> efface sur place. Chaque lettre est
-                enregistrée aussitôt ; <kbd className="rounded border px-1">Ctrl</kbd>+
-                <kbd className="rounded border px-1">Z</kbd> annule.
-              </p>
+            <div className="mt-3 flex shrink-0 flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => void undo()} disabled={past.length === 0}>
+                <Undo2 className="mr-1 h-4 w-4" />
+                Annuler
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => void redo()} disabled={future.length === 0}>
+                <Redo2 className="mr-1 h-4 w-4" />
+                Rétablir
+              </Button>
+              {past.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {past.length} modification{past.length > 1 ? "s" : ""} depuis l&apos;ouverture
+                </span>
+              )}
+              <details className="w-full text-sm text-muted-foreground">
+                <summary className="cursor-pointer text-xs">Raccourcis clavier</summary>
+                <p className="mt-1">
+                  Cliquez une case et tapez. <kbd className="rounded border px-1">Tab</kbd> change de sens,
+                  les flèches déplacent le curseur,{" "}
+                  <kbd className="rounded border px-1">Retour arrière</kbd> efface en remontant et{" "}
+                  <kbd className="rounded border px-1">Suppr</kbd> efface sur place. Chaque lettre est
+                  enregistrée aussitôt ; <kbd className="rounded border px-1">Ctrl</kbd>+
+                  <kbd className="rounded border px-1">Z</kbd> annule.
+                </p>
+              </details>
             </div>
           )}
 
           {/* Les rendus de l'export : hors cadre mais mis en page, sinon le PDF ne mesure rien */}
           <div ref={blankRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
-            <GridSvg grid={content} variant="vierge" definitions={definitions} boldDefinitions={bold} />
+            <GridSvg
+              grid={content}
+              variant="vierge"
+              definitions={definitions}
+              boldDefinitions={bold}
+              italicDefinitions={italic}
+            />
           </div>
           <div ref={solutionRef} aria-hidden className="pointer-events-none absolute -left-[9999px] top-0 w-[640px]">
             <GridSvg grid={content} variant="solution" />
           </div>
         </div>
 
-        <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          {mode === "lettres" ? (
-            <LetterPanel
-              gridId={gridId}
-              word={currentWord}
-              crossing={crossingWord}
-              onReplace={replaceWord}
-              onClear={clearWord}
-              unknownWords={content.unknown_words ?? []}
-            />
-          ) : (
+        <div className="space-y-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+          {mode === "lettres" && (
+            <>
+              <LetterPanel
+                gridId={gridId}
+                word={currentWord}
+                crossing={crossingWord}
+                onReplace={replaceWord}
+                onClear={clearWord}
+                unknownWords={content.unknown_words ?? []}
+              />
+              <WordReview words={content.words} current={currentWord} onPick={pickWord} />
+              {/* Collé en bas du panneau : sous une liste de quarante mots, l'étape suivante se perdrait */}
+              <div className="sticky bottom-0 bg-background pb-1 pt-2">
+                <Button className="w-full" onClick={() => setMode("definitions")}>
+                  Les mots me conviennent : écrire les définitions
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {mode === "definitions" && (
             <>
               <div className="rounded-lg border p-4">
                 {selectedClue ? (
@@ -648,7 +839,7 @@ export function GridEditor({ gridId }: { gridId: number }) {
                 )}
               </div>
 
-              <ul className="max-h-[22rem] space-y-0.5 overflow-y-auto rounded-lg border p-2">
+              <ul className="space-y-0.5 rounded-lg border p-2">
                 {clues.map((clue) => {
                   const key = clueKey(clue);
                   const text = definitions[key];
@@ -676,6 +867,85 @@ export function GridEditor({ gridId }: { gridId: number }) {
                   );
                 })}
               </ul>
+
+              <div className="sticky bottom-0 bg-background pb-1 pt-2">
+                <Button
+                  className="w-full"
+                  variant={missing === 0 ? "default" : "outline"}
+                  onClick={() => setMode("apercu")}
+                >
+                  Voir la mise en page et exporter
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {mode === "apercu" && (
+            <>
+              {/* La mise en forme se règle ici, sous les yeux : c'est l'aperçu qui montre son effet */}
+              <div className="rounded-lg border p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Style des définitions
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <Toggle
+                    variant="outline"
+                    pressed={bold}
+                    onPressedChange={changeBold}
+                    aria-label="Définitions en gras"
+                  >
+                    <Bold className="mr-1 h-4 w-4" />
+                    Gras
+                  </Toggle>
+                  <Toggle
+                    variant="outline"
+                    pressed={italic}
+                    onPressedChange={changeItalic}
+                    aria-label="Définitions en italique"
+                  >
+                    <Italic className="mr-1 h-4 w-4" />
+                    Italique
+                  </Toggle>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  S&apos;applique à toutes les définitions, à l&apos;écran comme dans le PDF.
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-lg border p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Exporter</p>
+                {(missing > 0 || unfinished.length > 0) && (
+                  <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-500">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    {missing > 0 && `${missing} définition${missing > 1 ? "s" : ""} à écrire`}
+                    {missing > 0 && unfinished.length > 0 && " · "}
+                    {unfinished.length > 0 && `${unfinished.length} mot${unfinished.length > 1 ? "s" : ""} inachevé${unfinished.length > 1 ? "s" : ""}`}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" disabled={isExporting} onClick={() => requestPdf(true)}>
+                    <FileText className="mr-1 h-4 w-4" />
+                    Grille et solution (PDF)
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={isExporting} onClick={() => requestPdf(false)}>
+                    Grille seule (PDF)
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2"
+                  onClick={() => exportJson(data.name, content, definitions)}
+                >
+                  <Download className="mr-1 h-4 w-4" />
+                  Fichier de travail
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Le fichier de travail garde la grille et ses définitions, pour les archiver ou les
+                  reprendre ailleurs.
+                </p>
+              </div>
             </>
           )}
 
@@ -700,6 +970,55 @@ export function GridEditor({ gridId }: { gridId: number }) {
           </div>
         </div>
       </div>
+
+      {/* Exporter une grille inachevée reste possible : on prévient, on ne bloque pas */}
+      <Dialog open={pendingPdf !== null} onOpenChange={(open) => !open && setPendingPdf(null)}>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            if (!writeAfterDialog.current) return;
+            writeAfterDialog.current = false;
+            event.preventDefault();
+            inputRef.current?.focus();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>La grille n&apos;est pas finie</DialogTitle>
+            <DialogDescription>
+              {missing > 0 &&
+                `${missing} définition${missing > 1 ? "s" : ""} sur ${clues.length} ${
+                  missing > 1 ? "restent" : "reste"
+                } à écrire : ${missing > 1 ? "leurs cases seront vides" : "sa case sera vide"} sur le PDF.`}
+              {missing > 0 && unfinished.length > 0 && " "}
+              {unfinished.length > 0 &&
+                `${unfinished.length} mot${unfinished.length > 1 ? "s ont" : " a"} encore des cases sans lettre.`}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const withSolution = pendingPdf ?? false;
+                setPendingPdf(null);
+                void downloadPdf(withSolution);
+              }}
+            >
+              Exporter quand même
+            </Button>
+            {missing > 0 ? (
+              <Button onClick={goToMissing}>Compléter les définitions</Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  setPendingPdf(null);
+                  setMode("lettres");
+                }}
+              >
+                Compléter les mots
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

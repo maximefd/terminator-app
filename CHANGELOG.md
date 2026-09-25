@@ -90,6 +90,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
     - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
     - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;
     - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : le site français s'appelle **Le Fléchoir** (`leflechoir.fr`).
+- Miniature de chaque grille dans « Mes grilles » : l'API envoie la **forme** avec le résumé
+  (`x` case définition, `-` case lettre), et la liste la dessine. Avec cent grilles, c'est la
+  silhouette qu'on reconnaît — ni lettres ni mots ne transitent pour l'afficher. Vignette de 44 px,
+  cadre épais, sans quadrillage : à cette taille les traits d'un 13×18 ne feraient qu'un gris sale.
+- Page d'accueil reprise : elle montre désormais **une grille finie produite par le moteur** —
+  définitions, flèches, et une bascule vers la solution — rendue par le composant de l'application,
+  si bien qu'un visiteur voit exactement ce que le logiciel fabrique. Le parcours y est numéroté
+  parce qu'il l'est vraiment : générer, conserver, retoucher, définir puis imprimer. La recherche par
+  motif et les dictionnaires, qui ne sont pas dans cette séquence, gardent leur propre bloc.
 - **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
   `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
   en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus
@@ -310,6 +319,27 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   Plus aucun « Terminator » visible : titres des pages (« Mes grilles | Le Fléchoir »), en-tête, pied de page,
   pages légales, objet et texte des e-mails. La mise en page racine passe côté serveur pour porter ces
   métadonnées. Le message d'erreur réseau ne cite plus `make dev-api`.
+- **Écran de génération simplifié** : la taille se choisit en vignettes (petites, moyennes, grandes),
+  la grille apparaît à côté du formulaire, et les mots imposés deviennent une option repliée. Un mot
+  ajouté arrive **souhaité** — il ne fait jamais échouer la grille — et « Obligatoire » se coche. Les
+  mots souhaités restés sans place sont nommés sous la grille ; mise en page et seed passent au survol.
+- **La dernière grille générée survit à la connexion** : générée sans compte, elle attend dans le
+  navigateur pendant qu'on se connecte ou s'inscrit, et la connexion ramène à la page d'origine
+  (`/login?next=/grid`, chemins internes seulement). Oubliée à la déconnexion.
+- **Après « Conserver »**, un bouton « Relire et écrire les définitions » mène à la grille, au lieu d'un
+  simple lien vers la liste.
+- **Éditeur de grille en trois étapes numérotées** : relire les mots, définitions, mise en page et
+  export. Une grille neuve s'ouvre sur la relecture — la liste de ses mots, ceux à regarder de près en
+  tête, avec des remplaçants qui gardent les croisements —, une grille entamée sur les définitions.
+  L'avancement des définitions s'affiche en pourcentage, l'export PDF prévient quand des définitions ou
+  des lettres manquent, la grille s'archive sans quitter l'écran, et le style des définitions (gras,
+  **italique**, nouveau) se règle dans l'aperçu, là où l'on en voit l'effet.
+- L'éditeur devient un **plan de travail** : sur grand écran il occupe la fenêtre, et la grille se
+  voit **en entier quelle que soit sa taille** — un 13×18 n'oblige plus à faire défiler entre deux
+  lettres. Un test le vérifie à deux tailles de fenêtre plutôt que de s'en remettre à une marge fixe.
+- Un dictionnaire coché pour une grille s'allume en **vert** : le gris du réglage par défaut ne se
+  distinguait pas d'un bouton inactif.
+- Page d'accueil allégée : le texte disait trois fois ce que la grille montre déjà.
 - **Le frontend se construit en site statique** (`pnpm build` → `out/`), prêt pour Cloudflare Pages
   ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)) : pas de serveur Node en production. Les en-têtes de
   sécurité (CSP, HSTS…) sont écrits dans `out/_headers`, depuis la même définition que ceux de `next dev`.
@@ -363,6 +393,15 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - **Mentions légales et confidentialité** (#78) : elles décrivaient un produit qui n'existe pas (cookies,
   collecte d'adresse IP et de navigateur, transferts à des tiers). Elles disent désormais ce qui est vrai, ce
   qui changera à la mise en ligne, et créditent le DELA, Lexique et la police des grilles.
+- **La police des grilles ne se chargeait pas dans le navigateur.** Un chunk CSS périmé du serveur de
+  développement omettait la règle `@font-face` : l'écran affichait la police de secours depuis le
+  début, alors que le PDF — qui embarque le fichier lui-même — était correct. Conséquence moins
+  visible et plus gênante : les largeurs de caractères que j'avais « mesurées » portaient sur la
+  mauvaise police. Remesurées sur Archivo Narrow (0,527 em en gras au lieu de 0,64), les définitions
+  occupent enfin la place qui leur revient.
+- Une définition trop large sortait de sa case quand elle tenait en un seul mot : la taille du texte
+  est maintenant bornée par la largeur du **pire** caractère (0,78 em mesuré, contre 0,64 en moyenne)
+  et non par la moyenne. Vérifié case par case dans le rendu : plus aucun débordement.
 - Les migrations jouées au démarrage éteignaient tous les loggers déjà créés (`fileConfig` d'Alembic) :
   sous gunicorn, plus aucun journal d'accès ni de démarrage des workers.
 - Les définitions et les notes en cours de frappe étaient écrasées par le rechargement que provoque
