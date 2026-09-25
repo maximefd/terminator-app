@@ -1,5 +1,5 @@
 # Image de l'API : développement (docker-compose.yml) et production (docker-compose.prod.yml, ADR 0013)
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Pas de .pyc écrits à côté du code, journaux sans tampon (ils partent aussitôt vers Docker)
 ENV PYTHONDONTWRITEBYTECODE=1 \
