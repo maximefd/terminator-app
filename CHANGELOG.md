@@ -5,6 +5,21 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Roadmap jusqu'au lancement public et au-delà** ([roadmap](docs/ROADMAP.md), PRD mis à jour) :
+  - La **Phase 6 devient « Durcissement et lancement public »**, de 6b à 6g :
+    - nom et domaine ;
+    - site configurable et référencement technique ;
+    - pages légales et contact ;
+    - mesure côté serveur ;
+    - serveur et déploiement ;
+    - bêta privée, puis ouverture.
+  - **Quatre nouvelles phases** : 8 (poste de pilotage), 9 (acquisition), 10 (international) et 11 (grilles à thème par IA, offre payante).
+  - Un **critère mesurable de fin de la curation française**, préalable à l'international.
+  - Les **suggestions de mots des utilisateurs** (1e) : signaler un mot à retirer, proposer un mot à ajouter ; l'auteur tranche dans le curateur.
+  - **Trois ADR** :
+    - [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md) : mesure d'usage côté serveur, sans cookie ni script tiers ;
+    - [ADR 0017](docs/adr/0017-un-site-par-langue.md) : un site et un nom par langue, un seul moteur ;
+    - [ADR 0018](docs/adr/0018-nom-du-site-francais.md) : le site français s'appelle **Le Fléchoir** (`leflechoir.fr`).
 - **Suivi des erreurs avec Sentry**, API et navigateur, **inactif sans DSN** (`SENTRY_DSN`,
   `NEXT_PUBLIC_SENTRY_DSN`) : rien ne part en développement. Seules les erreurs sont envoyées, sans cookies,
   en-têtes d'authentification, corps de requête, variables locales ni adresse IP, et le jeton des liens reçus
@@ -263,6 +278,9 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **API** : SQLAlchemy figé sur 2.0.54. Il n'était installé que comme dépendance de Flask-SQLAlchemy, donc
+  en dernière version ; or SQLAlchemy 2.1 prend psycopg 3 par défaut pour `postgresql://`, et l'API ne
+  démarrait plus (`No module named 'psycopg'`). Les parcours end-to-end et toute nouvelle image étaient touchés.
 - **CI** : pnpm figé sur 12.5.1. La CI prenait « la dernière 12 », et pnpm 12.6.0 (sorti le 23/09/2026)
   laissait `pnpm dev`, lancé par Playwright, bloqué sans fin : les parcours end-to-end tournaient jusqu'à
   la limite de six heures. Le job a désormais une durée maximale de 20 minutes.

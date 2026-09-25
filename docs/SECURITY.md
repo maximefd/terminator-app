@@ -85,12 +85,12 @@ Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de G
 - [ ] `APP_ENV=production`
 - [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
 - [ ] `DATABASE_URL` vers PostgreSQL
-- [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://terminator.fr`)
+- [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://leflechoir.fr`)
 - [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
 - [ ] L'API n'est joignable que par le tunnel : aucun port web ouvert sur le serveur (sinon `CF-Connecting-IP` s'invente)
 - [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
 - [ ] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
-- [ ] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `terminator.fr`), pour que le frontend lise les cookies CSRF
+- [ ] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `leflechoir.fr`), pour que le frontend lise les cookies CSRF
 - [ ] `SENTRY_DSN` (API) et `NEXT_PUBLIC_SENTRY_DSN` (build du frontend) renseignés, projet Sentry hébergé dans l'UE ; la page de confidentialité le mentionne
 - [ ] `FLASK_DEBUG` absent
 - [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances

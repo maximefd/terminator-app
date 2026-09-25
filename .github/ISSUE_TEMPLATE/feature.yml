@@ -26,8 +26,12 @@ body:
         - Phase 3 — Moteur avec mots imposés
         - Phase 4 — UX
         - Phase 5 — Rendu professionnel
-        - Phase 6 — Production
+        - Phase 6 — Durcissement et lancement public
         - Phase 7 — Passage à l'échelle
+        - Phase 8 — Poste de pilotage
+        - Phase 9 — Acquisition
+        - Phase 10 — International
+        - Phase 11 — Grilles à thème par IA
         - Je ne sais pas
   - type: textarea
     id: done

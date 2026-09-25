@@ -11,20 +11,31 @@
 | 0b — Sécurité | ✅ PR #3 |
 | 0c — Documentation et GitHub | ✅ PR #31, puis ruff et couverture en CI (#53), dépendances figées et pip-audit (#52), vulnérabilités transitives de Next.js (#54), captures d'écran dans le README |
 | 1a — Pipeline du lexique | ✅ PR #42 |
-| 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`) |
+| 1b — Curateur (+ motivation, usage hors du Wi-Fi) | ✅ PR #43 et #44 ; tri en cours (`data/lexicon/decisions.csv`). **Sa fin, mesurée ([1d](#1d-fin-de-la-curation-française--préalable-à-la-phase-10)), conditionne la Phase 10** |
 | 1c — Lexique curé chargé par l'API | ✅ PR #46 : export et rechargement automatiques tous les 500 mots triés |
+| 1e — Suggestions des utilisateurs | ⏳ juste après le poste de pilotage (Phase 8) : signaler un mot à retirer, proposer un mot à ajouter ; l'auteur tranche dans le curateur |
 | 2 — Catalogue de layouts | ✅ format v1 (#12, [ADR 0006](adr/0006-format-des-layouts.md)), validateur et `GET /api/layouts` (#13), éditeur dans le curateur (#14) ; reste à recopier des layouts (#15) |
 | 3 — Moteur avec mots imposés | ✅ critère atteint : **les 21 layouts du catalogue réussissent 20/20**. Pools de mots (#17), mots obligatoires (#18), redémarrages (#19), index des candidats (#20), validation croisée (#57), seuil du forward checking (#61), plafond de candidats à 300, dictionnaires thématiques ; contrat accepté ([ADR 0007](adr/0007-contrat-de-generation.md), #16). Tri par fréquence mesuré et **désactivé par défaut** : il ramène les mots absents des corpus de 33 % à 17 % mais fait tomber sept layouts sous le critère ([mesures](../backend/benchmarks/README.md)) — activable par requête. **Réserve levée, et elle révèle un problème** : la baseline comporte désormais des cas avec mots obligatoires (`--must-words`). Un mot imposé fait tomber le succès à 96 %, **trois le font tomber à 40 %**, tous layouts sous le critère ([mesures](../backend/benchmarks/README.md)). Le changement de layout (#73) améliore le cas où un format compte plusieurs layouts — 6×7 de 6/20 à 11/20 — sans rien résoudre sur le fond. **Traité non par le taux mais par l'aveu** : l'écran annonce la difficulté avant de générer ([ADR 0009](adr/0009-annoncer-la-difficulte.md)), et la mesure a désigné le vrai facteur — la **longueur** des mots imposés, pas leur nombre (#73 reste ouverte). Reportés en Phase 4 : `target_wish_ratio` et `layout_id`, qui n'ont de sens qu'avec la saisie |
 | 4 — UX : génération et clarté | 🚧 en cours : écran de génération (#23) — liste de mots ordonnée, obligatoires/souhaités, dictionnaires thématiques, difficulté annoncée pendant la saisie, refus expliqués, provenance colorée. Reportés faute de `layout_id` : choix du layout et rejeu d'un seed (#89). page d'accueil (#22), audit UX (#21), sauvegarde des grilles (#24), parcours et accessibilité en CI (#25). Restent la recherche (#83) et la session d'utilisabilité avec un pair (#90) |
 | 5 — Rendu professionnel | ✅ flèches et cases définitions (#26), saisie des définitions et export PDF (#27), retouche manuelle d'une grille ([ADR 0012](adr/0012-grille-modifiable.md)) |
-| 6 — Durcissement production | 🚧 démarrée : cible d'hébergement choisie sur mesures ([ADR 0013](adr/0013-cible-hebergement-production.md)) et prérequis faits (gunicorn, places de génération, rate limiting derrière Cloudflare, lexique préparé au chargement). Faits aussi : export statique du frontend, sauvegardes, revue des licences, e-mails du compte ([ADR 0014](adr/0014-emails-du-compte.md)), session en cookies httpOnly ([ADR 0015](adr/0015-session-en-cookies.md)). CSP stricte par empreinte (#99). Suivi des erreurs (Sentry) prêt, inactif sans DSN. Journaux structurés (JSON en production). Audit ASVS fait ([AUDIT-SECURITE.md](AUDIT-SECURITE.md)). Reste le serveur lui-même (#29), le jour de la mise en ligne |
-| 7 — Passage à l'échelle | ⏳ pas avant que les mesures sur le VPS le demandent (#30) |
+| 6 — Durcissement et lancement public | 🚧 **6a durcissement** ✅ : cible d'hébergement choisie sur mesures ([ADR 0013](adr/0013-cible-hebergement-production.md)) et prérequis faits (gunicorn, places de génération, rate limiting derrière Cloudflare, lexique préparé au chargement). Faits aussi : export statique du frontend, sauvegardes, revue des licences, e-mails du compte ([ADR 0014](adr/0014-emails-du-compte.md)), session en cookies httpOnly ([ADR 0015](adr/0015-session-en-cookies.md)). CSP stricte par empreinte (#99). Suivi des erreurs (Sentry) prêt, inactif sans DSN. Journaux structurés (JSON en production). Audit ASVS fait ([AUDIT-SECURITE.md](AUDIT-SECURITE.md)). **Reste le lancement du site français** (6b à 6g) : nom et domaine, site configurable et référencement technique, pages légales et contact, mesure côté serveur, serveur et déploiement (#29), bêta privée puis ouverture |
+| 7 — Passage à l'échelle | ⏳ pas avant que les mesures sur le VPS le demandent (#30). Trois déclencheurs s'y ajoutent : les seuils du poste de pilotage, la RAM d'une nouvelle langue, les appels à l'IA |
+| 8 — Poste de pilotage | ⏳ juste après l'ouverture : espace d'administration, tendances, temps passé, alertes ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) |
+| 9 — Acquisition | ⏳ en continu dès l'ouverture : contenus, moteurs de recherche et de réponse IA |
+| 10 — International | ⏳ après la fin de la curation française : un site par langue, anglais puis allemand puis espagnol ([ADR 0017](adr/0017-un-site-par-langue.md)) |
+| 11 — Grilles à thème par IA | ⏳ après l'international : mots du thème et définitions proposés par l'IA, offre payante |
 
 Décision du 14/09/2026 : **pas de déploiement en ligne** avant un serveur de production ([ADR 0004](adr/0004-pas-de-deploiement-en-ligne.md)). Le serveur visé est choisi depuis le 22/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)).
 
+Décisions du 24/09/2026 :
+- le site français ouvre **directement sur le VPS**, sans hébergement intermédiaire sur l'ordinateur de l'auteur ;
+- **un site et un nom descriptif par langue**, Terminator restant le nom du moteur ([ADR 0017](adr/0017-un-site-par-langue.md), [ADR 0018](adr/0018-nom-du-site-francais.md)) ;
+- **une mesure d'usage côté serveur, sans cookie ni script tiers** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) ;
+- après l'ouverture et le poste de pilotage, l'ordre est fixé : **finir la curation française, puis l'international, puis les grilles à thème**.
+
 ## Contexte
 
-Terminator est un outil personnel de création de **mots fléchés d'aspect professionnel français**. Cible future : créateurs expérimentés et professionnels. La mise en production n'est pas immédiate, mais les pratiques d'ingénierie doivent déjà être au niveau production.
+Terminator est un outil personnel de création de **mots fléchés d'aspect professionnel français**. Cible future : créateurs expérimentés et professionnels. La mise en production se prépare (Phase 6), et les pratiques d'ingénierie sont déjà au niveau production.
 
 - **Création manuelle** (recherche par motif) : ~90 % terminée.
 - **Création automatique** : choisir une mise en page (layout), fournir des mots **obligatoires**, des mots **souhaités** et des **dictionnaires thématiques** (~30 % des mots de la grille), le reste provenant du dictionnaire commun. C'est le gros du travail restant.
@@ -32,6 +43,7 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 - **Dictionnaire** : beaucoup trop large. `dela_clean.csv` contient 714 k mots distincts (~393 k de 11 lettres ou moins), sans définitions, avec énormément de formes fléchies rares. Cela dégrade la qualité des grilles **et** la vitesse du solveur.
 - **Exigences** : UX irréprochable et auto-explicative ; sécurité (la base accepte des écritures utilisateur) ; projet relu prochainement par un pair → documentation et GitHub clairs et à jour.
 - **Futur** : la mise en file d'attente des générations côté API risque de ne pas tenir la charge. Un moteur côté client est une piste → garder le moteur portable dès maintenant.
+- **Ouverture et au-delà** (septembre 2026) : le site français ouvre sur le VPS sous un nom français (Phase 6). Viennent ensuite le poste de pilotage (8), l'acquisition (9), d'autres langues (10) et une offre payante de grilles à thème (11).
 
 ### Problèmes identifiés dans le code (septembre 2026)
 
@@ -51,8 +63,8 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 **Ingénierie**
 - **Git** : branches de fonctionnalité + PR même en solo, commits conventionnels, `main` toujours vert.
 - **CI** : backend `ruff` (lint + format), `mypy` (moteur, curateur), `pytest` + couverture (≥ 70 % sur `engine/` et le pipeline lexique) ; frontend `eslint`, `tsc --noEmit`, `next build`, tests Playwright.
-- **Sécurité en CI** : `pip-audit`, `pnpm audit`, CodeQL, Dependabot, gitleaks.
-- **Outillage local** : pre-commit identique à la CI ; `Makefile` (`setup`, `test`, `lint`, `harness`, `lexicon-build`, `curator`) ; `.env.example`.
+- **Sécurité en CI** : `pip-audit`, `pnpm audit`, CodeQL, Dependabot, gitleaks. *État au 24/09/2026 : seuls `pip-audit` et Dependabot sont en place. CodeQL n'est pas offert sur un dépôt privé en offre gratuite (voir 6f).*
+- **Outillage local** : pre-commit identique à la CI (*pas encore en place*) ; `Makefile` (`setup`, `test`, `lint`, `harness`, `lexicon-build`, `curator`) ; `.env.example`.
 - **Décisions** : ADR dans `docs/adr/` pour chaque choix structurant.
 - **Données** : jeux de données externes téléchargés par script (versions et checksums figés), jamais versionnés. Les *décisions* de l'auteur sont versionnées. Les artefacts générés sont reconstruits.
 - **Portabilité du moteur** : `backend/engine/` reste pur — aucun import Flask/BDD, déterministe pour un seed donné, contrat JSON en entrée/sortie, aucune I/O fichier dans le solveur. Condition pour un futur moteur Web Worker / WASM (Phase 7).
@@ -123,6 +135,72 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 
 **Terminé quand** : 500+ mots triés en ~10 min sur téléphone, build reproductible, recherche et génération sur le lexique curé.
 
+### 1d. Fin de la curation française — préalable à la Phase 10
+
+L'international attend que le lexique français soit fini (décision du 24/09/2026). C'est aussi le critère « Qualité des mots » du [PRD](PRD.md), encore ❌.
+
+**Où en est la curation au 24/09 :**
+- 11 223 décisions effectives : 7 366 suppressions et 3 857 mots gardés, prises du 15 au 18/09 ;
+- au 15/09, 119 974 mots de 8 lettres ou moins restaient à trier, avant les règles automatiques.
+
+**Terminé quand** toutes ces conditions sont réunies et consignées dans [LEXICON.md](LEXICON.md) :
+1. `make lexicon-stats` ne compte plus aucun mot à trier de 2 à 5 lettres, ni de 6 à 8 lettres ;
+2. les mots de 9 lettres et plus sont réglés par des règles, pas un par un : la règle `flexions-rares-longues` est tranchée, et le mode d'export de production est fixé et documenté ;
+3. `python -m tools.lexicon revision` ne renvoie plus rien ;
+4. sur le lexique de production, le benchmark (21 layouts × 20 seeds) reste à 95 % de succès ou plus pour chaque layout ;
+5. une nouvelle mesure, `unvouched_share`, reste à 5 % ou moins : c'est la part des mots placés que ni l'auteur ni la fréquence n'ont validés, c'est-à-dire ni gardés à la main ni gardés d'office. `unknown_share` reste rapportée (33,4 % aujourd'hui) ;
+6. sur 20 grilles relues à l'aveugle, au moins 18 ne contiennent aucun mot que l'auteur juge impubliable ;
+7. la taille du lexique et la mémoire de l'API après chargement sont notées : elles fixent le budget de la Phase 10.
+
+Issues : #125 (critère de fin), #126 (avis de l'IA), et #127, un bug de normalisation des mots imposés à corriger en chemin.
+
+**Accélérateur possible, à mesurer d'abord :** l'IA pourrait suggérer « garder » ou « supprimer » dans le curateur, à côté des autres indices.
+- Ce serait une suggestion, **jamais une décision** ([ADR 0005](adr/0005-pipeline-du-lexique-et-decisions.md)).
+- Avant tout usage, on mesure son accord avec les décisions déjà prises, comme pour les règles automatiques ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)).
+- Traité par lots, le coût se compte en dizaines de dollars.
+
+### 1e. Suggestions des utilisateurs — mots à retirer, mots à ajouter
+
+Les utilisateurs voient les mots du lexique dans la recherche et dans les grilles. Ce sont les mieux placés pour repérer un mot rare ou fautif, ou un mot courant qui manque. Leurs suggestions **alimentent la curation sans la remplacer** : c'est toujours l'auteur qui décide, dans le curateur ([ADR 0005](adr/0005-pipeline-du-lexique-et-decisions.md)). Rien de ce qu'un utilisateur envoie ne modifie le lexique de lui-même.
+
+**Ce que voit l'utilisateur :**
+- **retirer un mot** : un lien « Signaler ce mot » sur un résultat de recherche et sur un mot d'une grille générée ;
+- **ajouter un mot** : « Ce mot manque ? Proposez-le » quand une recherche sans `?` ne trouve rien, et à côté de « ranger dans un dictionnaire » quand l'éditeur signale un mot hors lexique.
+
+**Ce que voit l'auteur :**
+- dans le poste de pilotage, les mots suggérés, regroupés et comptés : un mot signalé par dix personnes passe devant un mot signalé une fois ;
+- dans le curateur, un onglet « Suggestions », alimenté par un export du serveur, avec les touches habituelles. La décision s'écrit dans `decisions.csv` comme les autres, et le lexique change au déploiement suivant.
+
+**S'y ajoutent des signaux implicites**, déjà mesurés ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
+- les mots imposés absents du lexique ;
+- les mots que plusieurs utilisateurs rangent dans leurs dictionnaires personnels ;
+- les mots générés que les auteurs remplacent à la main dans l'éditeur.
+
+**Règles** (décision du 25/09/2026 : plus les utilisateurs affinent le lexique commun, plus le site a de valeur) :
+- **aucune limite pour les utilisateurs** : avec ou sans compte, autant de suggestions qu'ils veulent ;
+- **tout est accepté, rien n'est refusé comme doublon** ; le classement compte les personnes distinctes, pas les clics ;
+- **le spam ne peut pas abîmer le lexique** : rien n'y entre sans la décision de l'auteur. Au pire, la file s'allonge ;
+- **seul garde-fou** : un plafond anti-robot qu'aucun humain n'atteint, de l'ordre d'une suggestion par seconde, pour qu'un script ne noie pas la file ;
+- chaque suggestion porte sa langue (`lang`) ;
+- avec un compte, les suggestions disparaissent avec lui. Sans compte, elles ne portent que l'empreinte du jour ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)). La page confidentialité les mentionne ;
+- les CGU précisent que les suggestions sont données au site : le lexique commun reste un bien du site.
+
+**Pour donner envie de continuer :** montrer aux contributeurs ce que sont devenues leurs suggestions (retenue, écartée, en attente).
+
+**Si les suggestions affluent**, c'est le tri de l'auteur qui devient le goulot. On mesurera alors, comme pour les règles automatiques ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)), si un seuil prédit bien sa décision (par exemple dix personnes et aucune voix contraire). Rien ne s'automatise avant cette mesure.
+
+**Deux temps :**
+1. **Retirer un mot** (#144) : simple, car les décisions portent déjà sur les mots du lexique.
+2. **Ajouter un mot absent du DELA** (#145) : il faut un morceau de pipeline qui n'existe pas, puisque les décisions ne portent aujourd'hui que sur des mots connus. Ce sera un fichier d'ajouts versionné, en ajout seul comme `decisions.csv`, versé à l'export. Une ADR sera écrite à ce moment-là.
+
+**Prérequis :**
+- une seule normalisation (#127), sinon « porte-monnaie » et « PORTEMONNAIE » feraient deux suggestions ;
+- l'espace d'administration (#128).
+
+**Quand :** juste après le poste de pilotage (Phase 8), dont il réutilise les briques : espace d'administration, boîte de réception. Il ne conditionne pas la fin de la curation (1d), mais ses retours l'alimentent, et ils continueront après elle.
+
+**Terminé quand** : un mot signalé depuis le site apparaît dans le curateur, et la décision de l'auteur se retrouve dans le lexique au déploiement suivant.
+
 ---
 
 ## Phase 2 — Catalogue de layouts
@@ -180,19 +258,276 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - **Grilles conservées à l'échelle** ✅ : recherche, filtres (format, état, archivées), tri, bloc-notes par grille.
 - **Reste** : l'impression directe (mise en page A4 multi-grilles) et la relecture d'un fichier de travail, si le besoin s'en fait sentir.
 
-## Phase 6 — Durcissement production
-- **Cible d'hébergement** ✅ ([ADR 0013](adr/0013-cible-hebergement-production.md)) : un VPS OVH derrière Cloudflare (~65 € par an), choisi sur mesures. Prérequis faits : clé du rate limiting derrière le tunnel, gunicorn, places de génération, lexique préparé au chargement, rechargement à chaud coupé en production, export statique du frontend. **Reste** : la commande de déploiement, le jour de la mise en ligne, et les points ci-dessous.
-- Cookies httpOnly + CSRF au lieu de localStorage ✅ ([ADR 0015](adr/0015-session-en-cookies.md)) ; Postgres uniquement en production ✅ (refus de démarrer sans `DATABASE_URL`) ; sauvegardes ✅ (`make db-backup`), Sentry ✅ (inactif sans DSN), logs structurés ✅ (JSON en production) ; audit ASVS ✅ ([AUDIT-SECURITE.md](AUDIT-SECURITE.md)) ; revue des licences ✅ ([LICENCES.md](LICENCES.md)) ; dépôt passé en privé à la mise en ligne.
-- **Écartés** (24/09/2026) : les **migrations jouées au déploiement**, séparément du démarrage : avec un seul serveur, gunicorn charge l'application une fois avant de créer ses workers, et les migrations ne se jouent qu'une fois ([ADR 0013](adr/0013-cible-hebergement-production.md)). Un **environnement de staging** : un second serveur doublerait le budget ; la pile isolée des tests locaux (API, PostgreSQL et Mailpit jetables) en tient lieu.
+## Phase 6 — Durcissement et lancement public
+
+**Objectif** : ouvrir le site français à tous, sur le VPS et sous son nom, avec des pages légales vraies et des mesures dès la première visite.
+
+### 6a. Durcissement ✅
+- **Cible d'hébergement** ✅ ([ADR 0013](adr/0013-cible-hebergement-production.md)) : un VPS OVH derrière Cloudflare (~65 € par an), choisi sur mesures. Prérequis faits :
+  - clé du rate limiting derrière le tunnel ;
+  - gunicorn ;
+  - places de génération ;
+  - lexique préparé au chargement ;
+  - rechargement à chaud coupé en production ;
+  - export statique du frontend.
+- **Faits aussi :**
+  - cookies httpOnly + CSRF au lieu de localStorage ✅ ([ADR 0015](adr/0015-session-en-cookies.md)) ;
+  - Postgres uniquement en production ✅ (refus de démarrer sans `DATABASE_URL`) ;
+  - sauvegardes ✅ (`make db-backup`) ;
+  - Sentry ✅ (inactif sans DSN) ;
+  - logs structurés ✅ (JSON en production) ;
+  - audit ASVS ✅ ([AUDIT-SECURITE.md](AUDIT-SECURITE.md)) ;
+  - revue des licences ✅ ([LICENCES.md](LICENCES.md)).
+- **Écartés** (24/09/2026) :
+  - les **migrations jouées au déploiement**, séparément du démarrage. Avec un seul serveur, gunicorn charge l'application une fois avant de créer ses workers : les migrations ne se jouent qu'une fois ([ADR 0013](adr/0013-cible-hebergement-production.md)) ;
+  - un **environnement de staging** : un second serveur doublerait le budget. La pile isolée des tests locaux (API, PostgreSQL et Mailpit jetables) en tient lieu.
+
+### 6b. Nom et domaine (#110, #111)
+- **Le nom :** **Le Fléchoir**, sur `leflechoir.fr` ([ADR 0018](adr/0018-nom-du-site-francais.md)). Marque vérifiée à l'INPI, domaine acheté le 24/09/2026 ✅. Terminator reste le nom du moteur ([ADR 0017](adr/0017-un-site-par-langue.md)).
+- **Le domaine :** `leflechoir.fr` ✅, acheté chez OVH pour trois ans, zone chez Cloudflare. La zone Cloudflare sert `leflechoir.fr` (le site) et `api.leflechoir.fr` (le tunnel) ; l'hôte canonique est fixé une fois pour toutes.
+- **Les e-mails :**
+  - `no-reply@` par Brevo, avec SPF, DKIM et DMARC ;
+  - `contact@` et `securite@` par Cloudflare Email Routing.
+- **Les réglages de la zone :**
+  - robots des moteurs de recherche et de réponse IA autorisés : ils sont bloqués par défaut sur une nouvelle zone depuis juillet 2025 ;
+  - Bot Fight Mode coupé sur `api.` : ses défis cassent `fetch` ;
+  - Web Analytics de Pages coupé : la CSP bloquerait son script ;
+  - géolocalisation IP active, pour `CF-IPCountry`.
+- **La sécurité des comptes :** double facteur et codes de secours sur Cloudflare, OVH, le registrar, GitHub et Brevo. Cloudflare concentre à lui seul le DNS, Pages, le tunnel, R2 et le courrier.
+
+### 6c. Site configurable et référencement technique (#112, #113)
+- **Configuration du site**, lue au build : nom, URL, langue, contacts, URL de l'API.
+  - `SITE_NAME` pour les e-mails.
+  - Plus aucun « Terminator » visible.
+  - Le message d'erreur réseau ne cite plus `make dev-api`.
+- **Mise en page racine côté serveur** : métadonnées communes, modèle de titre, `metadataBase`.
+- **Balises et fichiers :**
+  - `robots.txt`, `sitemap.xml`, canonical, image de partage, favicon et manifest ;
+  - pages privées en `noindex`, jamais en `Disallow` ;
+  - page 404 en français ;
+  - un test Playwright des balises.
+
+### 6d. Pages légales, contact et vie privée (#114, #115)
+- **Pages réécrites :** mentions légales, confidentialité, CGU et crédits. Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, la mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)), les durées de conservation et le droit d'opposition. Plus aucun lien vers GitHub : le dépôt devient privé.
+- **Contact et sécurité :**
+  - une page contact avec l'adresse `contact@` ;
+  - un `security.txt` avec `securite@` ;
+  - `SECURITY.md` et le modèle d'issue mis à jour.
+
+  Le formulaire vient en Phase 8.
+- **Données personnelles :** un registre des traitements, des durées de conservation, et la rotation des journaux Docker.
+
+### 6e. Mesure côté serveur dès le premier jour (#116)
+- **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
+  - générations : format, mots imposés, issue, durée, temps CPU ;
+  - recherches, comptes, erreurs, refus « occupé ».
+
+  Le visiteur est une empreinte quotidienne, jamais une adresse IP. Chaque événement porte `lang` et le site.
+- **Comptes :** `created_at` et `last_login_at`.
+- **Lecture :** par `flask stats` sur le serveur. La page web vient en Phase 8.
+
+### 6f. Serveur, déploiement et exploitation (#29 : #117 à #120 ; #121, #122)
+- **Image et compose de production :**
+  - gunicorn non-root, avec healthcheck ;
+  - PostgreSQL sans port publié ;
+  - cloudflared ;
+  - `.dockerignore`, rotation des journaux, Dependabot pour Docker.
+- **Lexique de lancement :**
+  - mode d'export choisi sur le benchmark complet ;
+  - fichier sans définitions ;
+  - livré comme artefact avec empreinte, ou construit sur le serveur.
+- **Serveur et déploiement :**
+  - VPS : SSH par clé, mises à jour automatiques ;
+  - `make deploy`, avec test de fumée, retour arrière et runbook ;
+  - Pages sur le domaine propre ;
+  - Sentry (projets UE) et UptimeRobot.
+- **Sauvegardes :** nocturnes et chiffrées, copiées sur R2, avec une restauration vérifiée chaque mois.
+- **CI sur l'export statique :** aujourd'hui, la CSP n'est testée que contre `next dev`.
+- **Dépôt privé :**
+  - ce qu'on perd sur GitHub Free : protection de branche, CodeQL, signalement privé des failles, minutes d'Actions ;
+  - comment le compenser ;
+  - une alternative : code public et données privées.
+
+### 6g. Bêta privée, ouverture, première semaine (#123, #124)
+- **Bêta privée :** le premier déploiement de production passe derrière Cloudflare Access, pour quelques testeurs et la session d'utilisabilité (#90). Ce jour-là, l'ADR 0004 est marquée « remplacée par 0013 ».
+- **Avant d'ouvrir :**
+  - checklist de [SECURITY.md](SECURITY.md) à 14/14 ;
+  - contrôle ASVS sur l'adresse publique ;
+  - `.env` et clé `age` hors du serveur.
+- **Ouverture :** Access retiré, Search Console et Bing, sitemap soumis.
+- **Première semaine :** `load_profile.py` sur le VPS, puis lecture des seuils de l'ADR 0013, pour décider du passage au VPS-2.
+
+**Terminé quand :**
+- le site est ouvert sur son domaine ;
+- la checklist est à 14/14 ;
+- une sauvegarde de la nuit a été restaurée depuis R2 ;
+- les événements sont collectés depuis la première visite ;
+- un message de test est bien arrivé à `contact@` ;
+- Search Console est validée.
 
 ## Phase 7 — Décision de passage à l'échelle : file serveur ou moteur client
-- **Déclencheur** : charge ou latence de génération problématique, ou avant ouverture à d'autres utilisateurs.
-- **Spike + ADR** comparant : (a) file de jobs serveur (RQ/Celery + Redis) ; (b) **moteur côté client** (portage TypeScript ou Rust→WASM dans un Web Worker, lexique compressé DAWG/FST) ; (c) hybride.
+- **Déclencheurs** :
+  - les seuils de l'[ADR 0013](adr/0013-cible-hebergement-production.md), lus dans le poste de pilotage : RAM au-delà de 75 %, refus « occupé » fréquents, p95 au-delà de 15 s ;
+  - une nouvelle langue qui ne tient plus en mémoire (Phase 10) ;
+  - les appels à l'IA de la Phase 11 : ils attendent le réseau, et ne doivent pas occuper les workers synchrones.
+- **Spike + ADR** comparant :
+  - (a) une file de jobs serveur (RQ/Celery + Redis) ;
+  - (b) un **moteur côté client** : portage TypeScript ou Rust→WASM dans un Web Worker, lexique compressé DAWG/FST ;
+  - (c) un hybride.
+
+  Pour les seuls appels à l'IA, une table de tâches dans PostgreSQL (`SKIP LOCKED`) peut suffire, sans Redis.
 - **Prérequis déjà prévus** : moteur pur et déterministe, contrat JSON, benchmark pour vérifier l'équivalence, lexique curé compact.
+
+## Phase 8 — Poste de pilotage
+
+**Objectif** : répondre d'un coup d'œil aux questions de l'auteur ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) : qui vient, ce qu'on génère, ce qui casse, ce que consomme le serveur. Issues : #128 à #132.
+
+- **Espace d'administration :**
+  - `is_admin` posé en ligne de commande, sur une adresse confirmée ;
+  - `/api/admin/*` répond 404 à tout autre compte ;
+  - accès journalisés et tests d'autorisation ;
+  - page `/admin` liée nulle part, en `noindex`.
+
+  Renfort possible : Cloudflare Access ou un second facteur.
+- **Tableaux :**
+  - visiteurs et comptes ;
+  - générations par format et par issue, selon le nombre ou la longueur des mots imposés (nourrit #73) ;
+  - mots imposés absents du lexique (nourrit la curation) ;
+  - parcours : visite → recherche ou génération → grille conservée → compte ;
+  - erreurs par route, refus « occupé » ;
+  - temps CPU, RAM, dernière sauvegarde ;
+  - sources, dont les moteurs de réponse IA ;
+  - pays et langues des navigateurs (éclairent la Phase 10).
+- **Balise sans cookie** : pages vues, temps passé, exports PDF, dans les conditions de la CNIL ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)).
+- **Échantillons système** : un par minute, gardés 30 jours. Agrégats quotidiens, et purge à 13 mois.
+- **Contact :**
+  - un formulaire ;
+  - « Signaler ce problème » après une erreur, avec l'identifiant de requête ;
+  - une boîte de réception ;
+  - des notifications plafonnées : le quota gratuit de Brevo, 300 e-mails par jour, est partagé avec les e-mails du compte.
+- **Alertes par e-mail** (seuils de l'ADR 0013, pic d'erreurs 500, sauvegarde manquante) et bilan hebdomadaire.
+
+**Terminé quand** : chaque question de l'auteur trouve sa réponse sur `/admin`, sans passer par le serveur.
+
+## Phase 9 — Acquisition
+
+En continu dès l'ouverture, en parallèle de la curation. Issues : #133, #134.
+
+- **Pages de contenu**, chacune avec une vraie grille produite par le moteur :
+  - créer une grille de mots fléchés ;
+  - grilles personnalisées : anniversaire, mariage, départ, classe ;
+  - mots fléchés ou mots croisés ;
+  - une FAQ ;
+  - des données structurées (JSON-LD).
+- **Moteurs de réponse IA :**
+  - des contenus faciles à citer et un `llms.txt` ;
+  - une présence sur des sites tiers : forums, associations, annuaires ;
+  - le suivi des visites venant de ChatGPT, Perplexity ou Copilot dans le poste de pilotage.
+- **Suivi** : Search Console et Bing (requêtes, positions, pages indexées).
+- **À évaluer** : des pages « mots de N lettres » tirées du lexique. Le potentiel est fort, mais le contenu risque d'être mince et le build plus lourd.
+
+**Terminé quand** : jamais, c'est une piste continue. On la juge, mois après mois, sur les visites venues des moteurs.
+
+## Phase 10 — International
+
+Elle commence après la fin de la curation française ([1d](#1d-fin-de-la-curation-française--préalable-à-la-phase-10)), avec un site par langue ([ADR 0017](adr/0017-un-site-par-langue.md)).
+
+- **10a Socle** (#135, #136) :
+  - configuration par site ;
+  - catalogues de textes, messages de l'API par code ;
+  - `lang` dans l'API, les grilles et les dictionnaires ;
+  - une seule normalisation, paramétrée par la langue ;
+  - alphabet par langue : scores des lettres, retouche, saisie, Ñ ;
+  - tables de difficulté par langue ;
+  - layouts rattachés à une tradition ;
+  - pipeline du lexique par langue : sources, licences, fréquences.
+
+  Trois décisions l'attendent : la forme de l'API multi-site (un conteneur par site par défaut), le budget mémoire (représentation compacte ou VPS-2), et des comptes communs ou séparés.
+- **10b Anglais** (*arrowords* britanniques, #137), en **pilote**, avec un go/no-go avant la suite. L'Allemagne est sans doute le plus grand marché : les pays et les langues mesurés depuis l'ouverture diront si l'anglais doit vraiment passer en premier.
+- **10c Allemand** (*Schwedenrätsel*, #138) : Ä, Ö et Ü s'écrivent AE, OE et UE, ß s'écrit SS ; grands formats ; Impressum.
+- **10d Espagnol** (*autodefinidos*, #139) : Ñ comme 27e lettre.
+
+Chaque langue demande :
+- un nom et un domaine ;
+- un lexique relu par un locuteur natif ;
+- des layouts du pays ;
+- des contenus et des pages légales du pays.
+
+**Terminé quand**, pour chaque langue :
+- le site est en ligne ;
+- le benchmark atteint 95 % ou plus pour chaque layout ;
+- un échantillon du lexique a été relu par un locuteur natif.
+
+## Phase 11 — Grilles à thème par IA (offre payante)
+
+**Le principe** : une grille ultra-personnalisée.
+1. L'utilisateur décrit un thème.
+2. L'IA propose des mots.
+3. Le moteur construit la grille.
+4. L'IA propose les définitions.
+5. L'utilisateur retouche, puis imprime.
+
+- **11a Spike et évaluation** (#140) : deux tâches, les mots du thème et des définitions au style mots fléchés qui tiennent dans une case.
+  - Modèle : Claude Opus 5 par défaut, à 5 $ par million de jetons en entrée et 25 $ en sortie. Le raisonnement se facture en sortie.
+  - Coût estimé : de 0,15 à 0,45 $ par grille de 60 mots. À mesurer, en essayant d'abord un effort plus bas.
+  - Un test d'intérêt peut commencer plus tôt : une liste d'attente, mesurée dans le poste de pilotage.
+- **11b Prérequis :**
+  - des mots imposés fiables (#73) ;
+  - `target_wish_ratio` ;
+  - des noms propres acceptés comme mots imposés ;
+  - des appels à l'IA en tâche de fond, sans occuper les workers synchrones (Phase 7). Un appel prend 10 à 60 s, et Cloudflare coupe une requête au bout de 100 s.
+- **11c Offre** (#141) :
+  - statut de micro-entreprise et identité complète de l'éditeur ;
+  - CGV ;
+  - TVA dans plusieurs pays : prestataire « marchand officiel », ou guichet OSS ;
+  - médiateur de la consommation ;
+  - renonciation expresse au droit de rétractation pour un contenu numérique ;
+  - prix à la grille, ou abonnement.
+- **11d Parcours** (#142) : thème → mots proposés et validés → génération → définitions proposées, retouchées dans l'éditeur → PDF prêt à imprimer.
+  - Modération des thèmes.
+  - Seul le texte du thème part chez le fournisseur d'IA, déclaré comme sous-traitant.
+  - Les contenus générés sont signalés comme tels (transparence exigée par l'AI Act).
+- **Piste :** une banque de définitions proposées pour les mots qui remplissent vraiment les grilles (50 000 à 100 000). Générée par lots pour moins de 100 $, elle serait proposée dans l'éditeur (voisin de #91).
+
+**Terminé quand** : un vrai client a acheté une grille à thème, de bout en bout.
 
 ---
 
 ## Ordre et calendrier
-1. **Avant la relecture** : Phase 0 complète + démarrage des Phases 1a/1b (démo du curateur).
-2. **Ensuite, en parallèle** : Phase 1 (curation quotidienne), Phase 2 (layouts), Phase 3 (moteur).
-3. Puis Phase 4, puis 5, 6 et 7 selon les besoins.
+
+Jusqu'au 24/09/2026 :
+- la Phase 0, avant la relecture ;
+- puis les Phases 1, 2 et 3 en parallèle ;
+- puis les Phases 4, 5 et 6.
+
+La suite :
+
+```mermaid
+flowchart LR
+  B["6b Nom et domaine"] --> C["6c Site configurable + SEO technique"]
+  B --> D["6d Pages légales + contact"]
+  E["6e Mesure côté serveur"] --> F["6f Serveur et déploiement"]
+  C --> F
+  D --> F
+  F --> G["6g Bêta privée, ouverture, première semaine"]
+  G --> P8["8 Poste de pilotage"]
+  G --> P9["9 Acquisition, en continu"]
+  P8 --> S["1e Suggestions de mots"]
+  S -. retours .-> C1
+  C1["1d Fin de la curation française"] --> P10["10 International"]
+  P8 --> P10
+  P10 --> P11["11 Grilles à thème par IA"]
+  P8 -. seuils .-> P7["7 Passage à l'échelle"]
+  P10 -. mémoire .-> P7
+  P11 -. tâches de fond .-> P7
+```
+
+1. **Avant l'ouverture, fin de la Phase 6.** D'abord **6b** : le nom fixe les cookies, les e-mails, la zone Cloudflare et le référencement. Puis 6c, 6d et 6e en parallèle, puis 6f et 6g.
+2. **Juste après l'ouverture, la Phase 8.** Les événements s'accumulent depuis le premier jour ; le poste de pilotage les montre. Dans la foulée viennent les suggestions de mots des utilisateurs (1e), qui en réutilisent les briques.
+3. **En continu :**
+   - la curation quotidienne (1d), jusqu'à son critère de fin ;
+   - la Phase 9 ;
+   - les issues ouvertes (#83, #89, #91, #73, #15).
+4. **Une fois la curation terminée, la Phase 10.** L'anglais passe d'abord, comme pilote, puis l'allemand et l'espagnol. L'ordre se revoit avec les pays et les langues mesurés.
+5. **Puis la Phase 11.**
+6. **La Phase 7**, dès que l'un de ses déclencheurs se présente.
