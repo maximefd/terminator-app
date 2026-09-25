@@ -5,6 +5,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Page contact et `security.txt`** ([#115](https://github.com/maximefd/terminator-app/issues/115)) : `/contact`
+  donne `contact@leflechoir.fr` (suggestions, problèmes, demandes sur ses données) et `securite@leflechoir.fr`
+  (failles), avec un lien dans le pied de page ; `/.well-known/security.txt` (RFC 9116) est écrit au build, avec
+  une expiration à 360 jours. Les adresses viennent de la configuration du site. Le formulaire viendra en Phase 8.
 - **Référencement technique** ([#113](https://github.com/maximefd/terminator-app/issues/113)), écrit au build de
   l'export statique :
   - `robots.txt` ouvert à tous les robots, moteurs de réponse IA compris, et `sitemap.xml` des cinq pages

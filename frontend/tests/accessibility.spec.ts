@@ -18,6 +18,7 @@ const PAGES = [
   { path: "/login", name: "connexion" },
   { path: "/register", name: "inscription" },
   { path: "/account", name: "mon compte (invité)" },
+  { path: "/contact", name: "contact" },
   { path: "/privacy", name: "confidentialité" },
   { path: "/legal", name: "mentions légales" },
   { path: "/forgot-password", name: "mot de passe oublié" },

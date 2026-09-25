@@ -4,7 +4,9 @@
 
 ## Signaler une vulnérabilité
 
-Merci de **ne pas ouvrir d'issue publique**. Utilisez le signalement privé de GitHub (onglet *Security* → *Report a vulnerability*) sur le dépôt. Décrivez l'impact, les étapes de reproduction et, si possible, une piste de correction.
+Merci de **ne pas ouvrir d'issue publique**. Écrivez à **securite@leflechoir.fr** (aussi donné par [`/.well-known/security.txt`](https://leflechoir.fr/.well-known/security.txt), RFC 9116, et par la page [contact](https://leflechoir.fr/contact)). Décrivez l'impact, les étapes de reproduction et, si possible, une piste de correction. Le signalement privé de GitHub (onglet *Security* → *Report a vulnerability*) reste possible tant que le dépôt est public.
+
+`security.txt` est écrit à chaque build avec une date d'expiration à 360 jours : un site non redéployé pendant un an le laisserait expirer.
 
 ---
 
