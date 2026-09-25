@@ -2,7 +2,7 @@
 # Prérequis : cp .env.example .env  (les valeurs sont lues depuis .env, jamais versionné)
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:18-alpine
     container_name: terminator_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Copiez .env.example vers .env}
