@@ -8,7 +8,7 @@ export const metadata: Metadata = publicPage({
   path: "/privacy",
   title: "Confidentialité",
   description:
-    `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles —, pour combien de temps, qui y touche et comment tout effacer.`,
+    `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles —, ce qu'il mesure sans cookie, pour combien de temps, qui y touche et comment tout effacer.`,
 });
 
 /**
@@ -41,7 +41,8 @@ export default function PrivacyPage() {
       <div className="mt-8 space-y-8 text-muted-foreground">
         <p className="rounded-lg border bg-secondary/20 p-4 text-foreground">
           {site.name} conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles, si
-          vous créez un compte. Rien d&apos;autre : pas de mesure d&apos;audience, pas de publicité, aucun cookie en
+          vous créez un compte. Pour savoir ce qui sert et ce qui casse, le serveur compte aussi les recherches, les
+          générations et les erreurs, sans cookie et sans garder votre adresse IP. Pas de publicité, aucun cookie en
           dehors de ceux de votre session, et aucune donnée vendue ni cédée.
         </p>
 
@@ -64,6 +65,10 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-foreground">Vos grilles conservées</strong> : leurs cases, leurs définitions et
               vos notes.
+            </li>
+            <li>
+              <strong className="text-foreground">La date de votre inscription et celle de votre dernière
+              connexion</strong> : la seconde dit si le compte est encore utilisé (voir plus bas).
             </li>
           </ul>
           <p>
@@ -93,6 +98,41 @@ export default function PrivacyPage() {
               formulaire. Sentry les efface au bout de 90 jours au plus.
             </li>
           </ul>
+        </Section>
+
+        <Section title="La mesure d'usage, sans cookie">
+          <p>
+            Pour savoir ce qui sert, ce qui casse et ce que coûte le serveur, l&apos;application note, côté serveur :
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              chaque <strong className="text-foreground">recherche</strong> : la longueur du motif et son nombre de
+              lettres inconnues, le nombre de résultats, la durée — pas le motif lui-même ;
+            </li>
+            <li>
+              chaque <strong className="text-foreground">génération</strong> : le format, le nombre et la longueur
+              des mots imposés, la réussite ou la raison de l&apos;échec, la durée. Le texte des mots imposés et
+              souhaités est gardé 90 jours, pour repérer ceux qui manquent au dictionnaire, puis effacé ;
+            </li>
+            <li>
+              les <strong className="text-foreground">étapes d&apos;un compte</strong> (inscription, confirmation,
+              connexion, suppression), les <strong className="text-foreground">grilles conservées</strong> et les{" "}
+              <strong className="text-foreground">erreurs</strong> (la page et le code d&apos;erreur).
+            </li>
+          </ul>
+          <p>
+            Chaque fait porte le pays, déduit de la connexion par Cloudflare, et une{" "}
+            <strong className="text-foreground">empreinte du jour</strong> : un code calculé à partir de votre adresse
+            IP et de votre navigateur avec une clé secrète tirée au hasard chaque jour, et détruite le lendemain. Elle
+            compte les visiteurs d&apos;une journée sans permettre de vous reconnaître d&apos;un jour à l&apos;autre.
+            Votre adresse IP n&apos;est pas enregistrée, et rien n&apos;est écrit dans votre navigateur.
+          </p>
+          <p>
+            Ces faits ne servent qu&apos;aux statistiques du site (intérêt légitime, RGPD art. 6.1.f). Ils sont
+            gardés 13 mois ; ceux qui sont liés à votre compte (ses étapes, ses grilles conservées) disparaissent avec
+            lui. Pour vous y opposer, écrivez à l&apos;adresse de contact : les faits liés à votre compte seront
+            effacés ; les autres ne permettent pas de vous retrouver.
+          </p>
         </Section>
 
         <Section title="Si vous écrivez à l'adresse de contact">

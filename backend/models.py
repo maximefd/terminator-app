@@ -1,9 +1,13 @@
 # DANS backend/models.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from engine.arrows import clues_from_grid_data
 from extensions import db # MODIFICATION ICI : On importe 'db' depuis notre fichier central
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -14,6 +18,10 @@ class User(db.Model):
     email_verified_at = db.Column(db.DateTime, nullable=True)
     # Les jetons émis avant cette date (UTC) sont refusés : changer de mot de passe ferme toutes les sessions
     sessions_revoked_at = db.Column(db.DateTime, nullable=True)
+    # Inscription et dernière connexion (UTC) : la seconde fixe la suppression des comptes inactifs
+    # (3 ans, page de confidentialité). Vides pour les comptes créés avant leur arrivée.
+    created_at = db.Column(db.DateTime, nullable=True, default=lambda: _utcnow())
+    last_login_at = db.Column(db.DateTime, nullable=True)
     
     dictionaries = db.relationship('Dictionary', backref='user', lazy='selectin', cascade="all, delete-orphan")
     grids = db.relationship('SavedGrid', backref='user', lazy='selectin', cascade="all, delete-orphan")
@@ -138,3 +146,45 @@ class RevokedToken(db.Model):
     __tablename__ = 'revoked_token'
     jti = db.Column(db.String(64), primary_key=True)
     expires_at = db.Column(db.DateTime, nullable=False, index=True)
+
+
+class UsageEvent(db.Model):
+    """Un fait d'usage, écrit par l'API ([ADR 0016](../docs/adr/0016-mesure-d-usage-sans-cookie.md)).
+
+    Jamais d'adresse IP : le visiteur est une empreinte du jour (usage.py). `user_id` n'est posé que là où
+    un parcours en a besoin (compte, grille conservée) ; l'événement disparaît avec le compte. Les mots
+    imposés en clair (`words`) sont effacés à 90 jours, les événements à 13 mois.
+    """
+    __tablename__ = 'usage_event'
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: _utcnow(), index=True)
+    # generation, search, account, grid, error
+    kind = db.Column(db.String(20), nullable=False)
+    # Ce qui s'est passé : « grid », « timeout », « busy_server », « register »…
+    outcome = db.Column(db.String(40), nullable=True)
+    status = db.Column(db.Integer, nullable=False)
+    route = db.Column(db.String(80), nullable=True)
+    site = db.Column(db.String(10), nullable=False)
+    lang = db.Column(db.String(5), nullable=False)
+    country = db.Column(db.String(2), nullable=True)
+    visitor = db.Column(db.String(32), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True, index=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    cpu_ms = db.Column(db.Integer, nullable=True)
+    data = db.Column(db.JSON, nullable=False, default=dict)
+    # none_as_null : « pas de mots » est un NULL SQL, que la purge et les requêtes reconnaissent
+    words = db.Column(db.JSON(none_as_null=True), nullable=True)
+
+    __table_args__ = (
+        db.Index('ix_usage_event_kind_date', 'kind', 'created_at'),
+    )
+
+
+class VisitorSalt(db.Model):
+    """Le sel du jour de l'empreinte des visiteurs : secret, remplacé et détruit chaque jour (ADR 0016).
+
+    En base, pour que les workers de gunicorn comptent le même visiteur de la même façon.
+    """
+    __tablename__ = 'visitor_salt'
+    day = db.Column(db.Date, primary_key=True)
+    salt = db.Column(db.String(64), nullable=False)

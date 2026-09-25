@@ -1,6 +1,6 @@
 import base64
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import (
@@ -15,6 +15,7 @@ from account_links import (
 from extensions import db, bcrypt
 from mailer import send_email
 from models import RevokedToken, User
+import usage
 from schemas import (
     EmailLinkRequest, ForgotPasswordRequest, LoginRequest, RegisterRequest, ResetPasswordRequest, parse_body,
 )
@@ -94,9 +95,10 @@ def register():
 
     hashed_password = hash_password(payload.password)
 
-    new_user = User(email=payload.email, password=hashed_password)
+    new_user = User(email=payload.email, password=hashed_password, last_login_at=_utcnow())
     db.session.add(new_user)
     db.session.commit()
+    usage.describe("account", "register", user=new_user)
     # Un envoi raté n'empêche pas l'inscription : le lien se redemande depuis « Mon compte »
     send_verification_email(new_user)
 
@@ -112,6 +114,9 @@ def login():
     # ne révèle pas si l'adresse e-mail est inscrite.
     password_hash = user.password if user else _get_dummy_password_hash()
     if password_matches(password_hash, payload.password) and user:
+        user.last_login_at = _utcnow()
+        db.session.commit()
+        usage.describe("account", "login", user=user)
         return _session_response(user, "Connecté.", 200)
 
     return jsonify({"error": "Identifiants invalides."}), 401
@@ -125,6 +130,12 @@ def refresh():
     Pas de rotation du refresh token : deux onglets qui renouvellent en même temps se déconnecteraient
     l'un l'autre. La révocation à la déconnexion et au changement de mot de passe couvre le vol (ADR 0015).
     """
+    # Une session renouvelée compte comme une connexion : un compte utilisé n'est pas inactif. Une écriture
+    # par jour au plus.
+    user = get_current_user()
+    if user and (user.last_login_at is None or _utcnow() - user.last_login_at > timedelta(days=1)):
+        user.last_login_at = _utcnow()
+        db.session.commit()
     response = jsonify({"message": "Session renouvelée."})
     set_access_cookies(response, create_access_token(identity=get_jwt_identity()))
     return response, 200
@@ -235,6 +246,7 @@ def verify_email():
 
     _mark_verified(user)
     db.session.commit()
+    usage.describe("account", "verify", user=user)
     return jsonify({"message": "Adresse confirmée."}), 200
 
 
