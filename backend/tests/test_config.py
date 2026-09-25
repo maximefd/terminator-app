@@ -2,7 +2,7 @@ import pytest
 
 from app import DEV_SECRET, _load_config_from_env
 
-ENV_VARS = ["APP_ENV", "SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GENERATION_TIME_BUDGET_S"]
+ENV_VARS = ["APP_ENV", "SECRET_KEY", "JWT_SECRET_KEY", "DATABASE_URL", "GENERATION_TIME_BUDGET_S", "SITE_NAME"]
 
 
 @pytest.fixture(autouse=True)
@@ -135,3 +135,13 @@ def test_the_visitor_header_is_read_from_the_environment(monkeypatch):
 
     monkeypatch.setenv('CLIENT_IP_HEADER', ' CF-Connecting-IP ')
     assert _load_config_from_env()['CLIENT_IP_HEADER'] == 'CF-Connecting-IP'
+
+
+def test_site_name_comes_from_the_environment(monkeypatch):
+    monkeypatch.setenv("SITE_NAME", "Die Pfeilwerkstatt")
+
+    assert _load_config_from_env()["SITE_NAME"] == "Die Pfeilwerkstatt"
+
+
+def test_site_name_defaults_to_the_french_site():
+    assert _load_config_from_env()["SITE_NAME"] == "Le Fléchoir"

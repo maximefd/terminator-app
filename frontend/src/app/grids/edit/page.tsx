@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { GridEditorFromAddress } from "@/components/grid/grid-editor-page";
 
 export const metadata: Metadata = {
-  title: "Définitions | Terminator",
+  title: "Définitions",
   description: "Écrivez les définitions de votre grille, puis exportez-la en PDF.",
 };
 

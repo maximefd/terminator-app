@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { apiFetch } from "@/lib/api-client";
+import { site } from "@/config/site";
 
 type Account = { email: string; email_verified: boolean; dictionaries: number; words: number; grids: number };
 
@@ -118,7 +119,7 @@ export function AccountClientLayout() {
           <p className="mt-2 text-sm text-muted-foreground">Chargement…</p>
         )}
         <p className="mt-2 text-sm text-muted-foreground">
-          Ce que Terminator conserve, et rien d&apos;autre : voir la{" "}
+          Ce que {site.name} conserve, et rien d&apos;autre : voir la{" "}
           <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
             page de confidentialité
           </Link>

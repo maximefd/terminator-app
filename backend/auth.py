@@ -166,7 +166,7 @@ FORGOT_MESSAGE = ("Si un compte existe pour cette adresse, un e-mail vient de lu
 
 VERIFICATION_EMAIL = """Bonjour,
 
-Pour confirmer l'adresse de votre compte Terminator, ouvrez ce lien (valable 7 jours) :
+Pour confirmer l'adresse de votre compte {site}, ouvrez ce lien (valable 7 jours) :
 
 {link}
 
@@ -175,7 +175,7 @@ Si vous n'avez pas créé de compte, ignorez ce message.
 
 RESET_EMAIL = """Bonjour,
 
-Pour choisir un nouveau mot de passe pour votre compte Terminator, ouvrez ce lien (valable une heure, une seule fois) :
+Pour choisir un nouveau mot de passe pour votre compte {site}, ouvrez ce lien (valable une heure, une seule fois) :
 
 {link}
 
@@ -185,7 +185,8 @@ Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change 
 
 def send_verification_email(user: User) -> bool:
     link = frontend_link("/verify-email", verification_token(user))
-    return send_email(user.email, "Confirmez votre adresse — Terminator", VERIFICATION_EMAIL.format(link=link))
+    site = current_app.config["SITE_NAME"]
+    return send_email(user.email, f"Confirmez votre adresse — {site}", VERIFICATION_EMAIL.format(site=site, link=link))
 
 
 def _mark_verified(user: User) -> None:
@@ -204,7 +205,8 @@ def forgot_password():
     user = _find_user_by_email(payload.email)
     if user:
         link = frontend_link("/reset-password", reset_token(user))
-        send_email(user.email, "Nouveau mot de passe — Terminator", RESET_EMAIL.format(link=link))
+        site = current_app.config["SITE_NAME"]
+        send_email(user.email, f"Nouveau mot de passe — {site}", RESET_EMAIL.format(site=site, link=link))
     return jsonify({"message": FORGOT_MESSAGE}), 200
 
 

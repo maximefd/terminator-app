@@ -3,10 +3,11 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode } from "react";
+import { site } from "@/config/site";
 
 export const metadata: Metadata = {
-  title: "Confidentialité | Terminator",
-  description: "Ce que Terminator conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.",
+  title: "Confidentialité",
+  description: `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.`,
 };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -28,14 +29,14 @@ export default function PrivacyPage() {
 
       <div className="mt-8 space-y-8 text-muted-foreground">
         <p className="rounded-lg border bg-secondary/20 p-4 text-foreground">
-          Terminator conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles.
+          {site.name} conserve votre adresse e-mail, votre mot de passe haché, vos dictionnaires et vos grilles.
           Rien d&apos;autre : pas de mesure d&apos;audience, pas de publicité, aucun cookie en dehors de ceux de
           votre session, et aucune donnée transmise à qui que ce soit.
         </p>
 
-        <Section title="Où tourne Terminator">
+        <Section title={`Où tourne ${site.name}`}>
           <p>
-            Terminator est un outil personnel, en développement. Il n&apos;est pas publié en ligne : l&apos;application
+            {site.name} est un outil personnel, en développement. Il n&apos;est pas publié en ligne : l&apos;application
             et sa base de données tournent sur l&apos;ordinateur de son auteur. Lors d&apos;un essai à distance,
             l&apos;auteur ouvre un tunnel temporaire : les échanges transitent alors par Cloudflare, qui relaie la
             connexion jusqu&apos;à son ordinateur.
@@ -103,7 +104,7 @@ export default function PrivacyPage() {
 
         <Section title="Le jour d'une mise en ligne">
           <p>
-            Terminator sera un jour hébergé sur un serveur en France, derrière Cloudflare. Plusieurs choses changeront
+            {site.name} sera un jour hébergé sur un serveur en France, derrière Cloudflare. Plusieurs choses changeront
             alors : un hébergeur et Cloudflare traiteront les connexions, un prestataire enverra les e-mails de
             réinitialisation du mot de passe, un service de suivi des erreurs (Sentry) recevra les rapports de panne,
             sans rien qui vous identifie, des sauvegardes chiffrées seront gardées 30 jours, et le serveur tiendra
