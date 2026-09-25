@@ -130,5 +130,6 @@ Audit complet, essais compris : [AUDIT-SECURITE.md](AUDIT-SECURITE.md).
 | V13 — Limitation de débit des API | ✅ (mémoire) |
 | V14 — En-têtes de sécurité HTTP | ✅ |
 | V14 — CORS restrictif | ✅ |
-| V14 — Dépendances surveillées | ✅ versions figées, `pip-audit` en CI, Dependabot (pip, npm, GitHub Actions) |
+| V14 — Dépendances surveillées | ✅ versions figées, `pip-audit` et `pnpm audit` en CI, Dependabot (pip, npm, GitHub Actions) |
+| V14 — Pas de secret dans le dépôt | ✅ gitleaks en CI sur chaque PR ; historique complet vérifié le 25/09/2026 : 7 alertes, toutes des valeurs factices ([`.gitleaks.toml`](../.gitleaks.toml)) |
 | V14 — Secrets hors du code | ✅ |

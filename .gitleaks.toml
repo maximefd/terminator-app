@@ -1,0 +1,13 @@
+# gitleaks, en CI (#122) : les règles par défaut, sauf les valeurs factices connues.
+# Ce ne sont pas des secrets : les clés des tests (« test-… ») et les modèles d'environnement
+# (« remplacez-moi… »). Un vrai secret commité se change d'abord, puis se retire de l'historique.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Clés factices des tests et modèles d'environnement"
+regexTarget = "secret"
+regexes = [
+  '''^test-''',
+  '''^remplacez-moi''',
+]

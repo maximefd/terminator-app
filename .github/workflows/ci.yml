@@ -78,6 +78,10 @@ jobs:
       - name: Install frontend dependencies
         run: cd frontend && pnpm install --frozen-lockfile
 
+      # Comme pip-audit côté Python : une vulnérabilité connue dans une dépendance livrée arrête la CI (#122)
+      - name: Audit frontend dependencies (pnpm audit)
+        run: cd frontend && pnpm audit --prod
+
       - name: Lint frontend
         run: cd frontend && pnpm lint
 
@@ -88,6 +92,23 @@ jobs:
         run: cd frontend && pnpm build
         env:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+
+  secrets-ci:
+    name: Secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Les commits de la PR, ou ceux poussés sur main ; exceptions dans .gitleaks.toml (#122)
+      - name: Chercher des secrets dans les nouveaux commits
+        env:
+          LOG_OPTS: ${{ github.event_name == 'pull_request' && format('origin/{0}..HEAD', github.base_ref) || format('{0}..{1}', github.event.before, github.sha) }}
+        run: |
+          docker run --rm -v "$PWD":/repo --entrypoint sh ghcr.io/gitleaks/gitleaks:v8.30.1 -c \
+            "git config --global --add safe.directory /repo && gitleaks git /repo --no-banner --redact --config /repo/.gitleaks.toml --log-opts='$LOG_OPTS'"
 
   e2e-ci:
     name: Parcours end-to-end et accessibilité

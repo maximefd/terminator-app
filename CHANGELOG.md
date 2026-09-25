@@ -319,6 +319,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Sécurité en CI** ([#122](https://github.com/maximefd/terminator-app/issues/122)) : `pnpm audit --prod` à côté
+  de `pip-audit`, et gitleaks sur les commits de chaque PR, avec pour seules exceptions les clés factices des tests
+  et les modèles d'environnement (`.gitleaks.toml`). L'historique complet (205 commits) n'a aucun vrai secret.
+  CodeQL, annoncé par la roadmap, n'est pas retenu.
 - **Le site s'appelle Le Fléchoir** ([#112](https://github.com/maximefd/terminator-app/issues/112),
   [ADR 0017](docs/adr/0017-un-site-par-langue.md)) : le nom public vient de la configuration du site
   (`frontend/src/config/site.ts`, choisi par `NEXT_PUBLIC_SITE`) et, pour les e-mails, de `SITE_NAME`.
