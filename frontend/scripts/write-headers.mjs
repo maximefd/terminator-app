@@ -27,6 +27,8 @@ const headers = securityHeaders({
   sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 const lines = ['/*', ...headers.map(({ key, value }) => `  ${key}: ${value}`)];
+// Le poste de pilotage (ADR 0016, point 6) : jamais indexé, sans le citer dans robots.txt
+lines.push('/admin', '  X-Robots-Tag: noindex, nofollow');
 writeFileSync(join(OUT, '_headers'), `${lines.join('\n')}\n`);
 console.log(`out/_headers : ${headers.length} en-têtes de sécurité`);
 

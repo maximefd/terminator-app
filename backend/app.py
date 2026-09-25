@@ -17,6 +17,7 @@ from mailer import MAIL_BACKENDS
 from monitoring import init_sentry
 from usage import init_usage
 from stats import init_stats_cli
+from admin import admin_bp, init_admin_cli
 
 DEV_SECRET = 'default-secret-for-dev'
 # Nom public du site (ADR 0017) : Terminator est le nom du moteur, jamais montré aux visiteurs
@@ -282,9 +283,11 @@ def create_app(test_config=None):
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
+    app.register_blueprint(admin_bp)
     init_rate_limiting(app)
     init_usage(app)
     init_stats_cli(app)
+    init_admin_cli(app)
 
     # Le lexique n'est pas chargé en mode test (les tests fournissent un petit Trie)
     app.dela_trie = None

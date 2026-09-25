@@ -37,6 +37,7 @@ Merci de **ne pas ouvrir d'issue publique**. Écrivez à **securite@leflechoir.f
 | `POST /api/search` | Optionnelle | Injection SQL (`LIKE`), masques coûteux |
 | `POST /api/grids/generate` | Optionnelle | Déni de service CPU |
 | `DELETE /api/users/me` | Oui + mot de passe | Effacement incomplet des données ; suppression par un jeton volé |
+| `GET /api/admin/*` | Administrateur (`is_admin`, posé en ligne de commande) | Élévation de privilèges ; fuite de données d'usage. Tout autre visiteur reçoit le 404 d'une adresse inconnue ; agrégats en lecture seule ; accès journalisés ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) |
 
 ---
 

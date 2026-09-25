@@ -22,6 +22,8 @@ class User(db.Model):
     # (3 ans, page de confidentialité). Vides pour les comptes créés avant leur arrivée.
     created_at = db.Column(db.DateTime, nullable=True, default=lambda: _utcnow())
     last_login_at = db.Column(db.DateTime, nullable=True)
+    # Accès au poste de pilotage (ADR 0016, point 6) : posé en ligne de commande (`flask admin grant`), jamais par l'API
+    is_admin = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     
     dictionaries = db.relationship('Dictionary', backref='user', lazy='selectin', cascade="all, delete-orphan")
     grids = db.relationship('SavedGrid', backref='user', lazy='selectin', cascade="all, delete-orphan")

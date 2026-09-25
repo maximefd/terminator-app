@@ -18,6 +18,17 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   l'export du curateur tel qu'utilisé chaque jour (filtre « aucun »). `make deploy` accepte désormais un
   `decisions.csv` modifié (le curateur l'écrit sans cesse ; il n'entre dans l'application que par le lexique),
   et `docs/PRODUCTION.md` donne l'ordre de la première mise en ligne.
+- **Espace d'administration et poste de pilotage** ([#128](https://github.com/maximefd/terminator-app/issues/128),
+  [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)) :
+  - `user.is_admin` (migration 0008, additive), posé par `flask admin grant ADRESSE` sur une adresse confirmée,
+    jamais par l'API ; `revoke` et `list` ;
+  - `/api/admin/*` répond à tout autre compte, et à tout visiteur (jeton absent, expiré ou forgé), le même 404
+    qu'une adresse inconnue ; contrôle unique pour tout le blueprint ; chaque accès journalisé ;
+  - `GET /api/admin/stats` : les chiffres de `flask stats` en JSON, agrégats seulement ;
+  - page `/admin`, liée nulle part, en `noindex` (balise et `X-Robots-Tag`), qui montre la page 404 à tout autre
+    visiteur : seuils de l'ADR 0013, chiffres du jour, de 7 et 30 jours, formats, mots imposés, mots absents du
+    lexique, pays, erreurs par route, dernières générations ;
+  - tests d'autorisation qui énumèrent toutes les routes d'administration, et parcours e2e.
 - **Sauvegardes de la nuit copiées hors du serveur** ([#120](https://github.com/maximefd/terminator-app/issues/120)) :
   `tools/db/backup-offsite.sh` fait un dump chiffré pour la clé publique `age` (il refuse sans elle), le copie
   sur Cloudflare R2 (seau en juridiction UE, rotation à 30 jours par le seau), vérifie la taille de la copie,
