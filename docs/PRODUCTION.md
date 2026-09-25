@@ -40,7 +40,7 @@ Les sections suivantes détaillent chaque geste. 👤 marque ce qui demande l'au
 
    Ce fichier part sur le serveur par `scp` et se fond dans `.env.production`. On ne l'affiche jamais, et on ne le commite jamais.
 3. **Les sauvegardes** : la paire de clés `age` sur le Mac (étape 1), et `BACKUP_AGE_RECIPIENT` dans `.env.production`.
-4. 👤 **Pages** : `pnpm dlx wrangler@4.140.0 login` ouvre le navigateur une fois. Ensuite, `pages project create leflechoir --production-branch main`.
+4. 👤 **Pages** : `wrangler login` ouvre le navigateur une fois. Ensuite, `pages project create leflechoir --production-branch main --force` (commandes complètes dans « Préparer Cloudflare »).
 5. **Le premier déploiement, et l'essai du retour arrière sur le vrai serveur.**
    1. Depuis un `git worktree` d'un commit plus ancien de `main` qui contient déjà `tools/deploy` (par exemple `c9b2d56`), lancer `DEPLOY_HOST=… tools/deploy/deploy.sh api`.
    2. Puis `make deploy` depuis `main` : l'API et le site. La version précédente est alors l'ancienne.
@@ -116,9 +116,12 @@ Le VPS est livré avec l'utilisateur `ubuntu` et ta clé SSH. Depuis le Mac : `s
 - **Le projet Pages**, créé depuis le Mac. La première commande ouvre le navigateur pour autoriser l'accès, une seule fois :
 
   ```bash
-  pnpm dlx wrangler@4.140.0 login
-  pnpm dlx wrangler@4.140.0 pages project create leflechoir --production-branch main
+  W="pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.140.0"
+  $W login
+  $W pages project create leflechoir --production-branch main --force
   ```
+  - `--allow-build` : pnpm refuse sinon les scripts d'installation d'esbuild et de workerd (`ERR_PNPM_IGNORED_BUILDS`).
+  - `--force`, une seule fois : wrangler 4.140 crée sinon le projet sur Workers, en détectant seul le dépôt, au lieu d'un projet Pages classique. Une fois le projet créé, `pages deploy` s'adresse à lui sans détour.
   Puis, dans Pages → `leflechoir` → *Custom domains* :
   - ajouter `leflechoir.fr` et `www.leflechoir.fr` ;
   - faire rediriger `www` vers `leflechoir.fr`, avec une règle de redirection (*Rules → Redirect Rules*).
