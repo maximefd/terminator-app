@@ -308,7 +308,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - un test Playwright des balises.
 
 ### 6d. Pages légales, contact et vie privée (#114, #115)
-- ✅ **Pages réécrites** (#114) : mentions légales (éditeur non nommé, LCEN art. 6, III, 2), confidentialité, CGU (`/terms`) et crédits, avec le registre [RGPD.md](RGPD.md). Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, les durées de conservation et les droits. La mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) s'y ajoutera avec 6e. Plus aucun lien vers GitHub : le dépôt devient privé.
+- ✅ **Pages réécrites** (#114) : mentions légales (éditeur non nommé, LCEN art. 6, III, 2), confidentialité, CGU (`/terms`) et crédits, avec le registre [RGPD.md](RGPD.md). Elles couvrent l'éditeur, les hébergeurs, les sous-traitants, les durées de conservation et les droits. La mesure ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) y est décrite depuis 6e. Plus aucun lien vers GitHub : le dépôt devient privé.
 - **Contact et sécurité :**
   - ✅ une page contact avec l'adresse `contact@` (#115) ;
   - ✅ un `security.txt` avec `securite@` ;
@@ -317,14 +317,15 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   Le formulaire vient en Phase 8.
 - **Données personnelles :** ✅ registre des traitements et durées de conservation ([RGPD.md](RGPD.md)). Restent, avant l'ouverture : la rotation des journaux Docker à 14 jours (#117), la rétention Sentry à 90 jours au plus, la suppression des comptes inactifs depuis 3 ans.
 
-### 6e. Mesure côté serveur dès le premier jour (#116)
-- **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
+### 6e. Mesure côté serveur dès le premier jour (#116) ✅
+- ✅ **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
   - générations : format, mots imposés, issue, durée, temps CPU ;
   - recherches, comptes, erreurs, refus « occupé ».
 
   Le visiteur est une empreinte quotidienne, jamais une adresse IP. Chaque événement porte `lang` et le site.
-- **Comptes :** `created_at` et `last_login_at`.
-- **Lecture :** par `flask stats` sur le serveur. La page web vient en Phase 8.
+- ✅ **Comptes :** `created_at` et `last_login_at`.
+- ✅ **Lecture :** par `flask stats` sur le serveur (`make stats` en local ; avec `LEXICON_LOAD=0`, la commande ne charge pas le lexique). La page web vient en Phase 8.
+- ✅ **Conservation :** la purge (mots imposés à 90 jours, événements à 13 mois, sel de la veille) est faite chaque jour par la première requête mesurée ; `flask usage purge` la lance à la main.
 
 ### 6f. Serveur, déploiement et exploitation (#29 : #117 à #120 ; #121, #122)
 - **Image et compose de production :**

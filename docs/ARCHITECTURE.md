@@ -43,6 +43,7 @@ Il n'y a **pas de déploiement en ligne** pour l'instant : tout tourne en local 
 | `security.py` | Gestionnaires d'erreurs JSON, en-têtes HTTP, callbacks JWT, rate limiting, adresse du visiteur (`client_ip`) |
 | `generation_slots.py` | Places de génération : au plus 2 générations à la fois, une par visiteur (verrous de fichiers partagés entre workers) |
 | `models.py` / `extensions.py` | Modèles SQLAlchemy et instances des extensions |
+| `usage.py` / `stats.py` | Mesure d'usage côté serveur ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) : un événement par génération, recherche, étape de compte, grille conservée ou erreur, écrit en fin de requête ; empreinte du jour, purge quotidienne ; lecture par `flask stats` |
 | `trie_engine.py` | `DictionnaireTrie` : normalisation des mots et recherche par motif (`P??LE`) |
 | `grid_generator.py` | Chef d'orchestre de la génération (choix du layout, dépôt de mots, solveur) |
 | `engine/` | Moteur de génération, sans dépendance Flask (voir [ENGINE.md](ENGINE.md)) |
@@ -88,11 +89,14 @@ Les erreurs sont toujours du JSON `{"error": "message en français"}` (plus `det
 erDiagram
     USER ||--o{ DICTIONARY : possède
     USER ||--o{ SAVED_GRID : conserve
+    USER |o--o{ USAGE_EVENT : "étapes du compte"
     DICTIONARY ||--o{ PERSONAL_WORD : contient
     USER {
         int id
         string email "unique, minuscules"
         string password "hash bcrypt"
+        datetime created_at
+        datetime last_login_at "comptes inactifs"
     }
     DICTIONARY {
         int id
@@ -122,7 +126,21 @@ erDiagram
         datetime date_creation
         int user_id
     }
+    USAGE_EVENT {
+        int id
+        datetime created_at
+        string kind "generation, search, account, grid, error"
+        string outcome "grid, timeout, busy_server, register…"
+        int status
+        string site "et lang, country"
+        string visitor "empreinte du jour, jamais l'IP"
+        int user_id "étapes du compte et grilles seulement"
+        json data "format, mots imposés (longueurs), résultats…"
+        json words "texte des mots imposés, effacé à 90 jours"
+    }
 ```
+
+`VISITOR_SALT` garde le sel du jour de l'empreinte des visiteurs ; il est détruit le lendemain.
 
 Le **dictionnaire commun (DELA)** n'est pas en base : il est lu depuis `backend/dela_clean.csv` et chargé en mémoire au démarrage de l'API (voir [LEXICON.md](LEXICON.md)).
 

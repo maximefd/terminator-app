@@ -5,6 +5,22 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Mesure d'usage côté serveur** ([#116](https://github.com/maximefd/terminator-app/issues/116),
+  [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)), sans cookie ni script tiers :
+  - un événement par génération (format, layout, mots imposés en nombre, longueur et présence dans le lexique,
+    issue — grille, raison du `422`, refus « occupé » ou rate limiting —, durée, temps CPU, tentatives), par
+    recherche (forme du motif, pas son texte), par étape de compte, par grille conservée, et par erreur sur une
+    route connue ;
+  - chaque événement porte le site, la langue, le pays et une empreinte du jour : un hachage de l'IP et du
+    navigateur avec un sel quotidien détruit le lendemain. L'adresse IP n'est jamais enregistrée ;
+  - conservation : texte des mots imposés 90 jours, événements 13 mois, suppression avec le compte ; purge
+    faite chaque jour par la première requête mesurée (`flask usage purge` à la main) ;
+  - `flask stats` : chiffres du jour, de 7 et de 30 jours, seuils de l'ADR 0013, formats, réussite selon le
+    nombre de mots imposés, mots imposés absents du lexique, pays, erreurs par route, dernières générations ;
+  - `created_at` et `last_login_at` sur les comptes (migration 0007) ; une session renouvelée compte comme
+    une connexion, une fois par jour au plus ;
+  - la page de confidentialité et le registre décrivent cette mesure ; les erreurs de génération qui n'en
+    avaient pas reçoivent un code `reason` (`no_words`, `unknown_format`).
 - **Pages légales pour l'ouverture** ([#114](https://github.com/maximefd/terminator-app/issues/114)) :
   - **mentions légales** réécrites : éditeur particulier non nommé (LCEN, art. 6, III, 2), hébergeurs (OVH,
     Cloudflare), contact, crédits affichés sur le site (DELA, Lexique, Archivo Narrow, Inter) ;

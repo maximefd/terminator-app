@@ -32,6 +32,8 @@ from schemas import (
     parse_body,
 )
 from security import client_ip
+import usage
+from models import UsageEvent
 
 # On crée un nouveau Blueprint pour les routes principales
 main_bp = Blueprint('main', __name__, url_prefix='/api')
@@ -194,7 +196,10 @@ def search_words():
         if word not in personal_mots_set:
             final_results.append({"mot": word, "definition": None})
 
-    return jsonify({"results": final_results[:payload.limit]}), 200
+    results = final_results[:payload.limit]
+    usage.add_details(pattern_length=len(cleaned_mask), wildcards=cleaned_mask.count('?'),
+                      results=len(results), logged_in=user is not None)
+    return jsonify({"results": results}), 200
 
 @main_bp.route('/grids/formats', methods=['GET'])
 def list_grid_formats():
@@ -267,8 +272,22 @@ def generate_grid():
     # Un mot obligatoire est aussi souhaité : inutile de le répéter dans les deux listes (ADR 0007)
     must_words = sorted({normalize_pattern(word) for word in payload.must_words})
 
+    # Ce que la génération demandait (ADR 0016) : le texte des mots imposés n'est gardé que 90 jours ;
+    # ensuite, il ne reste que leurs longueurs et leur présence dans le lexique
+    typed_wishes = [normalize_pattern(word) for word in payload.wish_words]
+    usage.describe("generation", words={"must": must_words, "wish": typed_wishes} if must_words or typed_wishes else None)
+    usage.add_details(
+        format=f"{width}x{height}",
+        must=[{"length": len(word), "known": word in dela_trie.words} for word in must_words],
+        wish_count=len(typed_wishes),
+        dictionaries=len(payload.wish_dictionary_ids),
+        use_global=payload.use_global,
+        frequency_mode=payload.frequency_mode,
+        logged_in=user is not None,
+    )
+
     if not payload.use_global and not wish_words and not must_words:
-        return jsonify({"error": "Aucun mot de taille adéquate disponible."}), 400
+        return jsonify({"error": "Aucun mot de taille adéquate disponible.", "reason": "no_words"}), 400
 
     # Une génération occupe un cœur jusqu'à 20 s : au plus quelques-unes à la fois, une par visiteur
     # (ADR 0013). Un compte est un visiteur où qu'il se connecte ; un invité, une adresse.
@@ -307,6 +326,7 @@ def run_generation(width, height, common_words, dela_trie, payload, wish_words, 
         formats = available_formats(layouts_dir)
         return jsonify({
             "error": f"Aucun layout disponible pour le format {width}x{height}.",
+            "reason": "unknown_format",
             "available_formats": formats,
         }), 400
 
@@ -321,7 +341,10 @@ def run_generation(width, height, common_words, dela_trie, payload, wish_words, 
             "suggested_layouts": suggest_layouts_for(must_words, layouts_dir),
         }), 422
 
-    if not generator.generate():
+    succeeded = generator.generate()
+    if generator.attempts:
+        usage.add_details(layout=generator.attempts[-1]["layout"], attempts=len(generator.attempts))
+    if not succeeded:
         if generator.unplaced_must_words:
             return jsonify({
                 "error": "Impossible de placer tous les mots obligatoires dans le temps imparti.",
@@ -369,6 +392,7 @@ def save_grid():
     )
     db.session.add(saved)
     db.session.commit()
+    usage.describe("grid", "saved", user=user, data={"format": f"{grid.width}x{grid.height}"})
     return jsonify(saved.summary()), 201
 
 
@@ -565,8 +589,11 @@ def delete_self():
         return jsonify({"error": "Mot de passe incorrect."}), 403
     # Suppression via l'ORM : la cascade User -> Dictionary -> PersonalWord efface aussi
     # dictionnaires et mots (une suppression SQL en masse laissait les mots orphelins).
+    # Les événements d'usage liés au compte partent avec lui (ADR 0016).
+    UsageEvent.query.filter_by(user_id=user.id).delete()
     db.session.delete(user)
     db.session.commit()
+    usage.describe("account", "delete")
     response = jsonify({"message": "Votre compte et toutes vos données ont été supprimés avec succès."})
     unset_jwt_cookies(response)  # les jetons d'un compte supprimé sont refusés : autant effacer les cookies
     return response, 200

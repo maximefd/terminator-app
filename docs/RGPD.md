@@ -11,7 +11,7 @@ L'éditeur du site, un particulier, à titre non professionnel. Son identité n'
 
 | # | Traitement | Personnes | Données | Finalité | Base légale | Durée | Où |
 |---|------------|-----------|---------|----------|-------------|-------|----|
-| 1 | Comptes | Titulaires d'un compte | Adresse e-mail, mot de passe haché (bcrypt), date de confirmation de l'adresse | Fournir le service : se connecter, retrouver ses données | Contrat (art. 6.1.b) | Tant que le compte existe ; suppression immédiate à la demande ; compte sans connexion depuis 3 ans supprimé, après un e-mail un mois avant | Base PostgreSQL (OVH, France) |
+| 1 | Comptes | Titulaires d'un compte | Adresse e-mail, mot de passe haché (bcrypt), dates d'inscription, de confirmation de l'adresse et de dernière connexion | Fournir le service : se connecter, retrouver ses données | Contrat (art. 6.1.b) | Tant que le compte existe ; suppression immédiate à la demande ; compte sans connexion depuis 3 ans supprimé, après un e-mail un mois avant | Base PostgreSQL (OVH, France) |
 | 2 | Dictionnaires et grilles | Titulaires d'un compte | Mots, définitions, grilles, notes | Conserver le travail de l'utilisateur | Contrat (art. 6.1.b) | Comme le compte | Base PostgreSQL (OVH, France) |
 | 3 | Session | Titulaires d'un compte | Cookies de session (JWT), liste des jetons révoqués | Rester connecté, se déconnecter | Contrat ; cookies strictement nécessaires, sans consentement | 7 jours au plus | Navigateur ; base |
 | 4 | E-mails du compte | Titulaires d'un compte | Adresse e-mail, lien signé | Confirmer l'adresse, changer un mot de passe oublié | Contrat (art. 6.1.b) | Selon Brevo (journal d'envoi) | Brevo (France) |
@@ -20,8 +20,9 @@ L'éditeur du site, un particulier, à titre non professionnel. Son identité n'
 | 7 | Rapports d'erreur | Visiteur touché par une erreur | Page ou action en cause, pile d'appel ; ni IP, ni cookie, ni corps de requête | Corriger les pannes | Intérêt légitime (art. 6.1.f) | 90 jours au plus (réglage du projet Sentry) | Sentry (UE) |
 | 8 | Sauvegardes | Titulaires d'un compte | Copie chiffrée de la base (traitements 1 à 3) | Restaurer après un incident | Intérêt légitime (art. 6.1.f) | 30 jours | Cloudflare R2 (UE) |
 | 9 | Messages de contact | Qui écrit à `contact@` ou `securite@` | Adresse e-mail, message | Répondre, suivre la demande | Intérêt légitime (art. 6.1.f) | Un an après le dernier échange | Cloudflare Email Routing, puis la messagerie de l'éditeur |
+| 10 | Mesure d'usage ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) | Tout visiteur | Recherches (longueur du motif, jokers, résultats, durée), générations (format, layout, nombre et longueur des mots imposés, texte des mots imposés et souhaités, issue, durée, temps CPU), étapes d'un compte, grilles conservées, erreurs (route, statut) ; pays (`CF-IPCountry`) ; empreinte du jour (hachage de l'IP et du navigateur avec un sel quotidien détruit le lendemain) ; identifiant du compte pour ses étapes et ses grilles. **Jamais l'adresse IP** | Statistiques du site : ce qui sert, ce qui casse, la charge | Intérêt légitime (art. 6.1.f) ; sans cookie ni écriture dans le navigateur | Texte des mots : 90 jours. Événements : 13 mois. Ceux d'un compte : supprimés avec lui. Sel : un jour. Purge faite chaque jour par la première requête mesurée (`usage.py`) | Base PostgreSQL (OVH, France) |
 
-Ce qui n'est **pas** traité : les recherches, les grilles générées sans être conservées, toute mesure d'audience (jusqu'à [ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md), qui ajoutera sa ligne ici et dans la page de confidentialité), la publicité.
+Ce qui n'est **pas** traité : le texte des motifs cherchés, les grilles générées sans être conservées, l'adresse IP en base, tout script ou cookie de mesure dans le navigateur, la publicité. La balise de pages vues (Phase 8) ajoutera sa ligne ici et dans la page de confidentialité.
 
 ## Sous-traitants (art. 28)
 
@@ -31,8 +32,6 @@ Ce qui n'est **pas** traité : les recherches, les grilles générées sans êtr
 | Cloudflare, Inc. | Pages du site, tunnel vers le serveur, DNS, R2 (sauvegardes), Email Routing | UE et États-Unis | DPA Cloudflare ; certifié Data Privacy Framework ; clauses contractuelles types |
 | Brevo (Sendinblue SAS) | Envoi des e-mails du compte | France | DPA Brevo |
 | Sentry (Functional Software, Inc.) | Rapports d'erreur | UE (région `de`) | DPA Sentry ; certifié Data Privacy Framework |
-
-La messagerie qui reçoit les messages de contact, derrière Email Routing, est aussi un sous-traitant : la nommer ici et dans la page de confidentialité.
 
 ## Droits des personnes
 
@@ -46,4 +45,4 @@ Voir [SECURITY.md](SECURITY.md) : mots de passe hachés, cookies httpOnly, CSP, 
 
 - Rotation des journaux Docker à 14 jours (#117).
 - Régler la rétention du projet Sentry à 90 jours au plus.
-- Suppression des comptes inactifs depuis 3 ans, avec e-mail de prévenance (la date de dernière connexion arrive avec #116).
+- Suppression des comptes inactifs depuis 3 ans, avec e-mail de prévenance : la date de dernière connexion est enregistrée depuis #116 ; la commande de purge peut attendre (première suppression possible en 2029).

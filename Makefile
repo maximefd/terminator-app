@@ -6,7 +6,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 # Outils (tools/) : dépôt complet monté, commandes lancées depuis sa racine
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
-.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check db-backup db-restore-check \
+.PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check db-backup db-restore-check stats \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls \
 	preview-remote
@@ -125,6 +125,9 @@ bench-load: ## Profil de charge : RAM, CPU par génération, concurrence (2 CPU,
 
 db-backup: ## Sauvegarde PostgreSQL dans backups/ (chiffrée si BACKUP_AGE_RECIPIENT, rotation à 30 jours)
 	tools/db/backup.sh
+
+stats: ## Mesure d'usage : chiffres du jour, de 7 et de 30 jours (ADR 0016), sans charger le lexique
+	docker compose exec -e LEXICON_LOAD=0 api flask stats
 
 db-restore-check: ## Restaure FILE=backups/... dans une base jetable et compte les lignes (la base en service n'est pas touchée)
 	@test -n "$(FILE)" || (echo "Usage : make db-restore-check FILE=backups/terminator-....dump" && exit 1)
