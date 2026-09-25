@@ -1,6 +1,6 @@
 import { type Metadata } from "next";
 import Link from "next/link";
-import { type ReactNode } from "react";
+import { linkClass, Section } from "@/components/legal/section";
 import { site } from "@/config/site";
 import { publicPage } from "@/lib/seo";
 
@@ -10,16 +10,6 @@ export const metadata: Metadata = publicPage({
   description: `Écrire à ${site.name} : une suggestion, un problème, une question sur vos données, ou une faille de sécurité.`,
 });
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-const linkClass = "underline underline-offset-2 hover:text-foreground";
 
 export default function ContactPage() {
   return (

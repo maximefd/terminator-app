@@ -9,7 +9,7 @@ import { site } from "@/config/site";
  */
 
 /** Pages publiques, dans l'ordre du sitemap */
-export const PUBLIC_PATHS = ["/", "/search", "/grid", "/contact", "/legal", "/privacy"] as const;
+export const PUBLIC_PATHS = ["/", "/search", "/grid", "/contact", "/legal", "/privacy", "/terms"] as const;
 export type PublicPath = (typeof PUBLIC_PATHS)[number];
 
 /** Image de partage, écrite au build par app/og.png/route.tsx */

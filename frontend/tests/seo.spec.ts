@@ -15,6 +15,7 @@ const PUBLIC_PAGES = [
   { path: "/contact", title: "Contact | Le Fléchoir", canonical: `${SITE_URL}/contact` },
   { path: "/legal", title: "Mentions légales | Le Fléchoir", canonical: `${SITE_URL}/legal` },
   { path: "/privacy", title: "Confidentialité | Le Fléchoir", canonical: `${SITE_URL}/privacy` },
+  { path: "/terms", title: "Conditions d'utilisation | Le Fléchoir", canonical: `${SITE_URL}/terms` },
 ];
 
 const PRIVATE_PAGES = ["/account", "/grids", "/grids/edit?id=1", "/dictionaries", "/login", "/register",
@@ -91,6 +92,13 @@ test("la page contact donne les deux adresses, et le pied de page y mène", asyn
     "href", "mailto:contact@leflechoir.fr");
   await expect(page.getByRole("link", { name: "securite@leflechoir.fr" })).toHaveAttribute(
     "href", "mailto:securite@leflechoir.fr");
+});
+
+test("les pages publiques ne renvoient plus vers GitHub, qui deviendra privé", async ({ page }) => {
+  for (const { path } of PUBLIC_PAGES) {
+    await page.goto(path);
+    await expect(page.locator('a[href*="github.com"]'), path).toHaveCount(0);
+  }
 });
 
 test("une adresse inconnue répond en français", async ({ page }) => {
