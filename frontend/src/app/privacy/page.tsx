@@ -4,11 +4,14 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import { type ReactNode } from "react";
 import { site } from "@/config/site";
+import { publicPage } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = publicPage({
+  path: "/privacy",
   title: "Confidentialité",
-  description: `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.`,
-};
+  description:
+    `Ce que ${site.name} conserve sur vous — une adresse e-mail, un mot de passe haché, vos dictionnaires et vos grilles — et rien d'autre.`,
+});
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

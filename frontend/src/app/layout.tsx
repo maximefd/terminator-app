@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { site } from "@/config/site";
+import { baseOpenGraph, OG_IMAGE } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
   title: { default: `${site.name} — ${site.tagline}`, template: `%s | ${site.name}` },
   description: site.description,
   applicationName: site.name,
+  openGraph: baseOpenGraph,
+  twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

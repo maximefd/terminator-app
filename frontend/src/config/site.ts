@@ -14,6 +14,8 @@ export type SiteConfig = {
   /** Hôte canonique, sans barre finale */
   url: string;
   lang: string;
+  /** Langue et pays des aperçus de partage (Open Graph) */
+  locale: string;
   contactEmail: string;
   securityEmail: string;
 };
@@ -26,6 +28,7 @@ export const SITES = {
       "Créez vos mots fléchés : trouvez le mot qui manque par motif (P??LE), ou laissez le moteur remplir une grille entière, puis écrivez les définitions et exportez en PDF.",
     url: "https://leflechoir.fr",
     lang: "fr",
+    locale: "fr_FR",
     contactEmail: "contact@leflechoir.fr",
     securityEmail: "securite@leflechoir.fr",
   },
