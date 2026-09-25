@@ -234,6 +234,12 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   - les mots visés par une règle automatique disparaissent de la file de tri et du reste à trier.
 
 ### Modifié
+- **Le site s'appelle Le Fléchoir** ([#112](https://github.com/maximefd/terminator-app/issues/112),
+  [ADR 0017](docs/adr/0017-un-site-par-langue.md)) : le nom public vient de la configuration du site
+  (`frontend/src/config/site.ts`, choisi par `NEXT_PUBLIC_SITE`) et, pour les e-mails, de `SITE_NAME`.
+  Plus aucun « Terminator » visible : titres des pages (« Mes grilles | Le Fléchoir »), en-tête, pied de page,
+  pages légales, objet et texte des e-mails. La mise en page racine passe côté serveur pour porter ces
+  métadonnées. Le message d'erreur réseau ne cite plus `make dev-api`.
 - **Le frontend se construit en site statique** (`pnpm build` → `out/`), prêt pour Cloudflare Pages
   ([ADR 0013](docs/adr/0013-cible-hebergement-production.md)) : pas de serveur Node en production. Les en-têtes de
   sécurité (CSP, HSTS…) sont écrits dans `out/_headers`, depuis la même définition que ceux de `next dev`.
