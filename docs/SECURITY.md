@@ -84,22 +84,24 @@ Merci de **ne pas ouvrir d'issue publique**. Écrivez à **securite@leflechoir.f
 
 ## Checklist de mise en production
 
+Vérifiée sur le serveur en service le 25/09/2026 : 13/14 (variables lues dans le conteneur, ports sondés de l'extérieur, cookies et CORS observés).
+
 `docker-compose.prod.yml` ([PRODUCTION.md](PRODUCTION.md)) pose d'office `APP_ENV`, `CLIENT_IP_HEADER`, `TRUST_PROXY_HOPS`, gunicorn, `MAIL_BACKEND=smtp`, l'absence de `FLASK_DEBUG` et de port publié ; restent à vérifier sur le serveur.
 
-- [ ] `APP_ENV=production`
-- [ ] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
-- [ ] `DATABASE_URL` vers PostgreSQL
-- [ ] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://leflechoir.fr`)
-- [ ] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
-- [ ] L'API n'est joignable que par le tunnel : aucun port web ouvert sur le serveur (sinon `CF-Connecting-IP` s'invente)
-- [ ] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
-- [ ] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
-- [ ] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `leflechoir.fr`), pour que le frontend lise les cookies CSRF
-- [ ] `SENTRY_DSN` (API) et `NEXT_PUBLIC_SENTRY_DSN` (build du frontend) renseignés, projet Sentry hébergé dans l'UE ; la page de confidentialité le mentionne
-- [ ] `FLASK_DEBUG` absent
-- [ ] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
-- [ ] HTTPS uniquement (fourni par Cloudflare)
-- [ ] `BACKUP_AGE_RECIPIENT` renseigné, clé privée **hors** du serveur ; sauvegarde nocturne copiée hors du serveur ; une restauration vérifiée (`make db-restore-check`)
+- [x] `APP_ENV=production`
+- [x] `SECRET_KEY` et `JWT_SECRET_KEY` distincts, aléatoires (≥ 32 octets, l'API refuse de démarrer sinon), jamais commités
+- [x] `DATABASE_URL` vers PostgreSQL
+- [x] `CORS_ORIGINS` = origine exacte du frontend (ex : `https://leflechoir.fr`)
+- [x] `CLIENT_IP_HEADER=CF-Connecting-IP` derrière Cloudflare Tunnel, `TRUST_PROXY_HOPS=0` (sinon le rate limiting voit toutes les requêtes venir de cloudflared)
+- [x] L'API n'est joignable que par le tunnel : aucun port web ouvert sur le serveur (sinon `CF-Connecting-IP` s'invente)
+- [x] Serveur gunicorn (commande par défaut de l'image), jamais `python run.py`
+- [x] `MAIL_BACKEND=smtp` avec le relais du prestataire (sinon les liens de mot de passe finissent dans le journal) ; `MAIL_FROM` sur le domaine, SPF et DKIM configurés
+- [x] `COOKIE_DOMAIN` = domaine commun au frontend et à l'API (ex : `leflechoir.fr`), pour que le frontend lise les cookies CSRF
+- [x] `SENTRY_DSN` (API) et `NEXT_PUBLIC_SENTRY_DSN` (build du frontend) renseignés, projet Sentry hébergé dans l'UE ; la page de confidentialité le mentionne
+- [x] `FLASK_DEBUG` absent
+- [x] `RATELIMIT_STORAGE_URI` vers Redis si plusieurs instances
+- [ ] HTTPS uniquement (fourni par Cloudflare) : le site redirige ; pour `api.`, activer *Always Use HTTPS* dans la zone
+- [x] `BACKUP_AGE_RECIPIENT` renseigné, clé privée **hors** du serveur ; sauvegarde nocturne copiée hors du serveur ; une restauration vérifiée (`make db-restore-check`)
 
 ---
 

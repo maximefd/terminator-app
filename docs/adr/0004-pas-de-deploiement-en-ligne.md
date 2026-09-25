@@ -1,6 +1,6 @@
 # 0004 — Pas de déploiement en ligne avant un serveur de production
 
-- Statut : acceptée
+- Statut : remplacée par l'[ADR 0013](0013-cible-hebergement-production.md) (mise en ligne du 25/09/2026)
 - Date : 2026-09-14
 
 ## Contexte
