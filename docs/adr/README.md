@@ -22,6 +22,7 @@ Chaque décision structurante du projet est consignée dans un court document : 
 | [0016](0016-mesure-d-usage-sans-cookie.md) | Mesure d'usage côté serveur, sans cookie ni script tiers | Acceptée |
 | [0017](0017-un-site-par-langue.md) | Un site par langue, un seul moteur | Acceptée |
 | [0018](0018-nom-du-site-francais.md) | Nom et domaine du site français : Le Fléchoir | Acceptée |
+| [0019](0019-deploiement.md) | Déploiement : un commit envoyé par SSH et construit sur le serveur, le site envoyé à Pages | Acceptée |
 
 ## Modèle
 

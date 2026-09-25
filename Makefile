@@ -7,6 +7,7 @@ BACKEND_RUN := docker run --rm -v "$(CURDIR)/backend":/app -w /app -e PYTHONDONT
 TOOLS_RUN := docker run --rm -v "$(CURDIR)":/repo -w /repo -e PYTHONDONTWRITEBYTECODE=1 $(PY_IMAGE) sh -c
 
 .PHONY: help setup dev-api dev-front test test-backend test-tools test-e2e lint-backend lint-frontend bench bench-load layouts-check db-backup db-restore-check stats \
+	deploy deploy-api deploy-front rollback deploy-status \
 	lexicon-download lexicon-build lexicon-export lexicon-stats \
 	curator curator-bg curator-stop curator-logs curator-check curator-urls \
 	preview-remote
@@ -125,6 +126,21 @@ bench-load: ## Profil de charge : RAM, CPU par génération, concurrence (2 CPU,
 
 db-backup: ## Sauvegarde PostgreSQL dans backups/ (chiffrée si BACKUP_AGE_RECIPIENT, rotation à 30 jours)
 	tools/db/backup.sh
+
+deploy: ## Déploie le commit en cours : l'API sur le serveur, puis le site sur Cloudflare Pages (ADR 0019)
+	tools/deploy/deploy.sh all
+
+deploy-api: ## Déploie seulement l'API (retour automatique à la version précédente si elle échoue)
+	tools/deploy/deploy.sh api
+
+deploy-front: ## Déploie seulement le site
+	tools/deploy/deploy.sh front
+
+rollback: ## Remet en service la version précédente de l'API
+	tools/deploy/deploy.sh rollback
+
+deploy-status: ## Versions de l'API en service et précédente
+	tools/deploy/deploy.sh status
 
 stats: ## Mesure d'usage : chiffres du jour, de 7 et de 30 jours (ADR 0016), sans charger le lexique
 	docker compose exec -e LEXICON_LOAD=0 api flask stats

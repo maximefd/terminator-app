@@ -5,6 +5,17 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Déploiement** ([#119](https://github.com/maximefd/terminator-app/issues/119),
+  [ADR 0019](docs/adr/0019-deploiement.md), [PRODUCTION.md](docs/PRODUCTION.md)) :
+  - `make deploy` : le commit (jamais un dossier de travail) part par SSH ; le serveur sauvegarde la base,
+    construit l'image, attend qu'elle soit « healthy », vérifie `/api/status`, et revient seul à la version
+    précédente en cas d'échec ; puis le site, construit à partir du même commit, part sur Cloudflare Pages ;
+  - `make rollback`, `make deploy-status` ; quatre versions gardées, avec leurs images ;
+  - `/api/status` vérifie aussi la base de données (503 et `reason: database_unavailable` si elle est
+    injoignable) ;
+  - `docs/PRODUCTION.md` devient le runbook : préparer le serveur (SSH par clé, pare-feu, mises à jour
+    automatiques, journald), Cloudflare, déployer, revenir en arrière, restaurer, changer un secret, surveiller ;
+  - essayé sur un serveur simulé : premier et deuxième déploiement, version cassée, retour arrière, ménage.
 - **Compose de production** ([#117](https://github.com/maximefd/terminator-app/issues/117),
   [PRODUCTION.md](docs/PRODUCTION.md)) : `docker-compose.prod.yml` (PostgreSQL, API sous gunicorn, cloudflared),
   sans aucun port publié ; réglages un par un depuis `.env.production` (modèle versionné), le jeton du tunnel
