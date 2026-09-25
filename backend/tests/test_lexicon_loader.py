@@ -108,3 +108,25 @@ def test_status_reports_the_loaded_lexicon(test_app, client, monkeypatch, tmp_pa
     assert status["word_count"] == 2
     assert status["lexicon"]["source"] == "lexique_cure.csv"
     assert status["lexicon"]["curated"] is True
+
+
+def test_status_checks_the_database(client):
+    status = client.get("/api/status")
+
+    assert status.status_code == 200
+    assert (status.get_json()["status"], status.get_json()["database"]) == ("ok", "ok")
+
+
+def test_status_says_when_the_database_is_unreachable(test_app, client, monkeypatch):
+    """Le test de fumée du déploiement et la surveillance doivent voir une base injoignable, pas un « ok »."""
+    from extensions import db
+
+    def unreachable(*_args, **_kwargs):
+        raise ConnectionError("base injoignable")
+
+    monkeypatch.setattr(db.session, "execute", unreachable)
+    status = client.get("/api/status")
+
+    assert status.status_code == 503
+    assert status.get_json()["database"] == "unavailable"
+    assert status.get_json()["reason"] == "database_unavailable"

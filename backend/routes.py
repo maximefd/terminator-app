@@ -1,5 +1,6 @@
 # DANS backend/routes.py
 
+import logging
 import unicodedata
 from datetime import datetime
 
@@ -62,11 +63,27 @@ def get_owned_dictionary(user, dict_id):
 
 @main_bp.route('/status', methods=['GET'])
 def status_check():
+    """État de l'API, lu par le healthcheck du conteneur, le test de fumée du déploiement et la surveillance.
+
+    Une base injoignable répond 503 : l'API tourne, mais ni les comptes ni la mesure ne marchent.
+    """
     dela_trie = current_app.dela_trie
     word_count = len(dela_trie.words) if dela_trie and hasattr(dela_trie, 'words') else 0
     manager = getattr(current_app, 'lexicon', None)
     lexicon = manager.info.as_dict() if manager and manager.info else None
-    return jsonify({"status": "ok", "trie_loaded": dela_trie is not None, "word_count": word_count, "lexicon": lexicon}), 200
+    try:
+        db.session.execute(db.text("SELECT 1"))
+        database = "ok"
+    except Exception:
+        db.session.rollback()
+        logging.exception("Base de données injoignable")
+        database = "unavailable"
+    body = {"status": "ok" if database == "ok" else "degraded", "database": database,
+            "trie_loaded": dela_trie is not None, "word_count": word_count, "lexicon": lexicon}
+    if database != "ok":
+        body.update(error="La base de données est injoignable.", reason="database_unavailable")
+        return jsonify(body), 503
+    return jsonify(body), 200
 
 @main_bp.route('/dictionaries', methods=['GET'])
 @jwt_required()

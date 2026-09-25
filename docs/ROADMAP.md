@@ -337,11 +337,12 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - mode d'export choisi sur le benchmark complet ;
   - fichier sans définitions ;
   - livré comme artefact avec empreinte, ou construit sur le serveur.
-- **Serveur et déploiement :**
-  - VPS : SSH par clé, mises à jour automatiques ;
-  - `make deploy`, avec test de fumée, retour arrière et runbook ;
+- **Serveur et déploiement** (#119, [ADR 0019](adr/0019-deploiement.md), [PRODUCTION.md](PRODUCTION.md)) :
+  - ✅ VPS : SSH par clé, pare-feu, mises à jour automatiques (guide pas à pas) ;
+  - ✅ `make deploy`, avec sauvegarde, test de fumée, retour automatique, `make rollback` et runbook, essayés sur un serveur simulé ;
   - Pages sur le domaine propre ;
-  - Sentry (projets UE) et UptimeRobot.
+  - Sentry (projets UE) et UptimeRobot ;
+  - reste : le premier déploiement réel, et un retour arrière joué sur le VPS.
 - **Sauvegardes :** nocturnes et chiffrées, copiées sur R2, avec une restauration vérifiée chaque mois.
 - **CI sur l'export statique :** aujourd'hui, la CSP n'est testée que contre `next dev`.
 - **Dépôt privé :**

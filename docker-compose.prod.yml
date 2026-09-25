@@ -70,7 +70,8 @@ services:
       # Lexique curé livré avec l'application (#118) ; à défaut, le DELA complet de l'image
       LEXICON_PATH: ${LEXICON_PATH:-/lexicon/lexique_cure.csv}
     volumes:
-      - ./data/lexicon/build:/lexicon:ro
+      # Sur le serveur, LEXICON_DIR=/opt/leflechoir/lexicon : un dossier partagé par les versions (ADR 0019)
+      - ${LEXICON_DIR:-./data/lexicon/build}:/lexicon:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/status', timeout=5)"]
       interval: 30s

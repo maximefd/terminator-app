@@ -9,6 +9,7 @@ Terminator : outil personnel de création de mots fléchés (recherche par motif
 - Benchmark moteur : `make bench` (à comparer à `backend/benchmarks/baseline.json`) ; profil de charge (RAM, CPU, concurrence) : `make bench-load`
 - Outils / lexique : `make test-tools`, `make lexicon-build`, `make lexicon-stats`, `make lexicon-export` ([docs/LEXICON.md](docs/LEXICON.md)) ; ne jamais réécrire `data/lexicon/decisions.csv` (ajout seul)
 - Dev : `make dev-api` (API :5001 + Postgres) et `make dev-front` (:3000)
+- Déploiement ([ADR 0019](docs/adr/0019-deploiement.md), [docs/PRODUCTION.md](docs/PRODUCTION.md)) : `make deploy` (API puis site), `make rollback` ; migrations additives seulement
 - Mesure d'usage : `make stats` (`flask stats` dans le conteneur de l'API, sans charger le lexique)
 - Base : `make db-backup` (dans `backups/`, ignoré par git) et `make db-restore-check FILE=…` (restaure dans une base jetable, jamais dans la base en service)
 
