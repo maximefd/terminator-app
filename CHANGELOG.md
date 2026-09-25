@@ -11,6 +11,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
   mise en production à 13/14 ([PRODUCTION.md](docs/PRODUCTION.md), « Mis en ligne le 25/09/2026 »). L'ADR 0004 est
   remplacée par l'ADR 0013. La bêta privée derrière Cloudflare Access est abandonnée : le site est ouvert et
   indexable dès sa mise en ligne.
+- **Mesures sur le VPS** ([#124](https://github.com/maximefd/terminator-app/issues/124),
+  [ADR 0013](docs/adr/0013-cible-hebergement-production.md)) : `load_profile.py` sur le serveur de production. Le
+  VPS est 2 à 2,5 fois plus lent que le Mac ; la RAM reste loin du seuil (35 %), le p95 global est à 14,96 s, et
+  les grands formats comme les mots imposés touchent le budget de 20 s. Proposition : rester sur le VPS-1.
 - **`make deploy-lexicon`** ([#118](https://github.com/maximefd/terminator-app/issues/118)) : le lexique curé
   exporté sur le Mac part sur le serveur sans sa colonne de définitions (Wiktionnaire, non servies), avec une
   empreinte vérifiée ; l'API redémarre, et le lexique précédent reprend sa place si elle ne charge pas le

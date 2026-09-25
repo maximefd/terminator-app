@@ -357,7 +357,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - contrôle ASVS sur l'adresse publique ;
   - ✅ `.env` et clé `age` hors du serveur.
 - **Ouverture** (25/09/2026, sans Access) : restent Search Console et Bing, sitemap soumis.
-- **Première semaine :** `load_profile.py` sur le VPS, puis lecture des seuils de l'ADR 0013, pour décider du passage au VPS-2.
+- **Première semaine :** `load_profile.py` sur le VPS, puis lecture des seuils de l'ADR 0013, pour décider du passage au VPS-2. Mesuré le 25/09/2026 ([ADR 0013](adr/0013-cible-hebergement-production.md)) : RAM à 35 %, p95 global de 14,96 s, mais 13×18 et les mots imposés touchent le budget de 20 s. Proposition : rester sur le VPS-1 et relire `flask stats` après une semaine de trafic.
 
 **Terminé quand :**
 - le site est ouvert sur son domaine ;
