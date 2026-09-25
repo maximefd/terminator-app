@@ -176,10 +176,18 @@ Les utilisateurs voient les mots du lexique dans la recherche et dans les grille
 - les mots que plusieurs utilisateurs rangent dans leurs dictionnaires personnels ;
 - les mots générés que les auteurs remplacent à la main dans l'éditeur.
 
-**Règles :**
-- un compte est requis : une suggestion par mot et par compte, avec une limite de débit ;
+**Règles** (décision du 25/09/2026 : plus les utilisateurs affinent le lexique commun, plus le site a de valeur) :
+- **aucune limite pour les utilisateurs** : avec ou sans compte, autant de suggestions qu'ils veulent ;
+- **tout est accepté, rien n'est refusé comme doublon** ; le classement compte les personnes distinctes, pas les clics ;
+- **le spam ne peut pas abîmer le lexique** : rien n'y entre sans la décision de l'auteur. Au pire, la file s'allonge ;
+- **seul garde-fou** : un plafond anti-robot qu'aucun humain n'atteint, de l'ordre d'une suggestion par seconde, pour qu'un script ne noie pas la file ;
 - chaque suggestion porte sa langue (`lang`) ;
-- les suggestions disparaissent avec le compte, et la page confidentialité les mentionne.
+- avec un compte, les suggestions disparaissent avec lui. Sans compte, elles ne portent que l'empreinte du jour ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)). La page confidentialité les mentionne ;
+- les CGU précisent que les suggestions sont données au site : le lexique commun reste un bien du site.
+
+**Pour donner envie de continuer :** montrer aux contributeurs ce que sont devenues leurs suggestions (retenue, écartée, en attente).
+
+**Si les suggestions affluent**, c'est le tri de l'auteur qui devient le goulot. On mesurera alors, comme pour les règles automatiques ([ADR 0008](adr/0008-regles-automatiques-et-revision.md)), si un seuil prédit bien sa décision (par exemple dix personnes et aucune voix contraire). Rien ne s'automatise avant cette mesure.
 
 **Deux temps :**
 1. **Retirer un mot** (#144) : simple, car les décisions portent déjà sur les mots du lexique.
@@ -189,7 +197,7 @@ Les utilisateurs voient les mots du lexique dans la recherche et dans les grille
 - une seule normalisation (#127), sinon « porte-monnaie » et « PORTEMONNAIE » feraient deux suggestions ;
 - l'espace d'administration (#128).
 
-**Quand :** juste après le poste de pilotage (Phase 8), dont il réutilise les briques : comptes, limite de débit, boîte de réception. Il ne conditionne pas la fin de la curation (1d), mais ses retours l'alimentent, et ils continueront après elle.
+**Quand :** juste après le poste de pilotage (Phase 8), dont il réutilise les briques : espace d'administration, boîte de réception. Il ne conditionne pas la fin de la curation (1d), mais ses retours l'alimentent, et ils continueront après elle.
 
 **Terminé quand** : un mot signalé depuis le site apparaît dans le curateur, et la décision de l'auteur se retrouve dans le lexique au déploiement suivant.
 
