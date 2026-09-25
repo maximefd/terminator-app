@@ -5,6 +5,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **Compose de production** ([#117](https://github.com/maximefd/terminator-app/issues/117),
+  [PRODUCTION.md](docs/PRODUCTION.md)) : `docker-compose.prod.yml` (PostgreSQL, API sous gunicorn, cloudflared),
+  sans aucun port publié ; réglages un par un depuis `.env.production` (modèle versionné), le jeton du tunnel
+  n'entrant pas dans l'environnement de l'API ; healthcheck de l'API ; journaux dans journald, effacés à
+  14 jours. Essayé de bout en bout sur une machine de test. Dependabot suit les images Docker.
 - **Mesure d'usage côté serveur** ([#116](https://github.com/maximefd/terminator-app/issues/116),
   [ADR 0016](docs/adr/0016-mesure-d-usage-sans-cookie.md)), sans cookie ni script tiers :
   - un événement par génération (format, layout, mots imposés en nombre, longueur et présence dans le lexique,
@@ -352,6 +357,8 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **L'image de l'API tourne sans droits** (uid 10001) et ne peut pas modifier son code ; `.dockerignore` écarte
+  tests, benchmarks, caches et fichiers `.env`.
 - **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
   autorisés par leur empreinte `sha256` dans une CSP posée en `<meta>` au build (`scripts/write-headers.mjs`).
   Un script injecté par une faille XSS ne s'exécute plus. `'unsafe-inline'` ne subsiste que pour `next dev`

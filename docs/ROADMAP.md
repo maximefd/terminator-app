@@ -315,7 +315,7 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
   - ✅ `SECURITY.md` et le modèle d'issue mis à jour.
 
   Le formulaire vient en Phase 8.
-- **Données personnelles :** ✅ registre des traitements et durées de conservation ([RGPD.md](RGPD.md)). Restent, avant l'ouverture : la rotation des journaux Docker à 14 jours (#117), la rétention Sentry à 90 jours au plus, la suppression des comptes inactifs depuis 3 ans.
+- **Données personnelles :** ✅ registre des traitements et durées de conservation ([RGPD.md](RGPD.md)). Restent, avant l'ouverture : la rétention de journald à 14 jours sur le serveur ([PRODUCTION.md](PRODUCTION.md)), la rétention Sentry à 90 jours au plus, la suppression des comptes inactifs depuis 3 ans.
 
 ### 6e. Mesure côté serveur dès le premier jour (#116) ✅
 - ✅ **Événements d'usage** ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) :
@@ -328,11 +328,11 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 - ✅ **Conservation :** la purge (mots imposés à 90 jours, événements à 13 mois, sel de la veille) est faite chaque jour par la première requête mesurée ; `flask usage purge` la lance à la main.
 
 ### 6f. Serveur, déploiement et exploitation (#29 : #117 à #120 ; #121, #122)
-- **Image et compose de production :**
+- ✅ **Image et compose de production** (#117, [PRODUCTION.md](PRODUCTION.md)) :
   - gunicorn non-root, avec healthcheck ;
   - PostgreSQL sans port publié ;
   - cloudflared ;
-  - `.dockerignore`, rotation des journaux, Dependabot pour Docker.
+  - `.dockerignore`, journaux dans journald effacés à 14 jours, Dependabot pour Docker.
 - **Lexique de lancement :**
   - mode d'export choisi sur le benchmark complet ;
   - fichier sans définitions ;
