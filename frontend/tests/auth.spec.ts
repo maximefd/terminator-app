@@ -64,5 +64,27 @@ test.describe("Authentication Flow", () => {
     await expect(page).toHaveURL("/");
     await expect(page.getByTestId("logout-button")).toBeVisible();
   });
+
+  // Après l'inscription (ou la connexion), `next` ne fait jamais sortir du site : le navigateur retire
+  // tabulations et retours à la ligne d'une adresse et lit « \ » comme « / », d'où `/⇥/exemple.com` → exemple.com
+  for (const next of ["%2F%09%2Fexemple.com", "%2F%0A%2Fexemple.com", "%2F%2Fexemple.com", "%2F%5Cexemple.com",
+    "https%3A%2F%2Fexemple.com"]) {
+    test(`next=${next} ramène à l'accueil, jamais sur un autre site`, async ({ page }) => {
+      await page.goto(`/register?next=${next}`);
+      await page.getByLabel("Email").fill(`redirection_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@test.com`);
+      await page.getByLabel("Mot de passe").fill("TestPassword123");
+      await page.getByRole("button", { name: "Créer un compte" }).click();
+      await expect(page).toHaveURL("/");
+      await expect(page.getByTestId("logout-button")).toBeVisible();
+    });
+  }
+
+  test("un chemin interne dans `next` est bien suivi après l'inscription", async ({ page }) => {
+    await page.goto("/register?next=%2Fsearch");
+    await page.getByLabel("Email").fill(`redirection_ok_${Date.now()}@test.com`);
+    await page.getByLabel("Mot de passe").fill("TestPassword123");
+    await page.getByRole("button", { name: "Créer un compte" }).click();
+    await expect(page).toHaveURL("/search");
+  });
 });
 
