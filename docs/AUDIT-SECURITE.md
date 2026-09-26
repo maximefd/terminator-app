@@ -58,6 +58,28 @@ Les chantiers précédents avaient déjà corrigé en cours de route : un repli 
 | `style-src 'unsafe-inline'` | Styles en ligne des composants ; une injection de style est bien moins grave qu'une injection de script, qui est bloquée. |
 | Rate limiting en mémoire, par worker (jusqu'à 3 fois la limite) | Voir SECURITY.md ; Redis le jour où il y aura plusieurs serveurs. |
 
+## Contrôle de l'adresse publique, le 25/09/2026
+
+Le jour de la mise en ligne, contre `https://leflechoir.fr` et `https://api.leflechoir.fr` : les essais ci-dessus qui ont un sens en production, puis TLS, en-têtes, fichiers exposés et redirections. Aucun essai destructif.
+
+| Essai | Attendu | Résultat |
+|-------|---------|----------|
+| JWT avec `alg: none`, puis signé d'une autre clé | refusé | ✅ 401 |
+| Corps `text/plain` | refusé | ✅ 400 |
+| Méthodes `TRACE`, `PUT` | refusées | ✅ 405 |
+| Corps de 70 Ko | refusé | ✅ 413 |
+| `CF-Connecting-IP` inventé par le client | ignoré | ✅ bloqué par Cloudflare (403), n'atteint pas l'API |
+| Connexions ratées, `X-Forwarded-For` différent à chaque fois | pas de contournement | ✅ 429 à la 25ᵉ (compteurs par worker, voir « Risques acceptés ») |
+| Deux visiteurs derrière le tunnel | comptés à part | ✅ l'API voit leurs vraies adresses, pas celle de cloudflared |
+| Ports du serveur, de l'extérieur | seul SSH | ✅ 22 ouvert ; 80, 443, 5000, 5432 et 8080 fermés |
+| Fichiers sensibles (`/.env`, `/.git/config`…) | absents | ✅ 404 sur le site et sur l'API |
+| Erreurs de l'API | génériques | ✅ JSON en français, sans trace technique |
+| En-têtes | présents | ✅ CSP, HSTS, `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy` ; `Cache-Control: no-store` sur l'API ; `security.txt` |
+| **Redirection après la connexion** (`?next=/⇥/exemple.com`) | reste sur le site | ❌ **menait sur un autre site**, corrigé (#165) |
+| **HTTP en clair sur l'API** | redirigé | ⚠️ `http://api.leflechoir.fr` répond (le site, lui, redirige) : *Always Use HTTPS* à activer dans la zone |
+| **TLS 1.0 et 1.1** | refusés | ⚠️ refusés par le site, **acceptés par l'API** : *Minimum TLS Version* à 1.2 dans la zone |
+| DNSSEC, enregistrement CAA | recommandés | ➖ absents ; durcissements facultatifs |
+
 ## À refaire
 
-À la mise en ligne, sur le vrai serveur : la checklist de production de [SECURITY.md](SECURITY.md), puis les essais du tableau ci-dessus contre l'adresse publique. Il faut notamment vérifier que l'API ne répond **que** par le tunnel.
+~~À la mise en ligne, sur le vrai serveur : la checklist de production de [SECURITY.md](SECURITY.md), puis les essais du tableau ci-dessus contre l'adresse publique. Il faut notamment vérifier que l'API ne répond **que** par le tunnel.~~ Fait le 25/09/2026 (section précédente). Restent deux réglages de la zone : *Always Use HTTPS* et *Minimum TLS Version* à 1.2.
