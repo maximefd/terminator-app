@@ -5,6 +5,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 ## [Non publié]
 
 ### Ajouté
+- **CI sur l'export statique** ([#121](https://github.com/maximefd/terminator-app/issues/121)) : le job de bout en
+  bout tourne deux fois, sur `next dev` et sur le site tel qu'il est publié, l'export (`out/` et `out/_headers`)
+  servi comme par Cloudflare Pages (`wrangler pages dev`, même version que le déploiement). `csp.spec.ts`, sauté
+  sur le serveur de dev, y vérifie la CSP de chaque page. En local : `PLAYWRIGHT_STATIC=1` (CONTRIBUTING.md).
 - **Mise en ligne de Le Fléchoir** (25/09/2026) : le site sur `leflechoir.fr` (Cloudflare Pages), l'API sur le
   VPS derrière Cloudflare Tunnel, le lexique curé, les sauvegardes de la nuit sur R2 (juridiction UE). Premier
   déploiement, retour arrière joué deux fois et sauvegarde restaurée depuis R2 sur le vrai serveur ; checklist de

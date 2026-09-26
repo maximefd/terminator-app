@@ -41,3 +41,6 @@ backend/benchmarks/load.json
 
 # Sauvegardes de la base (make db-backup) : données personnelles, jamais versionnées
 backups/
+
+# État local de wrangler (`pnpm serve:static`, commandes R2 et Pages)
+.wrangler/

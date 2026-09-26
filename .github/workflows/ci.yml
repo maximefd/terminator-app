@@ -90,8 +90,14 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
 
   e2e-ci:
-    name: Parcours end-to-end et accessibilité
+    name: Parcours end-to-end et accessibilité (${{ matrix.site }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # dev : `next dev`. static : le site tel qu'il est publié, l'export (`out/` et `out/_headers`) servi comme
+        # par Cloudflare Pages (#121) ; c'est là seulement que la CSP par page existe (`csp.spec.ts`)
+        site: [dev, static]
     # D'habitude 2 à 3 minutes : un blocage doit échouer vite, pas occuper le runner six heures
     timeout-minutes: 20
 
@@ -173,10 +179,17 @@ jobs:
       - name: Install Playwright browser
         run: cd frontend && pnpm exec playwright install --with-deps chromium
 
+      - name: Build the static export
+        if: matrix.site == 'static'
+        run: cd frontend && pnpm build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+
       - name: Run end-to-end and accessibility tests
         run: cd frontend && pnpm exec playwright test
         env:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:5001
+          PLAYWRIGHT_STATIC: ${{ matrix.site == 'static' && '1' || '' }}
 
       - name: Journal de l'API en cas d'échec
         if: failure()
@@ -186,6 +199,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.site }}
           path: frontend/playwright-report/
           retention-days: 7
