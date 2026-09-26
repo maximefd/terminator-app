@@ -63,7 +63,7 @@ Terminator est un outil personnel de création de **mots fléchés d'aspect prof
 **Ingénierie**
 - **Git** : branches de fonctionnalité + PR même en solo, commits conventionnels, `main` toujours vert.
 - **CI** : backend `ruff` (lint + format), `mypy` (moteur, curateur), `pytest` + couverture (≥ 70 % sur `engine/` et le pipeline lexique) ; frontend `eslint`, `tsc --noEmit`, `next build`, tests Playwright.
-- **Sécurité en CI** : `pip-audit`, `pnpm audit`, CodeQL, Dependabot, gitleaks. *État au 24/09/2026 : seuls `pip-audit` et Dependabot sont en place. CodeQL n'est pas offert sur un dépôt privé en offre gratuite (voir 6f).*
+- **Sécurité en CI** : `pip-audit`, `pnpm audit`, Dependabot et gitleaks, en place depuis le 25/09/2026 (#122). CodeQL n'est pas retenu : il n'est pas offert sur un dépôt privé en offre gratuite (voir 6f), et se reconsidère si le code reste public.
 - **Outillage local** : pre-commit identique à la CI (*pas encore en place*) ; `Makefile` (`setup`, `test`, `lint`, `harness`, `lexicon-build`, `curator`) ; `.env.example`.
 - **Décisions** : ADR dans `docs/adr/` pour chaque choix structurant.
 - **Données** : jeux de données externes téléchargés par script (versions et checksums figés), jamais versionnés. Les *décisions* de l'auteur sont versionnées. Les artefacts générés sont reconstruits.
