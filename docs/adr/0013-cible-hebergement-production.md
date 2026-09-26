@@ -84,6 +84,26 @@ L'avant-dernière ligne vient de ce que chaque requête ne recopie plus le lexiq
   - une commande de déploiement, et la sauvegarde nocturne qui appelle `tools/db/backup.sh` puis copie hors du serveur (la sauvegarde et sa vérification existent déjà : `make db-backup`, `make db-restore-check`) ;
   - la checklist de [SECURITY.md](../SECURITY.md).
 - **Première semaine en ligne** : refaire ces mesures sur le VPS (`backend/benchmarks/load_profile.py`, `make bench-load` en local). Passer au VPS-2 (4 vCores, 8 Go, environ 104 € par an) si la RAM dépasse 75 %, si les refus « générateur occupé » deviennent fréquents, ou si le p95 dépasse 15 s. Au-delà, c'est la [Phase 7](../ROADMAP.md) : file de jobs ou moteur côté client.
+- **Mesures sur le VPS, le 25/09/2026** (`load_profile.py`, dans un conteneur jetable limité à 2 CPU et 2 Go, à côté de l'API en service ; lexique curé de 692 516 mots ; 10 seeds par format, budget de 20 s). Le processeur est un Intel de génération Haswell à 2,4 GHz, 2 vCores : environ **2 à 2,5 fois plus lent** que le Mac, un peu au-delà de l'estimation.
+
+  | Mesure | Mac (après les prérequis) | VPS |
+  |--------|------|-----|
+  | RAM après chargement du lexique | 601 Mo | 667 Mo (chargement en 12,5 s) |
+  | Médiane 6×7 / 11×17 / 13×16 | 0,01 / 0,42 / 1,33 s | 0,04 / 2,33 / 2,59 s |
+  | Génération libre, tous formats (90) | — | 87 réussies ; médiane 0,69 s, **p95 14,96 s**, CPU moyen 3,0 s |
+  | 13×18 | — | 8 sur 10 ; médiane 11,1 s, p95 20 s (le budget) |
+  | 11×17 | — | 9 sur 10 ; p95 17,1 s |
+  | Avec mots imposés (30) | — | 25 réussies ; médiane 3,8 s, p95 20 s |
+  | 4 générations sur 2 cœurs : médiane | 1,6 s | 4,0 s (p95 16,1 s, 8 sur 8) |
+  | RAM de 4 processus forkés (PSS) | 782 Mo | 766 Mo |
+  | 2 générations en threads | aucun gain | aucun gain (35 s contre 30 s en série) |
+
+  Lecture des seuils :
+  - **la RAM est loin des 75 %** : 1,3 Go utilisés sur 3,7 Go, l'API compte pour 780 Mo ;
+  - **le p95 global touche 15 s**, et les grands formats (11×17, 13×18) comme les mots imposés le dépassent ;
+  - les refus « occupé » ne se mesurent qu'avec du trafic, via `flask stats`.
+
+  Le VPS-2 double les cœurs et la mémoire, mais probablement pas la vitesse d'un cœur. Il aiderait la concurrence, pas la durée d'une grande grille seule. **Proposition : rester sur le VPS-1**, relire `flask stats` après une semaine de trafic réel, et traiter la durée des grands formats côté moteur (budget par format, optimisations, ou [Phase 7](../ROADMAP.md)).
 - **Rate limiting** : ses compteurs restent en mémoire, par worker. Une limite de 10 par minute vaut donc jusqu'à 30 avec 3 workers. Les générations simultanées, elles, sont comptées entre tous les workers.
 - **Dépôt GitHub** : public pendant le développement, **privé à la mise en ligne** (décision du 24/09/2026), pour protéger la curation (`decisions.csv`) et les layouts. Sur GitHub Free, un dépôt privé perd la protection de branche qui impose la CI verte : la règle continuera d'être suivie à la main.
 - **L'ADR 0004 est remplacée** par la présente depuis la mise en ligne du 25/09/2026.
