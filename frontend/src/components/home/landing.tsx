@@ -80,6 +80,7 @@ export function Landing() {
               grid={DEMO_GRID}
               variant={solution ? "solution" : "vierge"}
               definitions={DEMO_DEFINITIONS}
+              className="h-auto w-full"
             />
           </div>
           <p className="mt-3 text-sm text-muted-foreground">

@@ -71,8 +71,12 @@ type CellEdit = { x: number; y: number; char: string };
  * entre deux lettres. Plutôt qu'une marge fixe — qui suppose une hauteur d'en-tête et se trompe dès
  * qu'on change de fenêtre —, la colonne occupe la hauteur disponible et le dessin prend ce qui
  * reste (`flex-1` + `min-h-0`), la largeur suivant le rapport du SVG.
+ *
+ * Seulement sur grand écran (`lg:`), où la colonne a une hauteur. En dessous, elle n'en a pas : `h-full` ne
+ * repose sur rien, et Safari (WebKit) réduisait le dessin à rien, alors que l'export PDF, dessiné en
+ * `h-auto w-full`, restait bon. Sur téléphone, la grille prend donc la largeur, et le défilement fait le reste.
  */
-const FITS_SCREEN = "h-full max-h-full w-auto max-w-full";
+const FITS_SCREEN = "h-auto w-full lg:h-full lg:max-h-full lg:w-auto lg:max-w-full";
 
 /**
  * L'éditeur d'une grille conservée : définitions, lettres, notes, export.
@@ -633,7 +637,8 @@ export function GridEditor({ gridId }: { gridId: number }) {
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      {/* grid-cols-1 : sur téléphone, la colonne ne dépasse jamais l'écran, quel que soit son contenu */}
+      <div className="grid min-h-0 flex-1 items-start gap-6 grid-cols-1 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         {/* Hauteur **définie** et non plafonnée : sans elle, le `100 %` du dessin n'a rien à quoi se
             rapporter et le SVG reprend sa taille intrinsèque — le piège classique des pourcentages. */}
         <div className="flex min-h-0 flex-col lg:h-full">

@@ -92,7 +92,8 @@ export function GridDisplay({ gridData, unplaced = [] }: { gridData: GridData; u
             grid={gridData}
             variant={variant}
             cellSources={origin}
-            className="max-h-[80vh] w-auto max-w-full"
+            // Largeur d'abord : un SVG en `w-auto` n'a pas de largeur propre, et Safari peut le réduire à rien
+            className="h-auto max-h-[80vh] w-full"
           />
         </div>
       </div>
