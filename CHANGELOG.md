@@ -390,6 +390,10 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Lint Python avec ruff (`make lint-backend`, `ruff.toml`, règles tolérantes pour commencer) et couverture des tests en CI : 80 % minimum sur le moteur, 70 % sur les outils (#5).
 
 ### Corrigé
+- **Grilles invisibles sur téléphone** (Safari) : dans l'éditeur, la grille prenait « toute la hauteur » d'une
+  colonne qui n'en a pas sur petit écran, et WebKit la réduisait à rien ; seul l'export PDF la montrait. Sur
+  téléphone, la grille prend désormais la largeur (sur grand écran, elle tient toujours dans la hauteur). Même
+  règle pour la génération et l'accueil, et la colonne de l'éditeur ne déborde plus de l'écran (7 px de trop).
 - **Déploiement du site** : `wrangler` était lancé par un simple `pnpm dlx`, que pnpm 12 arrête
   (`ERR_PNPM_IGNORED_BUILDS` : scripts d'installation d'esbuild et de workerd non autorisés). `deploy.sh` les
   autorise explicitement. `docs/PRODUCTION.md` crée le projet Pages avec `--force` : sans lui, wrangler 4.140
