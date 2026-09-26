@@ -18,7 +18,7 @@ const PUBLIC_PAGES = [
   { path: "/terms", title: "Conditions d'utilisation | Le Fléchoir", canonical: `${SITE_URL}/terms` },
 ];
 
-const PRIVATE_PAGES = ["/account", "/grids", "/grids/edit?id=1", "/dictionaries", "/login", "/register",
+const PRIVATE_PAGES = ["/admin", "/account", "/grids", "/grids/edit?id=1", "/dictionaries", "/login", "/register",
   "/forgot-password", "/reset-password", "/verify-email"];
 
 for (const { path, title, canonical } of PUBLIC_PAGES) {
@@ -56,6 +56,8 @@ test("robots.txt ouvre tout le site et donne le sitemap", async ({ request }) =>
   expect(body).toContain("Allow: /");
   expect(body).not.toContain("Disallow");
   expect(body).toContain(`Sitemap: ${SITE_URL}/sitemap.xml`);
+  // Le poste de pilotage n'y est jamais cité (ADR 0016) : il porte noindex, en balise et en X-Robots-Tag
+  expect(body).not.toContain("admin");
 });
 
 test("le sitemap liste les pages publiques, et elles seules", async ({ request }) => {

@@ -384,11 +384,12 @@ contrat de l'[ADR 0007](adr/0007-contrat-de-generation.md) restant à implément
 
 **Objectif** : répondre d'un coup d'œil aux questions de l'auteur ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) : qui vient, ce qu'on génère, ce qui casse, ce que consomme le serveur. Issues : #128 à #132.
 
-- **Espace d'administration :**
-  - `is_admin` posé en ligne de commande, sur une adresse confirmée ;
-  - `/api/admin/*` répond 404 à tout autre compte ;
-  - accès journalisés et tests d'autorisation ;
-  - page `/admin` liée nulle part, en `noindex`.
+- ✅ **Espace d'administration** (#128, 25/09/2026) :
+  - `is_admin` posé en ligne de commande (`flask admin grant`), sur une adresse confirmée ;
+  - `/api/admin/*` répond à tout autre compte, et à tout visiteur, le 404 d'une adresse inconnue ;
+  - accès journalisés, acceptés comme refusés ; tests d'autorisation qui énumèrent toutes les routes ;
+  - page `/admin` liée nulle part, en `noindex` (balise et `X-Robots-Tag`), titrée « Page introuvable » pour tout autre visiteur.
+  - Premier tableau : les chiffres de `flask stats` (#129, en partie) ; le système et les échantillons restent à faire.
 
   Renfort possible : Cloudflare Access ou un second facteur.
 - **Tableaux :**

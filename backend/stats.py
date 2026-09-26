@@ -116,6 +116,51 @@ def compute(now: datetime | None = None, cpu_count: int | None = None) -> dict:
     }
 
 
+def _iso(moment: datetime) -> str:
+    return moment.isoformat(timespec="seconds") + "Z"
+
+
+def as_json(stats: dict) -> dict:
+    """Les mêmes chiffres pour le poste de pilotage (`GET /api/admin/stats`, admin.py).
+
+    Des agrégats seulement. Les dernières générations y figurent sans rien qui désigne un visiteur : ni
+    empreinte, ni compte, ni mots imposés (seul leur nombre).
+    """
+    month = stats["periods"]["30 jours"]
+
+    def split(counter: Counter) -> dict:
+        return {"grid": counter["grid"], "failed": counter["échec"]}
+
+    return {
+        "now": _iso(stats["now"]),
+        "periods": [{"label": label, "days": days, **stats["periods"][label]} for label, days in PERIODS],
+        # Seuils de l'ADR 0013, sur 30 jours comme dans `flask stats`
+        "thresholds": {
+            "p95_ms": month["p95"],
+            "p95_limit_ms": P95_THRESHOLD_S * 1000,
+            "busy_share": month["busy"] / month["generations"] if month["generations"] else 0,
+            "busy_limit": BUSY_THRESHOLD,
+        },
+        "outcomes": [{"outcome": outcome or "?", "count": count}
+                     for outcome, count in stats["outcomes"].most_common()],
+        "formats": [{"format": fmt, **split(counter)}
+                    for fmt, counter in sorted(stats["formats"].items(), key=lambda item: -sum(item[1].values()))],
+        "by_must_count": [{"must": count, **split(counter)} for count, counter in sorted(stats["by_must_count"].items())],
+        "unknown_words": [{"word": word, "count": count} for word, count in stats["unknown_words"].most_common(50)],
+        "countries": [{"country": country, "events": count} for country, count in stats["countries"].most_common(20)],
+        "errors": [{"route": route, "status": status, "count": count}
+                   for (route, status), count in stats["errors"].most_common(30)],
+        "latest": [{
+            "at": _iso(event.created_at),
+            "format": event.data.get("format"),
+            "layout": event.data.get("layout"),
+            "outcome": event.outcome,
+            "duration_ms": event.duration_ms,
+            "must": len(event.data.get("must", [])),
+        } for event in stats["latest"]],
+    }
+
+
 def _seconds(ms: float | None) -> str:
     return "—" if ms is None else f"{ms / 1000:.2f} s"
 

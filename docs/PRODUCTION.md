@@ -269,7 +269,8 @@ C="docker compose -p leflechoir -f /opt/leflechoir/current/docker-compose.prod.y
 
 | Besoin | Commande |
 |--------|----------|
-| Mesure d'usage ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) | `$C exec -e LEXICON_LOAD=0 api flask stats` |
+| Mesure d'usage ([ADR 0016](adr/0016-mesure-d-usage-sans-cookie.md)) | `$C exec -e LEXICON_LOAD=0 api flask stats`, ou le poste de pilotage : `https://leflechoir.fr/admin` |
+| Donner le rôle d'administrateur (une fois, sur une adresse confirmée) | `$C exec -e LEXICON_LOAD=0 api flask admin grant ADRESSE` ; `revoke` pour le retirer, `list` pour les voir |
 | Journaux de l'API | `$C logs -f api` (JSON, une ligne par requête) |
 | État | `$C ps` |
 
