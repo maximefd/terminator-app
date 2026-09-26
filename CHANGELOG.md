@@ -444,6 +444,11 @@ Toutes les évolutions notables du projet. Format inspiré de [Keep a Changelog]
 - Le solveur exigeait qu'un mot perpendiculaire **en cours d'écriture** existe déjà au dictionnaire : deux rangées voisines traversant un emplacement de 5 cases y laissent « AB », que le solveur refusait faute d'être un mot. Sur les grilles de plus d'une trentaine de mots, il rejetait ainsi des placements valides en continu et n'aboutissait jamais. Seuls les mots **terminés** sont désormais vérifiés (#57). Les **16 layouts du catalogue réussissent maintenant 20/20**, du 6×7 (0,05 s) au 13×16 de 61 mots (1,9 s) ; les formats de plus de 30 mots n'aboutissaient jamais auparavant.
 
 ### Sécurité
+- **Redirection après la connexion** : `?next=` acceptait `/⇥/exemple.com` (une tabulation ou un retour à la
+  ligne entre les deux `/`). Le navigateur retire ces caractères d'une adresse : le lien menait, juste après la
+  connexion ou l'inscription, vers un autre site (redirection ouverte, ASVS V5.1.5). La destination est désormais
+  jugée une fois l'adresse analysée, et seule une page du site est suivie. Tests de bout en bout sur cinq
+  variantes. Trouvé lors du contrôle ASVS de l'adresse publique.
 - **L'image de l'API tourne sans droits** (uid 10001) et ne peut pas modifier son code ; `.dockerignore` écarte
   tests, benchmarks, caches et fichiers `.env`.
 - **CSP stricte sur le site statique** (#99) : chaque page n'exécute plus que ses propres scripts inline,
